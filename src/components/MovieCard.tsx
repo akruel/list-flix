@@ -1,8 +1,9 @@
 import React from 'react';
 import type { ContentItem } from '../types';
 import { tmdb } from '../services/tmdb';
-import { Star } from 'lucide-react';
+import { Star, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useStore } from '../store/useStore';
 
 interface MovieCardProps {
   item: ContentItem;
@@ -12,6 +13,8 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
   const title = item.media_type === 'movie' ? item.title : item.name;
   const date = item.media_type === 'movie' ? item.release_date : item.first_air_date;
   const year = date ? new Date(date).getFullYear() : 'N/A';
+  const { isWatched } = useStore();
+  const watched = isWatched(item.id);
 
   return (
     <Link 
@@ -25,6 +28,11 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
           className="w-full h-full object-cover"
           loading="lazy"
         />
+        {watched && (
+          <div className="absolute top-2 right-2 bg-blue-600 text-white rounded-full p-2 shadow-lg">
+            <Check size={16} />
+          </div>
+        )}
         <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           <span className="text-white font-semibold px-4 py-2 bg-primary rounded-full">Ver Detalhes</span>
         </div>

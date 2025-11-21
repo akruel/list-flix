@@ -2,14 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { tmdb } from '../services/tmdb';
 import type { ContentDetails, Provider } from '../types';
-import { Loader2, Star, Clock, Check, Plus, Share2 } from 'lucide-react';
+import { Loader2, Star, Clock, Check, Plus, Share2, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 export const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const [details, setDetails] = useState<ContentDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const { addToList, removeFromList, isInList } = useStore();
+  const { addToList, removeFromList, isInList, markAsWatched, markAsUnwatched, isWatched } = useStore();
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -41,6 +41,7 @@ export const Details: React.FC = () => {
   const date = details.media_type === 'movie' ? details.release_date : details.first_air_date;
   const year = date ? new Date(date).getFullYear() : 'N/A';
   const isSaved = isInList(details.id);
+  const watched = isWatched(details.id);
 
   const handleToggleList = () => {
     if (isSaved) {
@@ -48,6 +49,14 @@ export const Details: React.FC = () => {
     } else {
       // Force media_type from URL param to ensure it's saved correctly
       addToList(details);
+    }
+  };
+
+  const handleToggleWatched = () => {
+    if (watched) {
+      markAsUnwatched(details.id);
+    } else {
+      markAsWatched(details.id);
     }
   };
   
@@ -100,20 +109,30 @@ export const Details: React.FC = () => {
 
       <div className="container mx-auto px-4 mt-8 grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
-          {/* Actions */}
-          <div className="flex gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <button 
               onClick={handleToggleList}
-              className={`flex-1 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
+              className={`py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
                 isSaved 
                   ? 'bg-green-600 hover:bg-green-700 text-white' 
                   : 'bg-purple-600 hover:bg-purple-700 text-white'
               }`}
             >
               {isSaved ? <Check size={20} /> : <Plus size={20} />} 
-              {isSaved ? 'Na Minha Lista' : 'Adicionar à Lista'}
+              {isSaved ? 'Na Lista' : 'Adicionar'}
             </button>
-            <button className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors">
+            <button 
+              onClick={handleToggleWatched}
+              className={`py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
+                watched 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+                  : 'bg-gray-800 hover:bg-gray-700 text-white'
+              }`}
+            >
+              {watched ? <Eye size={20} /> : <EyeOff size={20} />} 
+              {watched ? 'Assistido' : 'Marcar'}
+            </button>
+            <button className="bg-gray-800 hover:bg-gray-700 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors col-span-2 md:col-span-1">
               <Share2 size={20} /> Compartilhar
             </button>
           </div>
