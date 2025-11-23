@@ -5,27 +5,34 @@ import type{ ContentItem } from '../types';
 import { MovieCard } from '../components/MovieCard';
 import { Loader2 } from 'lucide-react';
 
+import { supabaseService } from '../services/supabase';
+
 export const SharedList: React.FC = () => {
   const [searchParams] = useSearchParams();
   const dataParam = searchParams.get('data');
+  const idParam = searchParams.get('id');
   const [items, setItems] = useState<ContentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchSharedItems = async () => {
-      if (!dataParam) {
+      if (!dataParam && !idParam) {
         setError('Link inválido ou incompleto.');
         setLoading(false);
         return;
       }
 
       try {
-        // Decode base64
-        const decoded = atob(dataParam);
-        const listData: { id: number; type: 'movie' | 'tv' }[] = JSON.parse(decoded);
+        let listData: { id: number; type: 'movie' | 'tv' }[] = [];
 
-
+        if (idParam) {
+          listData = await supabaseService.getSharedList(idParam);
+        } else if (dataParam) {
+          // Decode base64 (Legacy support)
+          const decoded = atob(dataParam);
+          listData = JSON.parse(decoded);
+        }
 
         // Fetch details for each item
         // Note: In a real app, we might want a bulk endpoint or better error handling
@@ -42,7 +49,7 @@ export const SharedList: React.FC = () => {
     };
 
     fetchSharedItems();
-  }, [dataParam]);
+  }, [dataParam, idParam]);
 
   if (loading) {
     return (

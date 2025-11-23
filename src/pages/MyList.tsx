@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useStore } from '../store/useStore';
+import { supabaseService } from '../services/supabase';
 import { MovieCard } from '../components/MovieCard';
 import { Share2, Check, Eye, EyeOff, List } from 'lucide-react';
 
@@ -10,18 +11,23 @@ export const MyList: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
 
-  const handleShare = () => {
-    // For POC: Create a JSON string of IDs and encode it in the URL
-    // In a real app, this would save to a DB and return a short ID
-    const listData = myList.map(item => ({ id: item.id, type: item.media_type }));
+  const [sharing, setSharing] = useState(false);
 
-    const encodedData = btoa(JSON.stringify(listData));
-    const url = `${window.location.origin}/shared?data=${encodedData}`;
-    
-    navigator.clipboard.writeText(url).then(() => {
+  const handleShare = async () => {
+    try {
+      setSharing(true);
+      const id = await supabaseService.shareList(myList);
+      const url = `${window.location.origin}/shared?id=${id}`;
+      
+      await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch (error) {
+      console.error('Error sharing list:', error);
+      alert('Erro ao compartilhar a lista. Tente novamente.');
+    } finally {
+      setSharing(false);
+    }
   };
 
   const filteredList = myList.filter(item => {
@@ -40,7 +46,7 @@ export const MyList: React.FC = () => {
             className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
           >
             {copied ? <Check size={16} className="text-green-500" /> : <Share2 size={16} />}
-            {copied ? 'Link Copiado!' : 'Compartilhar Lista'}
+            {copied ? 'Link Copiado!' : sharing ? 'Gerando Link...' : 'Compartilhar Lista'}
           </button>
         )}
       </div>
