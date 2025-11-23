@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users } from 'lucide-react';
+import { Plus, Users, Trash2 } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { toast } from 'sonner';
+import { DeleteConfirmationModal } from './DeleteConfirmationModal';
 
 export function CustomLists() {
-  const { lists, fetchLists, createList } = useStore();
+  const { lists, fetchLists, createList, deleteList } = useStore();
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState('');
+  const [listToDelete, setListToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchLists();
@@ -19,6 +23,21 @@ export function CustomLists() {
     await createList(newListName);
     setNewListName('');
     setIsCreating(false);
+  };
+
+  const handleDelete = async () => {
+    if (!listToDelete) return;
+    try {
+      setIsDeleting(true);
+      await deleteList(listToDelete);
+      toast.success('Lista excluída com sucesso');
+      setListToDelete(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao excluir lista');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -67,7 +86,7 @@ export function CustomLists() {
           <Link
             key={list.id}
             to={`/lists/${list.id}`}
-            className="bg-gray-800 p-6 rounded-lg hover:bg-gray-700 transition-colors group"
+            className="bg-gray-800 p-6 rounded-lg hover:bg-gray-700 transition-colors group relative"
           >
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-semibold text-white group-hover:text-primary transition-colors">
@@ -86,6 +105,19 @@ export function CustomLists() {
             <div className="mt-4 text-xs text-gray-500">
               Criado em {new Date(list.created_at).toLocaleDateString()}
             </div>
+
+            {list.role === 'owner' && (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setListToDelete(list.id);
+                }}
+                className="absolute top-4 right-4 p-2 bg-red-500/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 text-white z-10"
+                title="Excluir Lista"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
           </Link>
         ))}
 
@@ -95,6 +127,15 @@ export function CustomLists() {
           </div>
         )}
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={!!listToDelete}
+        onClose={() => setListToDelete(null)}
+        onConfirm={handleDelete}
+        title="Excluir Lista"
+        description="Tem certeza que deseja excluir esta lista? Esta ação não pode ser desfeita e todos os itens da lista serão perdidos."
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }

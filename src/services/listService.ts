@@ -181,5 +181,14 @@ export const listService = {
       ...acc,
       [item.list_id]: item.id
     }), {});
+  },
+
+  async deleteList(listId: string): Promise<void> {
+    const { error } = await supabase
+      .from('lists')
+      .delete()
+      .eq('id', listId);
+
+    if (error) throw error;
   }
 };

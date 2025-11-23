@@ -25,6 +25,7 @@ interface ListStore {
   lists: List[];
   fetchLists: () => Promise<void>;
   createList: (name: string) => Promise<void>;
+  deleteList: (id: string) => Promise<void>;
 }
 
 export const useStore = create<ListStore>()(
@@ -133,6 +134,13 @@ export const useStore = create<ListStore>()(
       createList: async (name) => {
         await listService.createList(name);
         get().fetchLists();
+      },
+
+      deleteList: async (id) => {
+        await listService.deleteList(id);
+        set((state) => ({
+          lists: state.lists.filter((l) => l.id !== id),
+        }));
       },
     }),
     {
