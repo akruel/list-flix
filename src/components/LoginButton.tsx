@@ -34,7 +34,11 @@ export function LoginButton() {
     setSendingLink(true);
     try {
       await authService.signInWithOtp(email);
-      toast.success('Link de login enviado para seu email!');
+      toast.success('Link de login enviado para seu email!', {
+        id: 'login-link-sent',
+        duration: 3000,
+        closeButton: false,
+      });
       setShowEmailInput(false);
       setEmail('');
     } catch (error) {
