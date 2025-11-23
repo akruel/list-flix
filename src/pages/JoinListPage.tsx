@@ -12,20 +12,21 @@ export function JoinListPage() {
 
   useEffect(() => {
     if (!id) return;
+    
+    const fetchListName = async () => {
+      try {
+        const name = await listService.getListName(id);
+        setListName(name);
+        setStatus('input');
+      } catch (err) {
+        console.error(err);
+        setStatus('error');
+        setError('Failed to load list details.');
+      }
+    };
+    
     fetchListName();
   }, [id]);
-
-  const fetchListName = async () => {
-    try {
-      const name = await listService.getListName(id!);
-      setListName(name);
-      setStatus('input');
-    } catch (err) {
-      console.error(err);
-      setStatus('error');
-      setError('Failed to load list details.');
-    }
-  };
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();

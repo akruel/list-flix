@@ -1,6 +1,19 @@
 import { supabase } from '../lib/supabase';
 import type { List, ListItem, ContentItem, ListMember } from '../types';
 
+interface ListWithMembers extends Omit<List, 'role'> {
+  list_members: Array<{
+    role: 'owner' | 'editor' | 'viewer';
+    user_id: string;
+    member_name?: string;
+  }>;
+}
+
+interface ListItemRow {
+  list_id: string;
+  id: string;
+}
+
 export const listService = {
   async createList(name: string): Promise<List> {
     const { data, error } = await supabase
@@ -26,7 +39,7 @@ export const listService = {
 
     if (error) throw error;
 
-    return data.map((list: any) => ({
+    return data.map((list: ListWithMembers) => ({
       ...list,
       role: list.list_members[0].role,
     }));
@@ -50,7 +63,7 @@ export const listService = {
 
     // Get current user's role
     const { data: { user } } = await supabase.auth.getUser();
-    const currentUserMember = list.list_members.find((m: any) => m.user_id === user?.id);
+    const currentUserMember = (list as ListWithMembers).list_members.find((m) => m.user_id === user?.id);
 
     const { data: items, error: itemsError } = await supabase
       .from('list_items')
@@ -128,5 +141,20 @@ export const listService = {
     const { data, error } = await supabase.rpc('get_list_name', { list_id: listId });
     if (error) throw error;
     return data;
+  },
+
+  async getListsContainingContent(contentId: number, contentType: 'movie' | 'tv'): Promise<Record<string, string>> {
+    const { data, error } = await supabase
+      .from('list_items')
+      .select('list_id, id')
+      .eq('content_id', contentId)
+      .eq('content_type', contentType);
+
+    if (error) throw error;
+    
+    return (data || []).reduce((acc: Record<string, string>, item: ListItemRow) => ({
+      ...acc,
+      [item.list_id]: item.id
+    }), {});
   }
 };

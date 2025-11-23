@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { SearchResponse, ContentDetails, ContentItem } from '../types';
+import type { SearchResponse, ContentDetails, ContentItem, SeasonDetails } from '../types';
 
 const ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN;
 const BASE_URL = 'https://api.themoviedb.org/3';
@@ -38,12 +38,12 @@ export const tmdb = {
     return { ...response.data, media_type: type } as ContentDetails;
   },
 
-  getSeasonDetails: async (tvId: number, seasonNumber: number) => {
-    const response = await tmdbClient.get(`/tv/${tvId}/season/${seasonNumber}`);
+  getSeasonDetails: async (tvId: number, seasonNumber: number): Promise<SeasonDetails> => {
+    const response = await tmdbClient.get<SeasonDetails>(`/tv/${tvId}/season/${seasonNumber}`);
     return response.data;
   },
   
-  getImageUrl: (path: string, size: 'w300' | 'w500' | 'original' = 'w500') => {
+  getImageUrl: (path: string | null | undefined, size: 'w300' | 'w500' | 'original' = 'w500') => {
     if (!path) return 'https://via.placeholder.com/500x750?text=No+Image';
     return `https://image.tmdb.org/t/p/${size}${path}`;
   }

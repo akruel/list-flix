@@ -5,12 +5,14 @@ import type { ContentDetails, Provider } from '../types';
 import { Loader2, Star, Clock, Check, Plus, Share2, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { SeasonList } from '../components/SeasonList';
+import { ListSelectionModal } from '../components/ListSelectionModal';
 
 export const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
   const [details, setDetails] = useState<ContentDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const { addToList, removeFromList, isInList, markAsWatched, markAsUnwatched, isWatched } = useStore();
+  const [showListModal, setShowListModal] = useState(false);
+  const { isInList, markAsWatched, markAsUnwatched, isWatched } = useStore();
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -38,19 +40,14 @@ export const Details: React.FC = () => {
 
   if (!details) return <div>Conteúdo não encontrado</div>;
 
-  const title = details.media_type === 'movie' ? details.title : details.name;
+  const title = (details.media_type === 'movie' ? details.title : details.name) || '';
   const date = details.media_type === 'movie' ? details.release_date : details.first_air_date;
   const year = date ? new Date(date).getFullYear() : 'N/A';
   const isSaved = isInList(details.id);
   const watched = isWatched(details.id);
 
   const handleToggleList = () => {
-    if (isSaved) {
-      removeFromList(details.id);
-    } else {
-      // Force media_type from URL param to ensure it's saved correctly
-      addToList(details);
-    }
+    setShowListModal(true);
   };
 
   const handleToggleWatched = () => {
@@ -73,7 +70,7 @@ export const Details: React.FC = () => {
       <div className="relative h-[40vh] md:h-[60vh] w-full">
         <div className="absolute inset-0">
           <img 
-            src={tmdb.getImageUrl(details.backdrop_path, 'original')} 
+            src={tmdb.getImageUrl(details.backdrop_path || '', 'original')} 
             alt={title}
             className="w-full h-full object-cover"
           />
@@ -82,7 +79,7 @@ export const Details: React.FC = () => {
         
         <div className="absolute bottom-0 left-0 right-0 p-4 container mx-auto flex flex-col md:flex-row gap-6 items-end">
           <img 
-            src={tmdb.getImageUrl(details.poster_path, 'w300')} 
+            src={tmdb.getImageUrl(details.poster_path || '', 'w300')} 
             alt={title}
             className="hidden md:block w-48 rounded-lg shadow-2xl"
           />
@@ -90,7 +87,7 @@ export const Details: React.FC = () => {
             <h1 className="text-3xl md:text-5xl font-bold mb-2">{title}</h1>
             <div className="flex flex-wrap items-center gap-4 text-sm md:text-base text-gray-300">
               <span className="flex items-center gap-1 text-yellow-400">
-                <Star size={16} fill="currentColor" /> {details.vote_average.toFixed(1)}
+                <Star size={16} fill="currentColor" /> {(details.vote_average || 0).toFixed(1)}
               </span>
               <span>{year}</span>
               {details.runtime && (
@@ -120,7 +117,7 @@ export const Details: React.FC = () => {
               }`}
             >
               {isSaved ? <Check size={20} /> : <Plus size={20} />} 
-              {isSaved ? 'Na Lista' : 'Adicionar'}
+              {isSaved ? 'Salvo' : 'Adicionar'}
             </button>
             <button 
               onClick={handleToggleWatched}
@@ -391,6 +388,14 @@ export const Details: React.FC = () => {
           )}
         </div>
       </div>
+      
+      {details && (
+        <ListSelectionModal 
+          isOpen={showListModal} 
+          onClose={() => setShowListModal(false)} 
+          content={details} 
+        />
+      )}
     </div>
   );
 };

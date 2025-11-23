@@ -150,7 +150,7 @@ export const userContentService = {
     if (error) console.error('Error removing from watchlist:', error);
   },
 
-  async markAsWatched(contentId: number, contentType: ContentType = 'movie', metadata: any = {}) {
+  async markAsWatched(contentId: number, contentType: ContentType = 'movie', metadata: Record<string, unknown> = {}) {
     const { error } = await supabase
       .from('user_interactions')
       .insert({

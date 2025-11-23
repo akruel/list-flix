@@ -17,7 +17,7 @@ export interface UserContent {
   content_id: number;
   content_type: 'movie' | 'tv' | 'episode';
   interaction_type: 'watchlist' | 'watched';
-  metadata: any;
+  metadata: Record<string, unknown>;
   created_at: string;
 }
 
@@ -47,4 +47,102 @@ export interface ListItem {
   created_at: string;
   // Joined fields
   content?: ContentItem; 
+}
+
+export interface Provider {
+  provider_id: number;
+  provider_name: string;
+  logo_path: string;
+}
+
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string;
+  profile_path: string | null;
+}
+
+export interface Video {
+  key: string;
+  name: string;
+  type: string;
+}
+
+export interface Genre {
+  id: number;
+  name: string;
+}
+
+export interface Season {
+  id: number;
+  name: string;
+  season_number: number;
+  episode_count: number;
+  air_date: string;
+  poster_path: string | null;
+  overview: string;
+}
+
+export interface Episode {
+  id: number;
+  name: string;
+  overview: string;
+  vote_average: number;
+  vote_count: number;
+  air_date: string;
+  episode_number: number;
+  season_number: number;
+  still_path: string | null;
+  runtime: number;
+  show_id: number;
+}
+
+export interface ContentDetails extends ContentItem {
+  genres: Genre[];
+  status: string;
+  credits: {
+    cast: CastMember[];
+  };
+  videos: {
+    results: Video[];
+  };
+  'watch/providers'?: {
+    results: {
+      BR?: {
+        link: string;
+        flatrate?: Provider[];
+        rent?: Provider[];
+        buy?: Provider[];
+      };
+    };
+  };
+  // Movie specific
+  runtime?: number;
+  budget?: number;
+  revenue?: number;
+  // TV specific
+  number_of_seasons?: number;
+  number_of_episodes?: number;
+  episode_run_time?: number[];
+  seasons?: Season[];
+  next_episode_to_air?: Episode;
+  last_episode_to_air?: Episode;
+}
+
+export interface SearchResponse {
+  page: number;
+  results: ContentItem[];
+  total_pages: number;
+  total_results: number;
+}
+
+export interface SeasonDetails {
+  _id: string;
+  air_date: string;
+  episodes: Episode[];
+  name: string;
+  overview: string;
+  id: number;
+  poster_path: string | null;
+  season_number: number;
 }

@@ -42,35 +42,36 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
 
   useEffect(() => {
     if (!id) return;
+    
+    const loadList = async () => {
+      try {
+        setLoading(true);
+        const { list, items, members } = await listService.getListDetails(id);
+        
+        // Fetch content details for each item
+        const itemsWithContent = await Promise.all(items.map(async (item) => {
+          try {
+            const details = await tmdb.getDetails(item.content_id, item.content_type);
+            return { ...item, content: details };
+          } catch (e) {
+            console.error(`Failed to fetch details for item ${item.id}`, e);
+            return item;
+          }
+        }));
+
+        setList(list);
+        setItems(itemsWithContent);
+        setMembers(members);
+      } catch (err) {
+        console.error(err);
+        setError('Failed to load list');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
     loadList();
   }, [id]);
-
-  const loadList = async () => {
-    try {
-      setLoading(true);
-      const { list, items, members } = await listService.getListDetails(id);
-      
-      // Fetch content details for each item
-      const itemsWithContent = await Promise.all(items.map(async (item) => {
-        try {
-          const details = await tmdb.getDetails(item.content_id, item.content_type);
-          return { ...item, content: details };
-        } catch (e) {
-          console.error(`Failed to fetch details for item ${item.id}`, e);
-          return item;
-        }
-      }));
-
-      setList(list);
-      setItems(itemsWithContent);
-      setMembers(members);
-    } catch (err) {
-      console.error(err);
-      setError('Failed to load list');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleShare = async () => {
     if (!list) return;
