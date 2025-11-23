@@ -3,6 +3,7 @@ import { X, Check, Loader2, Lock, Globe } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { listService } from '../services/listService';
 import type { ContentItem } from '../types';
+import { ListSelectionModalSkeleton } from './skeletons';
 
 interface ListSelectionModalProps {
   isOpen: boolean;
@@ -84,9 +85,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({ isOpen, 
 
         <div className="p-2 max-h-[60vh] overflow-y-auto">
           {loading ? (
-            <div className="flex justify-center p-8">
-              <Loader2 className="animate-spin text-purple-500" />
-            </div>
+            <ListSelectionModalSkeleton />
           ) : (
             <div className="space-y-1">
               {/* Default List */}

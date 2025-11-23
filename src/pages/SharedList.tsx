@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { tmdb } from '../services/tmdb';
 import type{ ContentItem } from '../types';
 import { MovieCard } from '../components/MovieCard';
-import { Loader2 } from 'lucide-react';
+import { ContentGridSkeleton } from '../components/skeletons';
 
 import { supabaseService } from '../services/supabase';
 
@@ -53,8 +53,9 @@ export const SharedList: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-[50vh]">
-        <Loader2 className="animate-spin text-purple-500" size={48} />
+      <div>
+        <h1 className="text-3xl font-bold mb-6">Lista Compartilhada</h1>
+        <ContentGridSkeleton />
       </div>
     );
   }

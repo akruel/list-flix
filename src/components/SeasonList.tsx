@@ -3,6 +3,7 @@ import { ChevronDown, ChevronUp, Eye, EyeOff, Calendar } from 'lucide-react';
 import { tmdb } from '../services/tmdb';
 import { useStore } from '../store/useStore';
 import type { Episode } from '../types';
+import { EpisodeListSkeleton } from './skeletons';
 
 interface SeasonListProps {
   tvId: number;
@@ -91,7 +92,7 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
             {expandedSeason === season.season_number && (
               <div className="border-t border-gray-800 bg-gray-900/50">
                 {loading ? (
-                  <div className="p-8 text-center text-gray-400">Carregando episódios...</div>
+                  <EpisodeListSkeleton />
                 ) : (
                   <div className="divide-y divide-gray-800">
                     {episodes.map((episode) => {

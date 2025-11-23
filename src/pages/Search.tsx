@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { tmdb } from '../services/tmdb';
 import type { ContentItem } from '../types';
 import { MovieCard } from '../components/MovieCard';
-import { Search as SearchIcon, Loader2 } from 'lucide-react';
+import { Search as SearchIcon } from 'lucide-react';
+import { ContentGridSkeleton } from '../components/skeletons';
 
 export const Search: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -54,9 +55,7 @@ export const Search: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="animate-spin text-purple-500" size={32} />
-        </div>
+        <ContentGridSkeleton count={8} />
       ) : (
         <>
           {results.length > 0 ? (

@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { tmdb } from '../services/tmdb';
 import type { ContentDetails, Provider } from '../types';
-import { Loader2, Star, Clock, Check, Plus, Share2, Eye, EyeOff } from 'lucide-react';
+import { Star, Clock, Check, Plus, Share2, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { SeasonList } from '../components/SeasonList';
 import { ListSelectionModal } from '../components/ListSelectionModal';
+import { DetailsSkeleton } from '../components/skeletons';
 
 export const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
@@ -31,11 +32,7 @@ export const Details: React.FC = () => {
   }, [id, type]);
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-[50vh]">
-        <Loader2 className="animate-spin text-purple-500" size={48} />
-      </div>
-    );
+    return <DetailsSkeleton />;
   }
 
   if (!details) return <div>Conteúdo não encontrado</div>;
