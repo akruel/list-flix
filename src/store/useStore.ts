@@ -63,7 +63,7 @@ export const useStore = create<ListStore>()(
           
           // Try to find item metadata from myList if available
           const item = state.myList.find(i => i.id === id);
-          userContentService.markAsWatched(id, item?.media_type || 'movie', item || {});
+          userContentService.markAsWatched(id, item?.media_type || 'movie', (item || {}) as Record<string, unknown>);
           
           return { watchedIds: [...state.watchedIds, id] };
         });

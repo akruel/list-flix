@@ -43,7 +43,7 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
           <span>{year}</span>
           <div className="flex items-center gap-1 text-yellow-400">
             <Star size={14} fill="currentColor" />
-            <span>{item.vote_average.toFixed(1)}</span>
+            <span>{(item.vote_average || 0).toFixed(1)}</span>
           </div>
         </div>
       </div>
