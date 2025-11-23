@@ -27,7 +27,7 @@ create table if not exists public.user_interactions (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references auth.users(id) not null default auth.uid(),
   content_id integer not null,
-  content_type text check (content_type in ('movie', 'tv')) not null,
+  content_type text check (content_type in ('movie', 'tv', 'episode')) not null,
   interaction_type text check (interaction_type in ('watchlist', 'watched')) not null,
   metadata jsonb default '{}'::jsonb,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,

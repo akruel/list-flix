@@ -4,6 +4,7 @@ import { tmdb } from '../services/tmdb';
 import type { ContentDetails, Provider } from '../types';
 import { Loader2, Star, Clock, Check, Plus, Share2, Eye, EyeOff } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { SeasonList } from '../components/SeasonList';
 
 export const Details: React.FC = () => {
   const { type, id } = useParams<{ type: 'movie' | 'tv'; id: string }>();
@@ -241,12 +242,17 @@ export const Details: React.FC = () => {
               </div>
             </section>
           )}
+
+          {/* Season List */}
+          {details.seasons && (
+            <SeasonList tvId={details.id} seasons={details.seasons} />
+          )}
         </div>
 
         {/* Sidebar Grid - Side by side on desktop, stacked on mobile */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
           {/* Sidebar: Where to Watch */}
-          <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+          <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 h-full">
             <h2 className="text-xl font-bold mb-4">Onde Assistir</h2>
             
             {!flatrate.length && !rent.length && !buy.length && (
@@ -300,7 +306,7 @@ export const Details: React.FC = () => {
 
           {/* TV Show Info - Only for TV Shows */}
           {details.media_type === 'tv' && (
-            <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+            <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 h-full">
               <h2 className="text-xl font-bold mb-4">Informações da Série</h2>
               <div className="space-y-3">
                 {details.number_of_seasons && (
@@ -345,7 +351,7 @@ export const Details: React.FC = () => {
 
           {/* Movie Info - Only for Movies */}
           {details.media_type === 'movie' && (
-            <div className="bg-gray-900 p-6 rounded-xl border border-gray-800">
+            <div className="bg-gray-900 p-6 rounded-xl border border-gray-800 h-full">
               <h2 className="text-xl font-bold mb-4">Informações do Filme</h2>
               <div className="space-y-3">
                 {details.runtime && (

@@ -37,6 +37,11 @@ export const tmdb = {
     });
     return { ...response.data, media_type: type } as ContentDetails;
   },
+
+  getSeasonDetails: async (tvId: number, seasonNumber: number) => {
+    const response = await tmdbClient.get(`/tv/${tvId}/season/${seasonNumber}`);
+    return response.data;
+  },
   
   getImageUrl: (path: string, size: 'w300' | 'w500' | 'original' = 'w500') => {
     if (!path) return 'https://via.placeholder.com/500x750?text=No+Image';

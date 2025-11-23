@@ -2,13 +2,14 @@ import { supabase } from '../lib/supabase';
 import type { ContentItem } from '../types';
 
 export type InteractionType = 'watchlist' | 'watched';
-export type ContentType = 'movie' | 'tv';
+export type ContentType = 'movie' | 'tv' | 'episode';
 
 
 export const userContentService = {
   async syncLocalData(
     localList: ContentItem[], 
-    localWatchedIds: number[]
+    localWatchedIds: number[],
+    localWatchedEpisodes: Record<number, number[]> = {}
   ) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -16,7 +17,7 @@ export const userContentService = {
     // 1. Get existing interactions to avoid duplicates
     const { data: existing } = await supabase
       .from('user_interactions')
-      .select('content_id, interaction_type');
+      .select('content_id, interaction_type, content_type');
 
     const existingWatchlist = new Set(
       existing
@@ -26,7 +27,13 @@ export const userContentService = {
     
     const existingWatched = new Set(
       existing
-        ?.filter(i => i.interaction_type === 'watched')
+        ?.filter(i => i.interaction_type === 'watched' && i.content_type !== 'episode')
+        .map(i => i.content_id)
+    );
+
+    const existingWatchedEpisodes = new Set(
+      existing
+        ?.filter(i => i.interaction_type === 'watched' && i.content_type === 'episode')
         .map(i => i.content_id)
     );
 
@@ -45,21 +52,32 @@ export const userContentService = {
       }
     }
 
-    // 3. Prepare watched inserts (we might not have full metadata for these if they aren't in the list)
-    // For now, we'll just insert the ID and type if we can infer it, or default to 'movie' if unknown 
-    // (This is a limitation of storing only IDs for watched items locally)
-    // A better approach for watched items might be to fetch details if needed, but for now let's skip metadata for simple ID sync
+    // 3. Prepare watched inserts (movies/tv)
     for (const id of localWatchedIds) {
       if (!existingWatched.has(id)) {
-        // Try to find the item in localList to get metadata
         const item = localList.find(i => i.id === id);
         updates.push({
           user_id: user.id,
           content_id: id,
-          content_type: item?.media_type || 'movie', // Fallback
+          content_type: item?.media_type || 'movie',
           interaction_type: 'watched',
           metadata: item || {}
         });
+      }
+    }
+
+    // 4. Prepare watched episodes inserts
+    for (const [showId, episodeIds] of Object.entries(localWatchedEpisodes)) {
+      for (const episodeId of episodeIds) {
+        if (!existingWatchedEpisodes.has(episodeId)) {
+          updates.push({
+            user_id: user.id,
+            content_id: episodeId,
+            content_type: 'episode',
+            interaction_type: 'watched',
+            metadata: { show_id: Number(showId) }
+          });
+        }
       }
     }
 
@@ -79,7 +97,7 @@ export const userContentService = {
 
     if (error) {
       console.error('Error fetching user content:', error);
-      return { watchlist: [], watchedIds: [] };
+      return { watchlist: [], watchedIds: [], watchedEpisodes: {} };
     }
 
     const watchlist = data
@@ -87,10 +105,24 @@ export const userContentService = {
       .map(i => i.metadata as ContentItem);
 
     const watchedIds = data
-      .filter(i => i.interaction_type === 'watched')
+      .filter(i => i.interaction_type === 'watched' && i.content_type !== 'episode')
       .map(i => i.content_id);
 
-    return { watchlist, watchedIds };
+    const watchedEpisodes: Record<number, number[]> = {};
+    
+    data
+      .filter(i => i.interaction_type === 'watched' && i.content_type === 'episode')
+      .forEach(i => {
+        const showId = i.metadata?.show_id;
+        if (showId) {
+          if (!watchedEpisodes[showId]) {
+            watchedEpisodes[showId] = [];
+          }
+          watchedEpisodes[showId].push(i.content_id);
+        }
+      });
+
+    return { watchlist, watchedIds, watchedEpisodes };
   },
 
   async addToWatchlist(item: ContentItem) {

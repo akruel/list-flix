@@ -77,4 +77,12 @@ export type ContentDetails = (Movie | TVShow) & {
       [countryCode: string]: WatchProviders;
     };
   };
+  seasons?: {
+    id: number;
+    name: string;
+    season_number: number;
+    episode_count: number;
+    air_date: string;
+    poster_path: string | null;
+  }[];
 };
