@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ContentItem } from '../types';
+import type { ContentItem, List } from '../types';
 import { userContentService } from '../services/userContent';
+import { listService } from '../services/listService';
 
 interface ListStore {
   myList: ContentItem[];
@@ -19,6 +20,11 @@ interface ListStore {
   isEpisodeWatched: (showId: number, episodeId: number) => boolean;
   
   syncWithSupabase: () => Promise<void>;
+
+  // Shared Lists
+  lists: List[];
+  fetchLists: () => Promise<void>;
+  createList: (name: string) => Promise<void>;
 }
 
 export const useStore = create<ListStore>()(
@@ -27,6 +33,7 @@ export const useStore = create<ListStore>()(
       myList: [],
       watchedIds: [],
       watchedEpisodes: {},
+      lists: [],
       
       addToList: (item) => {
         set((state) => {
@@ -116,7 +123,17 @@ export const useStore = create<ListStore>()(
         const { watchlist, watchedIds, watchedEpisodes } = await userContentService.getUserContent();
         
         set({ myList: watchlist, watchedIds, watchedEpisodes });
-      }
+      },
+
+      fetchLists: async () => {
+        const lists = await listService.getLists();
+        set({ lists });
+      },
+
+      createList: async (name) => {
+        await listService.createList(name);
+        get().fetchLists();
+      },
     }),
     {
       name: 'cinepwa-storage',

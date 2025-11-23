@@ -1,88 +1,49 @@
-export interface Movie {
+export interface ContentItem {
   id: number;
-  title: string;
-  original_title: string;
-  overview: string;
-  poster_path: string;
-  backdrop_path: string;
-  release_date: string;
-  vote_average: number;
-  media_type: 'movie';
-  budget?: number;
-  revenue?: number;
+  title?: string;
+  name?: string;
+  poster_path?: string;
+  backdrop_path?: string;
+  overview?: string;
+  media_type: 'movie' | 'tv';
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
 }
 
-export interface TVShow {
-  id: number;
+export interface UserContent {
+  id: string;
+  user_id: string;
+  content_id: number;
+  content_type: 'movie' | 'tv' | 'episode';
+  interaction_type: 'watchlist' | 'watched';
+  metadata: any;
+  created_at: string;
+}
+
+export interface List {
+  id: string;
   name: string;
-  original_name: string;
-  overview: string;
-  poster_path: string;
-  backdrop_path: string;
-  first_air_date: string;
-  vote_average: number;
-  media_type: 'tv';
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
+  role?: 'owner' | 'editor' | 'viewer'; // Computed from list_members
 }
 
-export type ContentItem = Movie | TVShow;
-
-export interface SearchResponse {
-  page: number;
-  results: ContentItem[];
-  total_pages: number;
-  total_results: number;
+export interface ListMember {
+  list_id: string;
+  user_id: string;
+  role: 'owner' | 'editor' | 'viewer';
+  created_at: string;
 }
 
-export interface Provider {
-  provider_id: number;
-  provider_name: string;
-  logo_path: string;
+export interface ListItem {
+  id: string;
+  list_id: string;
+  content_id: number;
+  content_type: 'movie' | 'tv';
+  added_by: string;
+  created_at: string;
+  // Joined fields
+  content?: ContentItem; 
 }
-
-export interface WatchProviders {
-  link: string;
-  flatrate?: Provider[];
-  rent?: Provider[];
-  buy?: Provider[];
-}
-
-export interface Episode {
-  id: number;
-  name: string;
-  overview: string;
-  air_date: string;
-  episode_number: number;
-  season_number: number;
-  still_path: string | null;
-  vote_average: number;
-}
-
-export type ContentDetails = (Movie | TVShow) & {
-  genres: { id: number; name: string }[];
-  runtime?: number; // For movies
-  episode_run_time?: number[]; // For TV
-  number_of_seasons?: number;
-  number_of_episodes?: number;
-  status?: string;
-  last_episode_to_air?: Episode;
-  next_episode_to_air?: Episode;
-  credits?: {
-    cast: { id: number; name: string; character: string; profile_path: string }[];
-  };
-  videos?: {
-    results: { key: string; name: string; site: string; type: string }[];
-  };
-  'watch/providers'?: {
-    results: {
-      [countryCode: string]: WatchProviders;
-    };
-  };
-  seasons?: {
-    id: number;
-    name: string;
-    season_number: number;
-    episode_count: number;
-    air_date: string;
-    poster_path: string | null;
-  }[];
-};

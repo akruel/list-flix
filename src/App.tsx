@@ -11,6 +11,9 @@ import { MyList } from './pages/MyList';
 import { Details } from './pages/Details';
 
 import { SharedList } from './pages/SharedList';
+import { ListsPage } from './pages/ListsPage';
+import { ListDetailsPage } from './pages/ListDetailsPage';
+import { JoinListPage } from './pages/JoinListPage';
 
 function App() {
   const syncWithSupabase = useStore((state) => state.syncWithSupabase);
@@ -34,6 +37,9 @@ function App() {
           <Route path="my-list" element={<MyList />} />
           <Route path="shared" element={<SharedList />} />
           <Route path="details/:type/:id" element={<Details />} />
+          <Route path="lists" element={<ListsPage />} />
+          <Route path="lists/:id" element={<ListDetailsPage />} />
+          <Route path="lists/:id/join" element={<JoinListPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -10,11 +10,13 @@ alter table public.lists enable row level security;
 
 -- Policies for lists (Anonymous/Public)
 -- 1. Allow anyone to read lists (needed for sharing)
+drop policy if exists "Public lists are viewable by everyone" on public.lists;
 create policy "Public lists are viewable by everyone"
   on public.lists for select
   using (true);
 
 -- 2. Allow anyone to create a list
+drop policy if exists "Anyone can create a list" on public.lists;
 create policy "Anyone can create a list"
   on public.lists for insert
   with check (true);
@@ -42,16 +44,19 @@ alter table public.user_interactions enable row level security;
 -- Create Policies
 
 -- 1. Select Policy
+drop policy if exists "Users can view their own interactions" on public.user_interactions;
 create policy "Users can view their own interactions"
   on public.user_interactions for select
   using (auth.uid() = user_id);
 
 -- 2. Insert Policy
+drop policy if exists "Users can insert their own interactions" on public.user_interactions;
 create policy "Users can insert their own interactions"
   on public.user_interactions for insert
   with check (auth.uid() = user_id);
 
 -- 3. Delete Policy
+drop policy if exists "Users can delete their own interactions" on public.user_interactions;
 create policy "Users can delete their own interactions"
   on public.user_interactions for delete
   using (auth.uid() = user_id);
