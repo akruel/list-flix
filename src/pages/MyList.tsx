@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStore } from '../store/useStore';
-import { supabaseService } from '../services/supabase';
+
 import { MovieCard } from '../components/MovieCard';
 import { CustomLists } from '../components/CustomLists';
 import { ListDetailsView } from '../components/ListDetailsView';
-import { Share2, Check, Eye, EyeOff, List, LayoutGrid } from 'lucide-react';
-import { toast } from 'sonner';
+import { List, LayoutGrid, Eye, EyeOff } from 'lucide-react';
+
 
 type FilterType = 'all' | 'watched' | 'unwatched';
 type TabType = 'watchlist' | 'custom';
@@ -15,14 +15,15 @@ export const MyList: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { myList, isWatched } = useStore();
-  const [copied, setCopied] = useState(false);
+  
   const [filter, setFilter] = useState<FilterType>('all');
   const [activeTab, setActiveTab] = useState<TabType>(id ? 'custom' : 'watchlist');
 
-  const [sharing, setSharing] = useState(false);
+  
 
   useEffect(() => {
     if (id) {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab('custom');
     }
   }, [id]);
@@ -31,23 +32,6 @@ export const MyList: React.FC = () => {
     setActiveTab(tab);
     if (id) {
       navigate('/lists');
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      setSharing(true);
-      const id = await supabaseService.shareList(myList);
-      const url = `${window.location.origin}/shared?id=${id}`;
-      
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (error) {
-      console.error('Error sharing list:', error);
-      toast.error('Erro ao compartilhar a lista. Tente novamente.');
-    } finally {
-      setSharing(false);
     }
   };
 
@@ -133,15 +117,6 @@ export const MyList: React.FC = () => {
               </button>
             </div>
 
-            {myList.length > 0 && (
-              <button 
-                onClick={handleShare}
-                className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-              >
-                {copied ? <Check size={16} className="text-green-500" /> : <Share2 size={16} />}
-                {copied ? 'Link Copiado!' : sharing ? 'Gerando Link...' : 'Compartilhar Lista'}
-              </button>
-            )}
           </div>
 
           {filteredList.length > 0 ? (
