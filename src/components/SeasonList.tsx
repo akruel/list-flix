@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Eye, EyeOff, Calendar } from 'lucide-react';
+import { toast } from 'sonner';
 import { tmdb } from '../services/tmdb';
 import { useStore } from '../store/useStore';
 import type { Episode } from '../types';
@@ -23,7 +24,49 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
   
-  const { isEpisodeWatched, markEpisodeAsWatched, markEpisodeAsUnwatched } = useStore();
+  const { 
+    isEpisodeWatched, 
+    markEpisodeAsWatched, 
+    markEpisodeAsUnwatched,
+    markSeasonAsWatched,
+    markSeasonAsUnwatched,
+    getSeasonProgress
+  } = useStore();
+
+  const handleSeasonToggle = async (e: React.MouseEvent, seasonNumber: number, totalEpisodes: number) => {
+    e.stopPropagation(); // Prevent expanding/collapsing
+    
+    const { watchedCount } = getSeasonProgress(tvId, seasonNumber);
+    const isFullyWatched = watchedCount === totalEpisodes && totalEpisodes > 0;
+
+    if (isFullyWatched) {
+      markSeasonAsUnwatched(tvId, seasonNumber);
+      // toast.success('Temporada marcada como não assistida');
+    } else {
+      // If we already have episodes loaded for this season (in state or cache), we could use them.
+      // But here we might not have them if the season wasn't expanded yet.
+      // We need to fetch them if we don't have them.
+      // Ideally, we should check if we have them in a cache, but for now let's fetch if needed.
+      
+      // Check if we have episodes in the current component state (only works if expanded)
+      // or if we can fetch them quickly.
+      
+      try {
+        let seasonEpisodes = episodes;
+        // If episodes are not loaded or belong to a different season, fetch them
+        if (expandedSeason !== seasonNumber || episodes.length === 0) {
+           const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
+           seasonEpisodes = data.episodes;
+        }
+        
+        markSeasonAsWatched(tvId, seasonNumber, seasonEpisodes);
+        // toast.success('Temporada marcada como assistida');
+      } catch (error) {
+        console.error('Error fetching season details:', error);
+        toast.error('Erro ao marcar temporada como assistida / não assistida');
+      }
+    }
+  };
 
   const handleExpandSeason = async (seasonNumber: number) => {
     if (expandedSeason === seasonNumber) {
@@ -107,6 +150,21 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={(e) => handleSeasonToggle(e, season.season_number, season.episode_count)}
+                  className={`p-2 rounded-full transition-colors z-10 ${
+                    getSeasonProgress(tvId, season.season_number).watchedCount === season.episode_count && season.episode_count > 0
+                      ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
+                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                  }`}
+                  title={getSeasonProgress(tvId, season.season_number).watchedCount === season.episode_count ? "Marcar como não assistido" : "Marcar como assistido"}
+                >
+                  {getSeasonProgress(tvId, season.season_number).watchedCount === season.episode_count && season.episode_count > 0 ? (
+                    <Eye size={20} />
+                  ) : (
+                    <EyeOff size={20} />
+                  )}
+                </button>
                 {expandedSeason === season.season_number ? (
                   <ChevronUp className="text-gray-400" />
                 ) : (

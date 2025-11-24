@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ContentItem, WatchedEpisodeMetadata, SeriesMetadata } from '../types';
+import type { ContentItem, WatchedEpisodeMetadata, SeriesMetadata, Episode } from '../types';
 
 export type InteractionType = 'watchlist' | 'watched';
 export type ContentType = 'movie' | 'tv' | 'episode';
@@ -212,5 +212,30 @@ export const userContentService = {
       });
 
     if (error) console.error('Error saving series metadata:', error);
+  },
+
+  async markSeasonAsWatched(seriesId: number, seasonNumber: number, episodes: Episode[]) {
+    // Prepare payload for RPC
+    const payload = episodes.map(ep => ({
+      tmdb_id: ep.id,
+      tmdb_show_id: seriesId,
+      season_number: seasonNumber,
+      episode_number: ep.episode_number
+    }));
+
+    const { error } = await supabase.rpc('mark_season_watched', {
+      episodes: payload
+    });
+
+    if (error) console.error('Error marking season as watched:', error);
+  },
+
+  async markSeasonAsUnwatched(seriesId: number, seasonNumber: number) {
+    const { error } = await supabase.rpc('mark_season_unwatched', {
+      show_id: seriesId,
+      season_num: seasonNumber
+    });
+
+    if (error) console.error('Error marking season as unwatched:', error);
   }
 };

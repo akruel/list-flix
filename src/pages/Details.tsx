@@ -23,9 +23,17 @@ export const Details: React.FC = () => {
         setDetails(data);
         
         // Save series metadata for progress calculation
-        if (type === 'tv' && data.number_of_episodes) {
+        if (type === 'tv' && data.seasons) {
+          // Calculate total episodes excluding specials (season 0)
+          const totalRegularEpisodes = data.seasons.reduce((acc, season) => {
+            if (season.season_number > 0) {
+              return acc + season.episode_count;
+            }
+            return acc;
+          }, 0);
+
           saveSeriesMetadata(Number(id), {
-            total_episodes: data.number_of_episodes,
+            total_episodes: totalRegularEpisodes,
             number_of_seasons: data.number_of_seasons || 0
           });
         }

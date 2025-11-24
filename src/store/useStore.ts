@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ContentItem, List, WatchedEpisodeMetadata, SeriesMetadata } from '../types';
+import type { ContentItem, List, WatchedEpisodeMetadata, SeriesMetadata, Episode } from '../types';
 import { userContentService } from '../services/userContent';
 import { listService } from '../services/listService';
 
@@ -18,6 +18,8 @@ interface ListStore {
   
   markEpisodeAsWatched: (showId: number, episodeId: number, seasonNumber: number, episodeNumber: number) => void;
   markEpisodeAsUnwatched: (showId: number, episodeId: number) => void;
+  markSeasonAsWatched: (showId: number, seasonNumber: number, episodes: Episode[]) => void;
+  markSeasonAsUnwatched: (showId: number, seasonNumber: number) => void;
   isEpisodeWatched: (showId: number, episodeId: number) => boolean;
   getSeasonProgress: (showId: number, seasonNumber: number) => { watchedCount: number };
   getSeriesProgress: (showId: number) => { watchedCount: number };
@@ -126,6 +128,52 @@ export const useStore = create<ListStore>()(
         });
       },
 
+      markSeasonAsWatched: (showId, seasonNumber, episodes) => {
+        set((state) => {
+          userContentService.markSeasonAsWatched(showId, seasonNumber, episodes);
+
+          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          const newEpisodes = { ...currentShowEpisodes };
+
+          episodes.forEach(ep => {
+            newEpisodes[ep.id] = {
+              season_number: seasonNumber,
+              episode_number: ep.episode_number
+            };
+          });
+
+          return {
+            watchedEpisodes: {
+              ...state.watchedEpisodes,
+              [showId]: newEpisodes
+            }
+          };
+        });
+      },
+
+      markSeasonAsUnwatched: (showId, seasonNumber) => {
+        set((state) => {
+          userContentService.markSeasonAsUnwatched(showId, seasonNumber);
+
+          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          const remainingEpisodes = { ...currentShowEpisodes };
+
+          // Remove all episodes that belong to this season
+          Object.entries(remainingEpisodes).forEach(([epId, meta]) => {
+            if (meta.season_number === seasonNumber) {
+              delete remainingEpisodes[Number(epId)];
+            }
+          });
+
+          return {
+            watchedEpisodes: {
+              ...state.watchedEpisodes,
+              [showId]: remainingEpisodes
+            }
+          };
+        });
+      },
+
       isEpisodeWatched: (showId, episodeId) => {
         const showEpisodes = get().watchedEpisodes[showId];
         return showEpisodes ? episodeId in showEpisodes : false;
@@ -141,7 +189,10 @@ export const useStore = create<ListStore>()(
 
       getSeriesProgress: (showId) => {
         const showEpisodes = get().watchedEpisodes[showId] || {};
-        const watchedCount = Object.keys(showEpisodes).length;
+        // Filter out specials (season 0)
+        const watchedCount = Object.values(showEpisodes).filter(
+          (metadata) => metadata.season_number !== 0
+        ).length;
         return { watchedCount };
       },
 
