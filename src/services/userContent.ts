@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ContentItem, WatchedEpisodeMetadata } from '../types';
+import type { ContentItem, WatchedEpisodeMetadata, SeriesMetadata } from '../types';
 
 export type InteractionType = 'watchlist' | 'watched';
 export type ContentType = 'movie' | 'tv' | 'episode';
@@ -101,7 +101,7 @@ export const userContentService = {
 
     if (error) {
       console.error('Error fetching user content:', error);
-      return { watchlist: [], watchedIds: [], watchedEpisodes: {} };
+      return { watchlist: [], watchedIds: [], watchedEpisodes: {}, seriesMetadata: {} };
     }
 
     const watchlist = data
@@ -132,7 +132,21 @@ export const userContentService = {
         }
       });
 
-    return { watchlist, watchedIds, watchedEpisodes };
+    const seriesMetadata: Record<number, SeriesMetadata> = {};
+    
+    data
+      .filter(i => i.content_type === 'series_metadata')
+      .forEach(i => {
+        const showId = i.content_id;
+        if (i.metadata?.total_episodes && typeof i.metadata.total_episodes === 'number') {
+          seriesMetadata[showId] = {
+            total_episodes: i.metadata.total_episodes,
+            number_of_seasons: i.metadata.number_of_seasons || 0
+          };
+        }
+      });
+
+    return { watchlist, watchedIds, watchedEpisodes, seriesMetadata };
   },
 
   async addToWatchlist(item: ContentItem) {
@@ -183,5 +197,30 @@ export const userContentService = {
       });
 
     if (error) console.error('Error marking as unwatched:', error);
+  },
+
+  async saveSeriesMetadata(showId: number, metadata: SeriesMetadata) {
+    // Upsert series metadata - delete old, insert new
+    await supabase
+      .from('user_interactions')
+      .delete()
+      .match({ 
+        content_id: showId, 
+        content_type: 'series_metadata' 
+      });
+
+    const { error } = await supabase
+      .from('user_interactions')
+      .insert({
+        content_id: showId,
+        content_type: 'series_metadata',
+        interaction_type: 'watchlist', // Using watchlist as a placeholder
+        metadata: {
+          total_episodes: metadata.total_episodes,
+          number_of_seasons: metadata.number_of_seasons
+        }
+      });
+
+    if (error) console.error('Error saving series metadata:', error);
   }
 };

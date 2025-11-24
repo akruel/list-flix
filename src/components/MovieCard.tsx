@@ -8,19 +8,33 @@ import { useSeriesProgress } from '../hooks/useSeriesProgress';
 
 interface MovieCardProps {
   item: ContentItem;
+  showProgress?: boolean; // Whether to show progress indicators (default: false)
 }
 
-export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
+export const MovieCard: React.FC<MovieCardProps> = ({ item, showProgress = false }) => {
   const title = item.media_type === 'movie' ? item.title : item.name;
   const date = item.media_type === 'movie' ? item.release_date : item.first_air_date;
   const year = date ? new Date(date).getFullYear() : 'N/A';
-  const { isWatched } = useStore();
+  const { isWatched, getSeriesMetadata } = useStore();
   const watched = isWatched(item.id);
 
-  // Get progress for TV series (note: item doesn't have number_of_episodes here)
-  // We'll show progress only if there are watched episodes, without total
+  // Get progress for TV series
   const { watchedCount } = useSeriesProgress(item.id, 0);
-  const hasProgress = item.media_type === 'tv' && watchedCount > 0;
+  const seriesMetadata = item.media_type === 'tv' ? getSeriesMetadata(item.id) : undefined;
+  
+  // Only show progress if:
+  // 1. showProgress prop is true
+  // 2. It's a TV series
+  // 3. We have metadata available
+  // 4. There are watched episodes
+  const shouldShowProgress = showProgress && 
+                            item.media_type === 'tv' && 
+                            seriesMetadata && 
+                            watchedCount > 0;
+  
+  const progressPercentage = seriesMetadata && seriesMetadata.total_episodes > 0
+    ? Math.round((watchedCount / seriesMetadata.total_episodes) * 100)
+    : 0;
 
   return (
     <Link 
@@ -39,12 +53,12 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item }) => {
             <Check size={16} />
           </div>
         )}
-        {hasProgress && (
+        {shouldShowProgress && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
             <div 
               className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
-              style={{ width: `${Math.min(watchedCount * 5, 100)}%` }}
-              title={`${watchedCount} episódios assistidos`}
+              style={{ width: `${progressPercentage}%` }}
+              title={`${watchedCount} de ${seriesMetadata?.total_episodes} episódios (${progressPercentage}%)`}
             />
           </div>
         )}

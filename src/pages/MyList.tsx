@@ -147,7 +147,7 @@ export const MyList: React.FC = () => {
           {filteredList.length > 0 ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
               {filteredList.map((item) => (
-                <MovieCard key={item.id} item={item} />
+                <MovieCard key={item.id} item={item} showProgress={true} />
               ))}
             </div>
           ) : myList.length > 0 ? (

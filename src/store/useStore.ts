@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ContentItem, List, WatchedEpisodeMetadata } from '../types';
+import type { ContentItem, List, WatchedEpisodeMetadata, SeriesMetadata } from '../types';
 import { userContentService } from '../services/userContent';
 import { listService } from '../services/listService';
 
@@ -8,6 +8,7 @@ interface ListStore {
   myList: ContentItem[];
   watchedIds: number[];
   watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>>; // showId -> { episodeId -> metadata }
+  seriesMetadata: Record<number, SeriesMetadata>; // showId -> metadata
   addToList: (item: ContentItem) => void;
   removeFromList: (id: number) => void;
   isInList: (id: number) => boolean;
@@ -20,6 +21,8 @@ interface ListStore {
   isEpisodeWatched: (showId: number, episodeId: number) => boolean;
   getSeasonProgress: (showId: number, seasonNumber: number) => { watchedCount: number };
   getSeriesProgress: (showId: number) => { watchedCount: number };
+  saveSeriesMetadata: (showId: number, metadata: SeriesMetadata) => void;
+  getSeriesMetadata: (showId: number) => SeriesMetadata | undefined;
   
   syncWithSupabase: () => Promise<void>;
 
@@ -36,6 +39,7 @@ export const useStore = create<ListStore>()(
       myList: [],
       watchedIds: [],
       watchedEpisodes: {},
+      seriesMetadata: {},
       lists: [],
       
       addToList: (item) => {
@@ -141,15 +145,30 @@ export const useStore = create<ListStore>()(
         return { watchedCount };
       },
 
+      saveSeriesMetadata: (showId, metadata) => {
+        set((state) => ({
+          seriesMetadata: {
+            ...state.seriesMetadata,
+            [showId]: metadata
+          }
+        }));
+        // Persist to Supabase
+        userContentService.saveSeriesMetadata(showId, metadata);
+      },
+
+      getSeriesMetadata: (showId) => {
+        return get().seriesMetadata[showId];
+      },
+
       syncWithSupabase: async () => {
         const state = get();
         // 1. Upload local data to Supabase (migration)
         await userContentService.syncLocalData(state.myList, state.watchedIds, state.watchedEpisodes);
         
         // 2. Fetch latest data from Supabase (source of truth)
-        const { watchlist, watchedIds, watchedEpisodes } = await userContentService.getUserContent();
+        const { watchlist, watchedIds, watchedEpisodes, seriesMetadata } = await userContentService.getUserContent();
         
-        set({ myList: watchlist, watchedIds, watchedEpisodes });
+        set({ myList: watchlist, watchedIds, watchedEpisodes, seriesMetadata });
       },
 
       fetchLists: async () => {

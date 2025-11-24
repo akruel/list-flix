@@ -13,7 +13,7 @@ export const Details: React.FC = () => {
   const [details, setDetails] = useState<ContentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [showListModal, setShowListModal] = useState(false);
-  const { isInList, markAsWatched, markAsUnwatched, isWatched } = useStore();
+  const { isInList, markAsWatched, markAsUnwatched, isWatched, saveSeriesMetadata } = useStore();
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -21,6 +21,14 @@ export const Details: React.FC = () => {
       try {
         const data = await tmdb.getDetails(Number(id), type);
         setDetails(data);
+        
+        // Save series metadata for progress calculation
+        if (type === 'tv' && data.number_of_episodes) {
+          saveSeriesMetadata(Number(id), {
+            total_episodes: data.number_of_episodes,
+            number_of_seasons: data.number_of_seasons || 0
+          });
+        }
       } catch (error) {
         console.error('Error fetching details:', error);
       } finally {
@@ -29,7 +37,7 @@ export const Details: React.FC = () => {
     };
 
     fetchDetails();
-  }, [id, type]);
+  }, [id, type, saveSeriesMetadata]);
 
   if (loading) {
     return <DetailsSkeleton />;

@@ -246,7 +246,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         {items.map((item) => (
           <div key={item.id} className="relative group">
             {item.content ? (
-              <MovieCard item={item.content} />
+              <MovieCard item={item.content} showProgress={true} />
             ) : (
               <div className="bg-gray-800 rounded-lg p-4 text-center aspect-[2/3] flex items-center justify-center">
                 <p className="text-gray-400">Conteúdo indisponível</p>

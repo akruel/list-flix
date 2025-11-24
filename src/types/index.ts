@@ -4,6 +4,12 @@ export interface WatchedEpisodeMetadata {
   episode_number: number;
 }
 
+// Types for series metadata (total episodes, seasons, etc)
+export interface SeriesMetadata {
+  total_episodes: number;
+  number_of_seasons: number;
+}
+
 export interface ContentItem {
   id: number;
   title?: string;
