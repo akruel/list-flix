@@ -1,3 +1,9 @@
+// Types for watched episodes metadata
+export interface WatchedEpisodeMetadata {
+  season_number: number;
+  episode_number: number;
+}
+
 export interface ContentItem {
   id: number;
   title?: string;

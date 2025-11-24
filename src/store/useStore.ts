@@ -1,13 +1,13 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { ContentItem, List } from '../types';
+import type { ContentItem, List, WatchedEpisodeMetadata } from '../types';
 import { userContentService } from '../services/userContent';
 import { listService } from '../services/listService';
 
 interface ListStore {
   myList: ContentItem[];
   watchedIds: number[];
-  watchedEpisodes: Record<number, number[]>; // showId -> episodeIds
+  watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>>; // showId -> { episodeId -> metadata }
   addToList: (item: ContentItem) => void;
   removeFromList: (id: number) => void;
   isInList: (id: number) => boolean;
@@ -15,9 +15,11 @@ interface ListStore {
   markAsUnwatched: (id: number) => void;
   isWatched: (id: number) => boolean;
   
-  markEpisodeAsWatched: (showId: number, episodeId: number) => void;
+  markEpisodeAsWatched: (showId: number, episodeId: number, seasonNumber: number, episodeNumber: number) => void;
   markEpisodeAsUnwatched: (showId: number, episodeId: number) => void;
   isEpisodeWatched: (showId: number, episodeId: number) => boolean;
+  getSeasonProgress: (showId: number, seasonNumber: number) => { watchedCount: number };
+  getSeriesProgress: (showId: number) => { watchedCount: number };
   
   syncWithSupabase: () => Promise<void>;
 
@@ -80,17 +82,24 @@ export const useStore = create<ListStore>()(
 
       isWatched: (id) => get().watchedIds.includes(id),
 
-      markEpisodeAsWatched: (showId, episodeId) => {
+      markEpisodeAsWatched: (showId, episodeId, seasonNumber, episodeNumber) => {
         set((state) => {
-          const currentShowEpisodes = state.watchedEpisodes[showId] || [];
-          if (currentShowEpisodes.includes(episodeId)) return state;
+          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          if (currentShowEpisodes[episodeId]) return state;
 
-          userContentService.markAsWatched(episodeId, 'episode', { show_id: showId });
+          userContentService.markAsWatched(episodeId, 'episode', { 
+            show_id: showId,
+            season_number: seasonNumber,
+            episode_number: episodeNumber
+          });
 
           return {
             watchedEpisodes: {
               ...state.watchedEpisodes,
-              [showId]: [...currentShowEpisodes, episodeId]
+              [showId]: {
+                ...currentShowEpisodes,
+                [episodeId]: { season_number: seasonNumber, episode_number: episodeNumber }
+              }
             }
           };
         });
@@ -98,13 +107,16 @@ export const useStore = create<ListStore>()(
 
       markEpisodeAsUnwatched: (showId, episodeId) => {
         set((state) => {
-          const currentShowEpisodes = state.watchedEpisodes[showId] || [];
+          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
           userContentService.markAsUnwatched(episodeId);
+
+          const remainingEpisodes = { ...currentShowEpisodes };
+          delete remainingEpisodes[episodeId];
 
           return {
             watchedEpisodes: {
               ...state.watchedEpisodes,
-              [showId]: currentShowEpisodes.filter(id => id !== episodeId)
+              [showId]: remainingEpisodes
             }
           };
         });
@@ -112,7 +124,21 @@ export const useStore = create<ListStore>()(
 
       isEpisodeWatched: (showId, episodeId) => {
         const showEpisodes = get().watchedEpisodes[showId];
-        return showEpisodes ? showEpisodes.includes(episodeId) : false;
+        return showEpisodes ? episodeId in showEpisodes : false;
+      },
+
+      getSeasonProgress: (showId, seasonNumber) => {
+        const showEpisodes = get().watchedEpisodes[showId] || {};
+        const watchedCount = Object.values(showEpisodes).filter(
+          (metadata) => metadata.season_number === seasonNumber
+        ).length;
+        return { watchedCount };
+      },
+
+      getSeriesProgress: (showId) => {
+        const showEpisodes = get().watchedEpisodes[showId] || {};
+        const watchedCount = Object.keys(showEpisodes).length;
+        return { watchedCount };
       },
 
       syncWithSupabase: async () => {

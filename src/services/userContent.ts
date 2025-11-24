@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import type { ContentItem } from '../types';
+import type { ContentItem, WatchedEpisodeMetadata } from '../types';
 
 export type InteractionType = 'watchlist' | 'watched';
 export type ContentType = 'movie' | 'tv' | 'episode';
@@ -9,7 +9,7 @@ export const userContentService = {
   async syncLocalData(
     localList: ContentItem[], 
     localWatchedIds: number[],
-    localWatchedEpisodes: Record<number, number[]> = {}
+    localWatchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>> = {}
   ) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -67,15 +67,19 @@ export const userContentService = {
     }
 
     // 4. Prepare watched episodes inserts
-    for (const [showId, episodeIds] of Object.entries(localWatchedEpisodes)) {
-      for (const episodeId of episodeIds) {
-        if (!existingWatchedEpisodes.has(episodeId)) {
+    for (const [showId, episodesMap] of Object.entries(localWatchedEpisodes)) {
+      for (const [episodeId, metadata] of Object.entries(episodesMap)) {
+        if (!existingWatchedEpisodes.has(Number(episodeId))) {
           updates.push({
             user_id: user.id,
-            content_id: episodeId,
+            content_id: Number(episodeId),
             content_type: 'episode',
             interaction_type: 'watched',
-            metadata: { show_id: Number(showId) }
+            metadata: { 
+              show_id: Number(showId),
+              season_number: metadata.season_number,
+              episode_number: metadata.episode_number
+            }
           });
         }
       }
@@ -108,17 +112,23 @@ export const userContentService = {
       .filter(i => i.interaction_type === 'watched' && i.content_type !== 'episode')
       .map(i => i.content_id);
 
-    const watchedEpisodes: Record<number, number[]> = {};
+    const watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>> = {};
     
     data
       .filter(i => i.interaction_type === 'watched' && i.content_type === 'episode')
       .forEach(i => {
         const showId = i.metadata?.show_id;
-        if (showId) {
+        const seasonNumber = i.metadata?.season_number;
+        const episodeNumber = i.metadata?.episode_number;
+        
+        if (showId && typeof seasonNumber === 'number' && typeof episodeNumber === 'number') {
           if (!watchedEpisodes[showId]) {
-            watchedEpisodes[showId] = [];
+            watchedEpisodes[showId] = {};
           }
-          watchedEpisodes[showId].push(i.content_id);
+          watchedEpisodes[showId][i.content_id] = {
+            season_number: seasonNumber,
+            episode_number: episodeNumber
+          };
         }
       });
 

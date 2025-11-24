@@ -4,6 +4,7 @@ import { tmdb } from '../services/tmdb';
 import { useStore } from '../store/useStore';
 import type { Episode } from '../types';
 import { EpisodeListSkeleton } from './skeletons';
+import { useSeasonProgress } from '../hooks/useSeasonProgress';
 
 interface SeasonListProps {
   tvId: number;
@@ -42,16 +43,38 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
     }
   };
 
-  const toggleEpisodeWatched = (episodeId: number) => {
-    if (isEpisodeWatched(tvId, episodeId)) {
-      markEpisodeAsUnwatched(tvId, episodeId);
+  const toggleEpisodeWatched = (episode: Episode) => {
+    if (isEpisodeWatched(tvId, episode.id)) {
+      markEpisodeAsUnwatched(tvId, episode.id);
     } else {
-      markEpisodeAsWatched(tvId, episodeId);
+      markEpisodeAsWatched(tvId, episode.id, episode.season_number, episode.episode_number);
     }
   };
 
   // Filter out season 0 (Specials) if desired, or keep it. Usually season 0 is specials.
   const sortedSeasons = [...seasons].sort((a, b) => a.season_number - b.season_number);
+
+  // Component to show progress for a season
+  const SeasonProgress: React.FC<{ seasonNumber: number; totalEpisodes: number }> = ({ seasonNumber, totalEpisodes }) => {
+    const progress = useSeasonProgress(tvId, seasonNumber, totalEpisodes);
+    
+    if (progress.watchedCount === 0) return null;
+    
+    const progressPercentage = totalEpisodes > 0 ? (progress.watchedCount / totalEpisodes) * 100 : 0;
+    const progressColor = progressPercentage === 100 ? 'bg-green-500' : progressPercentage >= 50 ? 'bg-blue-500' : 'bg-yellow-500';
+    
+    return (
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-gray-400">{progress.watchedCount}/{totalEpisodes}</span>
+        <div className="w-16 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+          <div 
+            className={`h-full ${progressColor} transition-all duration-300`}
+            style={{ width: `${progressPercentage}%` }}
+          />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4 mt-8">
@@ -75,18 +98,21 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                     N/A
                   </div>
                 )}
-                <div className="text-left">
+                <div className="text-left space-y-1">
                   <h3 className="font-semibold text-white">{season.name}</h3>
                   <p className="text-sm text-gray-400">
                     {season.episode_count} episódios • {season.air_date ? new Date(season.air_date).getFullYear() : 'N/A'}
                   </p>
+                  <SeasonProgress seasonNumber={season.season_number} totalEpisodes={season.episode_count} />
                 </div>
               </div>
-              {expandedSeason === season.season_number ? (
-                <ChevronUp className="text-gray-400" />
-              ) : (
-                <ChevronDown className="text-gray-400" />
-              )}
+              <div className="flex items-center gap-3">
+                {expandedSeason === season.season_number ? (
+                  <ChevronUp className="text-gray-400" />
+                ) : (
+                  <ChevronDown className="text-gray-400" />
+                )}
+              </div>
             </button>
 
             {expandedSeason === season.season_number && (
@@ -132,7 +158,7 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                                 </div>
                                 
                                 <button
-                                  onClick={() => toggleEpisodeWatched(episode.id)}
+                                  onClick={() => toggleEpisodeWatched(episode)}
                                   className={`p-2 rounded-full transition-colors ${
                                     isWatched 
                                       ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30' 
