@@ -182,9 +182,9 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                     {episodes.map((episode) => {
                       const isWatched = isEpisodeWatched(tvId, episode.id);
                       return (
-                        <div key={episode.id} className="p-4 hover:bg-gray-800/50 transition-colors">
-                          <div className="flex gap-4">
-                            <div className="relative flex-shrink-0 w-32 aspect-video bg-gray-800 rounded overflow-hidden">
+                        <div key={episode.id} className="p-3 md:p-4 hover:bg-gray-800/50 transition-colors">
+                          <div className="flex gap-3 md:gap-4">
+                            <div className="relative flex-shrink-0 w-24 md:w-32 aspect-video bg-gray-800 rounded overflow-hidden">
                               {episode.still_path ? (
                                 <img
                                   src={tmdb.getImageUrl(episode.still_path, 'w300')}
@@ -196,16 +196,16 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                                   Sem imagem
                                 </div>
                               )}
-                              <div className="absolute top-1 left-1 bg-black/60 px-1.5 py-0.5 rounded text-[10px] font-medium">
+                              <div className="absolute top-1 left-1 bg-black/60 px-1 md:px-1.5 py-0.5 rounded text-[9px] md:text-[10px] font-medium">
                                 Ep. {episode.episode_number}
                               </div>
                             </div>
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex justify-between items-start gap-2">
-                                <div>
-                                  <h4 className="font-medium text-white truncate pr-2">{episode.name}</h4>
-                                  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="font-medium text-sm md:text-base text-white truncate pr-2">{episode.name}</h4>
+                                  <div className="flex items-center gap-1.5 md:gap-2 text-[10px] md:text-xs text-gray-400 mt-1">
                                     <span className="flex items-center gap-1">
                                       <Calendar size={12} />
                                       {episode.air_date ? new Date(episode.air_date).toLocaleDateString('pt-BR') : 'TBA'}
@@ -217,18 +217,18 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                                 
                                 <button
                                   onClick={() => toggleEpisodeWatched(episode)}
-                                  className={`p-2 rounded-full transition-colors ${
+                                  className={`p-1.5 md:p-2 rounded-full transition-colors flex-shrink-0 ${
                                     isWatched 
                                       ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30' 
                                       : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
                                   }`}
                                   title={isWatched ? "Marcar como não assistido" : "Marcar como assistido"}
                                 >
-                                  {isWatched ? <Eye size={18} /> : <EyeOff size={18} />}
+                                  {isWatched ? <Eye size={16} className="md:w-[18px] md:h-[18px]" /> : <EyeOff size={16} className="md:w-[18px] md:h-[18px]" />}
                                 </button>
                               </div>
                               
-                              <p className="text-sm text-gray-400 mt-2 line-clamp-2">
+                              <p className="text-xs md:text-sm text-gray-400 mt-2 line-clamp-2">
                                 {episode.overview || "Sinopse não disponível."}
                               </p>
                             </div>

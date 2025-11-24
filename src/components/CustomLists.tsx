@@ -86,10 +86,10 @@ export function CustomLists() {
           <Link
             key={list.id}
             to={`/lists/${list.id}`}
-            className="bg-gray-800 p-6 rounded-lg hover:bg-gray-700 transition-colors group relative"
+            className="bg-gray-800 p-4 md:p-6 rounded-lg hover:bg-gray-700 transition-colors group relative"
           >
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-semibold text-white group-hover:text-primary transition-colors">
+            <div className="flex justify-between items-start mb-3">
+              <h3 className="text-lg md:text-xl font-semibold text-white group-hover:text-primary transition-colors">
                 {list.name}
               </h3>
               <span className={`text-xs px-2 py-1 rounded-full ${
@@ -98,11 +98,11 @@ export function CustomLists() {
                 {list.role === 'owner' ? 'Dono' : 'Visualizador'}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-gray-400 text-sm">
+            <div className="flex items-center gap-2 text-gray-400 text-xs md:text-sm">
               <Users size={16} />
               <span>Lista Compartilhada</span>
             </div>
-            <div className="mt-4 text-xs text-gray-500">
+            <div className="mt-3 text-xs text-gray-500">
               Criado em {new Date(list.created_at).toLocaleDateString()}
             </div>
 

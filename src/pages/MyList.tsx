@@ -44,7 +44,7 @@ export const MyList: React.FC = () => {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Minhas Listas</h1>
+        <h1 className="text-2xl md:text-3xl font-bold">Minhas Listas</h1>
       </div>
 
       <div className="flex gap-4 mb-8 border-b border-gray-800 pb-1">
@@ -81,10 +81,10 @@ export const MyList: React.FC = () => {
       {activeTab === 'watchlist' ? (
         <>
           <div className="flex justify-between items-center mb-6">
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setFilter('all')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
                   filter === 'all' 
                     ? 'bg-purple-600 text-white' 
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -95,7 +95,7 @@ export const MyList: React.FC = () => {
               </button>
               <button
                 onClick={() => setFilter('watched')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
                   filter === 'watched' 
                     ? 'bg-blue-600 text-white' 
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -106,7 +106,7 @@ export const MyList: React.FC = () => {
               </button>
               <button
                 onClick={() => setFilter('unwatched')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors text-sm font-medium ${
+                className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
                   filter === 'unwatched' 
                     ? 'bg-orange-600 text-white' 
                     : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
