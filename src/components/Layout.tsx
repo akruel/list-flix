@@ -41,7 +41,7 @@ export const Layout: React.FC = () => {
               );
             })}
           </nav>
-          <div className="hidden md:block">
+          <div className="flex items-center">
             <LoginButton />
           </div>
         </div>
