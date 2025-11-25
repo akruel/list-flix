@@ -29,8 +29,8 @@ export default defineConfig({
         ]
       },
       manifest: {
-        name: 'CinePWA - Seu Guia de Streaming',
-        short_name: 'CinePWA',
+        name: 'ListFlix - Seu Guia de Streaming',
+        short_name: 'ListFlix',
         description: 'Encontre onde assistir seus filmes e séries favoritos',
         theme_color: '#111827',
         background_color: '#111827',

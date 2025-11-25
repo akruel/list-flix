@@ -240,7 +240,7 @@ export const useStore = create<ListStore>()(
       },
     }),
     {
-      name: 'cinepwa-storage',
+      name: 'listflix-storage',
     }
   )
 );
