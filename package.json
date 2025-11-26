@@ -14,6 +14,7 @@
     "db:push": "supabase db push"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.78.0",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",

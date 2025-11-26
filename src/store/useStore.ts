@@ -31,7 +31,7 @@ interface ListStore {
   // Shared Lists
   lists: List[];
   fetchLists: () => Promise<void>;
-  createList: (name: string) => Promise<void>;
+  createList: (name: string) => Promise<List>;
   deleteList: (id: string) => Promise<void>;
 }
 
@@ -228,8 +228,9 @@ export const useStore = create<ListStore>()(
       },
 
       createList: async (name) => {
-        await listService.createList(name);
+        const newList = await listService.createList(name);
         get().fetchLists();
+        return newList;
       },
 
       deleteList: async (id) => {

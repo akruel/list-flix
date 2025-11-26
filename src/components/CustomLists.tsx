@@ -1,9 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Users, Trash2 } from 'lucide-react';
+import { Plus, Users, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { toast } from 'sonner';
 import { DeleteConfirmationModal } from './DeleteConfirmationModal';
+import { MagicSearchModal } from './MagicSearchModal';
+import { listService } from '../services/listService';
+import type { ContentItem } from '../types';
 
 export function CustomLists() {
   const { lists, fetchLists, createList, deleteList } = useStore();
@@ -11,10 +14,25 @@ export function CustomLists() {
   const [newListName, setNewListName] = useState('');
   const [listToDelete, setListToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  // Magic Search State
+  const [isMagicModalOpen, setIsMagicModalOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchLists();
   }, [fetchLists]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,17 +58,66 @@ export function CustomLists() {
     }
   };
 
+  const handleSaveMagicList = async (name: string, items: ContentItem[]) => {
+    try {
+      // 1. Create the list
+      const newList = await createList(name);
+      
+      // 2. Add items to the list
+      // We do this sequentially to avoid overwhelming the server/rate limits, 
+      // but parallel could be faster. Given it's a POC, sequential is safer.
+      for (const item of items) {
+        await listService.addListItem(newList.id, item);
+      }
+      
+      // 3. Refresh lists
+      fetchLists();
+    } catch (error) {
+      console.error('Error saving magic list:', error);
+      throw error; // Propagate to modal to show error toast
+    }
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-bold text-white">Listas Personalizadas</h2>
-        <button
-          onClick={() => setIsCreating(true)}
-          className="bg-primary text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/80 transition-colors"
-        >
-          <Plus size={20} />
-          Nova Lista
-        </button>
+        
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="bg-primary text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-primary/80 transition-colors"
+          >
+            <Plus size={20} />
+            Nova Lista
+            <ChevronDown size={16} className={`transition-transform ${isMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-gray-800 rounded-lg shadow-xl border border-gray-700 z-20 overflow-hidden">
+              <button
+                onClick={() => {
+                  setIsCreating(true);
+                  setIsMenuOpen(false);
+                }}
+                className="w-full px-4 py-3 text-left text-white hover:bg-gray-700 flex items-center gap-2 transition-colors"
+              >
+                <Plus size={18} />
+                Lista Manual
+              </button>
+              <button
+                onClick={() => {
+                  setIsMagicModalOpen(true);
+                  setIsMenuOpen(false);
+                }}
+                className="w-full px-4 py-3 text-left text-white hover:bg-gray-700 flex items-center gap-2 transition-colors border-t border-gray-700"
+              >
+                <Sparkles size={18} className="text-yellow-400" />
+                Lista Inteligente
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {isCreating && (
@@ -135,6 +202,12 @@ export function CustomLists() {
         title="Excluir Lista"
         description="Tem certeza que deseja excluir esta lista? Esta ação não pode ser desfeita e todos os itens da lista serão perdidos."
         isDeleting={isDeleting}
+      />
+
+      <MagicSearchModal
+        isOpen={isMagicModalOpen}
+        onClose={() => setIsMagicModalOpen(false)}
+        onSaveList={handleSaveMagicList}
       />
     </div>
   );
