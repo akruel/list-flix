@@ -21,6 +21,14 @@ export const tmdb = {
     return response.data.results;
   },
 
+  searchPerson: async (query: string): Promise<number | null> => {
+    const response = await tmdbClient.get<SearchResponse>('/search/person', {
+      params: { query },
+    });
+    const person = response.data.results[0];
+    return person ? person.id : null;
+  },
+
   search: async (query: string): Promise<ContentItem[]> => {
     const response = await tmdbClient.get<SearchResponse>('/search/multi', {
       params: { query },
@@ -61,12 +69,13 @@ export const tmdb = {
     return uniqueGenres;
   },
 
-  discover: async (filters: Record<string, any>): Promise<ContentItem[]> => {
+  discover: async (filters: Record<string, unknown>): Promise<ContentItem[]> => {
     // Determine if we are searching for movies or tv shows based on filters or default to movie
     // Ideally the AI should tell us which endpoint to use, but for now let's assume we might need to query both or just one.
     // To simplify, if the AI doesn't specify, we default to movie discovery.
     
-    const endpoint = filters.media_type === 'tv' ? '/discover/tv' : '/discover/movie';
+    const mediaType = (filters.media_type === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv';
+    const endpoint = mediaType === 'tv' ? '/discover/tv' : '/discover/movie';
     
     // Remove media_type from filters as it's not a valid param for discover endpoint
     const { media_type, ...params } = filters;
@@ -80,7 +89,7 @@ export const tmdb = {
 
     return response.data.results.map(item => ({
       ...item,
-      media_type: filters.media_type || 'movie' // Ensure media_type is set
+      media_type: mediaType
     }));
   }
 };

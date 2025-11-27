@@ -29,8 +29,28 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
     try {
       const filters = await ai.getSuggestions(prompt);
       setSuggestedName(filters.suggested_list_name || 'Lista Sugerida');
-      
-      const items = await tmdb.discover(filters);
+
+      let items: ContentItem[] = [];
+
+      if (filters.strategy === 'search' && filters.query) {
+        items = await tmdb.search(filters.query);
+      } else if (filters.strategy === 'person' && filters.person_name && filters.role) {
+        // Find person ID
+        const personId = await tmdb.searchPerson(filters.person_name);
+        if (personId) {
+          const discoverFilters = {
+            ...filters,
+            // TMDB discover uses with_cast for actors and with_crew for directors
+            ...(filters.role === 'cast' ? { with_cast: personId } : { with_crew: personId })
+          };
+          items = await tmdb.discover(discoverFilters);
+        } else {
+          toast.error('Pessoa não encontrada. Tente outro nome.');
+        }
+      } else {
+        items = await tmdb.discover(filters);
+      }
+
       setResults(items);
       setStep('results');
     } catch (error) {
@@ -64,6 +84,14 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
     }
   };
 
+  const handleClose = () => {
+    setPrompt('');
+    setResults([]);
+    setSuggestedName('');
+    setStep('input');
+    onClose();
+  };
+
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-900 rounded-xl w-full max-w-4xl max-h-[90vh] flex flex-col border border-gray-800 shadow-2xl">
@@ -74,7 +102,7 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
             <Sparkles size={24} />
             <h2 className="text-xl font-bold text-white">Criar Lista Inteligente</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <button onClick={handleClose} className="text-gray-400 hover:text-white transition-colors">
             <X size={24} />
           </button>
         </div>
