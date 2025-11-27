@@ -184,103 +184,108 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <div className="flex items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => navigate('/lists')}
-          title="Voltar"
-        >
-          <ArrowLeft className="h-6 w-6" />
-        </Button>
-        <div className="flex-1">
-          {isEditing ? (
-            <div className="flex items-center gap-2 mb-2">
-              <Input
-                type="text"
-                value={editingName}
-                onChange={(e) => setEditingName(e.target.value)}
-                onKeyDown={handleKeyDown}
-                className="text-3xl font-bold h-auto py-1 px-3 w-full max-w-md"
-                autoFocus
-              />
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={saveEditing}
-                className="text-green-500 hover:text-green-600 hover:bg-green-500/10"
-                title="Salvar"
-              >
-                <Check className="h-5 w-5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={cancelEditing}
-                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                title="Cancelar"
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-3 mb-2 group">
-              <h1 className="text-3xl font-bold text-foreground">{list.name}</h1>
-              {list.role === 'owner' && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={startEditing}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity"
-                  title="Editar nome"
-                >
-                  <Pencil className="h-5 w-5" />
-                </Button>
-              )}
-            </div>
-          )}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-              <span>{items.length} items</span>
-              <span>•</span>
-              <span className="capitalize">
-                {list.role === 'owner' ? 'Dono' : list.role === 'editor' ? 'Editor' : 'Visualizador'}
-              </span>
-            </div>
-            
-            {/* Members List */}
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users size={16} />
-              <div className="flex flex-wrap gap-2">
-                {members.map(member => (
-                  <Badge 
-                    key={member.user_id} 
-                    variant="outline"
-                    className={`gap-1 ${
-                      member.role === 'owner' 
-                        ? 'border-yellow-500/50 text-yellow-500' 
-                        : member.role === 'editor'
-                        ? 'border-purple-500/50 text-purple-500'
-                        : 'border-blue-500/50 text-blue-500'
-                    }`}
-                    title={`Role: ${member.role}`}
+      <div className="flex flex-col md:flex-row md:items-start gap-4 mb-8">
+        <div className="flex items-start gap-4 w-full md:w-auto flex-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate('/lists')}
+            title="Voltar"
+            className="mt-1 shrink-0"
+          >
+            <ArrowLeft className="h-6 w-6" />
+          </Button>
+          
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <div className="flex flex-col gap-2 mb-2">
+                <Input
+                  type="text"
+                  value={editingName}
+                  onChange={(e) => setEditingName(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  className="text-2xl md:text-3xl font-bold h-auto py-1 px-3 w-full"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={saveEditing}
+                    className="text-green-500 hover:text-green-600 hover:bg-green-500/10"
                   >
-                    {member.member_name || 'Anonymous'}
-                    {member.role === 'owner' && <span>★</span>}
-                    {member.role === 'editor' && <span>✏️</span>}
-                    {member.role === 'viewer' && <span>👁️</span>}
-                  </Badge>
-                ))}
+                    <Check className="h-4 w-4 mr-1" /> Salvar
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={cancelEditing}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                  >
+                    <X className="h-4 w-4 mr-1" /> Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-start gap-2 mb-2 group">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground break-words">{list.name}</h1>
+                {list.role === 'owner' && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={startEditing}
+                    className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
+                    title="Editar nome"
+                  >
+                    <Pencil className="h-5 w-5" />
+                  </Button>
+                )}
+              </div>
+            )}
+            
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span>{items.length} items</span>
+                <span>•</span>
+                <span className="capitalize">
+                  {list.role === 'owner' ? 'Dono' : list.role === 'editor' ? 'Editor' : 'Visualizador'}
+                </span>
+              </div>
+              
+              {/* Members List */}
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Users size={16} className="shrink-0" />
+                <div className="flex flex-wrap gap-2">
+                  {members.map(member => (
+                    <Badge 
+                      key={member.user_id} 
+                      variant="outline"
+                      className={`gap-1 ${
+                        member.role === 'owner' 
+                          ? 'border-yellow-500/50 text-yellow-500' 
+                          : member.role === 'editor'
+                          ? 'border-purple-500/50 text-purple-500'
+                          : 'border-blue-500/50 text-blue-500'
+                      }`}
+                      title={`Role: ${member.role}`}
+                    >
+                      {member.member_name || 'Anonymous'}
+                      {member.role === 'owner' && <span>★</span>}
+                      {member.role === 'editor' && <span>✏️</span>}
+                      {member.role === 'viewer' && <span>👁️</span>}
+                    </Badge>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
         </div>
         
-          {/* Share Button with Dropdown */}
-        <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 w-full md:w-auto pl-[3.25rem] md:pl-0 mt-2 md:mt-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white">
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white flex-1 md:flex-none">
                 {copied ? <Check className="mr-2 h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />}
                 {copied ? 'Copiado!' : 'Compartilhar'}
               </Button>
@@ -308,6 +313,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
               variant="destructive"
               onClick={() => setShowDeleteModal(true)}
               title="Excluir Lista"
+              className="flex-1 md:flex-none"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Excluir
