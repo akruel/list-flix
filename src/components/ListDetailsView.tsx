@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Share2, Trash2, Users, ArrowLeft, Check } from 'lucide-react';
+import { Share2, Trash2, Users, ArrowLeft, Check, Pencil, X } from 'lucide-react';
+import { useStore } from '../store/useStore';
 import { listService } from '../services/listService';
 import { tmdb } from '../services/tmdb';
 import type { List, ListItem, ListMember } from '../types';
@@ -35,6 +36,7 @@ const ListDetailsSkeleton = () => (
 
 export function ListDetailsView({ id }: ListDetailsViewProps) {
   const navigate = useNavigate();
+  const { updateList } = useStore();
   const [list, setList] = useState<List | null>(null);
   const [items, setItems] = useState<ListItem[]>([]);
   const [members, setMembers] = useState<ListMember[]>([]);
@@ -44,6 +46,8 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingName, setEditingName] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -98,6 +102,41 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     }
   };
 
+  const startEditing = () => {
+    if (!list) return;
+    setIsEditing(true);
+    setEditingName(list.name);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditingName('');
+  };
+
+  const saveEditing = async () => {
+    if (!list || !editingName.trim()) return;
+
+    try {
+      await updateList(list.id, editingName);
+      setList({ ...list, name: editingName });
+      toast.success('Nome da lista atualizado');
+      setIsEditing(false);
+    } catch (err) {
+      console.error(err);
+      toast.error('Erro ao atualizar nome da lista');
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      saveEditing();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEditing();
+    }
+  };
+
   const handleDeleteList = async () => {
     if (!list) return;
     try {
@@ -145,7 +184,45 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
           <ArrowLeft size={24} />
         </button>
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-white mb-2">{list.name}</h1>
+          {isEditing ? (
+            <div className="flex items-center gap-2 mb-2">
+              <input
+                type="text"
+                value={editingName}
+                onChange={(e) => setEditingName(e.target.value)}
+                onKeyDown={handleKeyDown}
+                className="bg-gray-800 text-white px-3 py-1 rounded border border-primary focus:outline-none focus:ring-1 focus:ring-primary text-3xl font-bold w-full max-w-md"
+                autoFocus
+              />
+              <button
+                onClick={saveEditing}
+                className="p-2 bg-green-500/20 text-green-400 hover:bg-green-500/30 rounded-lg transition-colors"
+                title="Salvar"
+              >
+                <Check size={20} />
+              </button>
+              <button
+                onClick={cancelEditing}
+                className="p-2 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg transition-colors"
+                title="Cancelar"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 mb-2 group">
+              <h1 className="text-3xl font-bold text-white">{list.name}</h1>
+              {list.role === 'owner' && (
+                <button
+                  onClick={startEditing}
+                  className="p-2 text-gray-400 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  title="Editar nome"
+                >
+                  <Pencil size={20} />
+                </button>
+              )}
+            </div>
+          )}
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-4 text-sm text-gray-400">
               <span>{items.length} items</span>

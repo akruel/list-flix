@@ -78,7 +78,8 @@ export const tmdb = {
     const endpoint = mediaType === 'tv' ? '/discover/tv' : '/discover/movie';
     
     // Remove media_type from filters as it's not a valid param for discover endpoint
-    const { media_type, ...params } = filters;
+    const params = { ...filters };
+    delete params.media_type;
 
     const response = await tmdbClient.get<SearchResponse>(endpoint, {
       params: {

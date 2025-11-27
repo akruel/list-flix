@@ -190,5 +190,14 @@ export const listService = {
       .eq('id', listId);
 
     if (error) throw error;
+  },
+
+  async updateList(listId: string, name: string): Promise<void> {
+    const { error } = await supabase
+      .from('lists')
+      .update({ name })
+      .eq('id', listId);
+
+    if (error) throw error;
   }
 };
