@@ -237,5 +237,19 @@ export const userContentService = {
     });
 
     if (error) console.error('Error marking season as unwatched:', error);
+  },
+
+  async hasData(userId: string): Promise<boolean> {
+    const [
+      { count: watchlistCount },
+      { count: watchedMoviesCount },
+      { count: watchedEpisodesCount }
+    ] = await Promise.all([
+      supabase.from('watchlists').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+      supabase.from('watched_movies').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+      supabase.from('watched_episodes').select('*', { count: 'exact', head: true }).eq('user_id', userId)
+    ]);
+
+    return (watchlistCount || 0) > 0 || (watchedMoviesCount || 0) > 0 || (watchedEpisodesCount || 0) > 0;
   }
 };

@@ -1,10 +1,11 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { Layout } from './components/Layout';
 import { Home } from './pages/Home';
 import { authService } from './services/auth';
 import { useStore } from './store/useStore';
+import { MigrationConflictModal } from './components/MigrationConflictModal';
 
 // Placeholders for other pages to avoid build errors
 import { Search } from './pages/Search';
@@ -16,16 +17,48 @@ import { JoinListPage } from './pages/JoinListPage';
 
 function App() {
   const syncWithSupabase = useStore((state) => state.syncWithSupabase);
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
 
   useEffect(() => {
     const init = async () => {
-      const userId = await authService.initializeAuth();
-      if (userId) {
+      const result = await authService.initializeAuth();
+      
+      if (result && typeof result === 'object' && 'migrationConflict' in result) {
+        if (result.migrationConflict) {
+          setShowMigrationModal(true);
+        } else if (result.userId) {
+          await syncWithSupabase();
+        }
+      } else if (result) {
+        // Fallback for any legacy return type or unexpected case
         await syncWithSupabase();
       }
     };
     init();
   }, [syncWithSupabase]);
+
+  const handleKeepLocal = async () => {
+    const oldUserId = localStorage.getItem('migration_old_user_id');
+    const newUserId = await authService.getUserId();
+    
+    if (oldUserId && newUserId) {
+      try {
+        await authService.migrateAnonymousData(oldUserId, newUserId);
+      } catch (error) {
+        console.error('Manual migration failed:', error);
+      }
+    }
+    
+    localStorage.removeItem('migration_old_user_id');
+    setShowMigrationModal(false);
+    await syncWithSupabase();
+  };
+
+  const handleUseAccount = async () => {
+    localStorage.removeItem('migration_old_user_id');
+    setShowMigrationModal(false);
+    await syncWithSupabase();
+  };
 
   return (
     <>
@@ -41,6 +74,11 @@ function App() {
             color: 'rgb(243 244 246)',
           },
         }}
+      />
+      <MigrationConflictModal 
+        isOpen={showMigrationModal}
+        onKeepLocal={handleKeepLocal}
+        onUseAccount={handleUseAccount}
       />
       <BrowserRouter>
       <Routes>

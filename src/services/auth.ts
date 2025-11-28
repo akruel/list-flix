@@ -2,6 +2,8 @@ import { supabase } from '../lib/supabase';
 import type { UserProfile } from '../types';
 import { migrationService } from './migrationService';
 
+import { userContentService } from './userContent';
+
 export const authService = {
   async initializeAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -9,13 +11,22 @@ export const authService = {
     if (session) {
       // Check for pending migration
       const oldUserId = localStorage.getItem('migration_old_user_id');
+      let migrationConflict = false;
+
       if (oldUserId && oldUserId !== session.user.id) {
         try {
-          await this.migrateAnonymousData(oldUserId, session.user.id);
+          // Check if the new user already has data
+          const hasRemoteData = await userContentService.hasData(session.user.id);
+          
+          if (hasRemoteData) {
+            migrationConflict = true;
+            // Do not migrate yet, wait for user decision
+          } else {
+            await this.migrateAnonymousData(oldUserId, session.user.id);
+            localStorage.removeItem('migration_old_user_id');
+          }
         } catch (error) {
           console.error('Migration failed during init:', error);
-        } finally {
-          localStorage.removeItem('migration_old_user_id');
         }
       }
 
@@ -29,7 +40,7 @@ export const authService = {
         });
       }
 
-      return session.user.id;
+      return { userId: session.user.id, migrationConflict };
     }
 
     const { data, error } = await supabase.auth.signInAnonymously();
@@ -39,7 +50,7 @@ export const authService = {
       return null;
     }
     
-    return data.user?.id;
+    return { userId: data.user?.id, migrationConflict: false };
   },
 
   async getUserId() {
