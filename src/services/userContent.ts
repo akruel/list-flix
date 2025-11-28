@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { ContentItem, WatchedEpisodeMetadata, SeriesMetadata, Episode } from '../types';
+import { tmdb } from './tmdb';
 
 export type InteractionType = 'watchlist' | 'watched';
 export type ContentType = 'movie' | 'tv' | 'episode';
@@ -39,7 +40,15 @@ export const userContentService = {
         watchlistUpdates.push({
           user_id: user.id,
           tmdb_id: item.id,
-          media_type: item.media_type
+          media_type: item.media_type,
+          title: item.title,
+          name: item.name,
+          poster_path: item.poster_path,
+          backdrop_path: item.backdrop_path,
+          vote_average: item.vote_average,
+          release_date: item.release_date,
+          first_air_date: item.first_air_date,
+          overview: item.overview
         });
       }
     }
@@ -107,18 +116,79 @@ export const userContentService = {
       return { watchlist: [], watchedIds: [], watchedEpisodes: {}, seriesMetadata: {} };
     }
 
-    // Transform Watchlist
-    const watchlist: ContentItem[] = (watchlistData || []).map(i => ({
-      id: i.tmdb_id,
-      media_type: i.media_type as 'movie' | 'tv',
-      title: '', // Placeholder
-      name: '', 
-      poster_path: '', 
-      vote_average: 0, 
-      overview: '', 
-      release_date: '', 
-      first_air_date: '', 
-    }));
+    // Transform Watchlist and Self-Heal
+    const watchlist: ContentItem[] = [];
+    
+    if (watchlistData) {
+      const updates = [];
+      
+      for (const i of watchlistData) {
+        // Check if metadata is missing (using title/name as proxy)
+        const hasMetadata = i.title || i.name;
+        
+        if (hasMetadata) {
+          watchlist.push({
+            id: i.tmdb_id,
+            media_type: i.media_type as 'movie' | 'tv',
+            title: i.title,
+            name: i.name,
+            poster_path: i.poster_path,
+            backdrop_path: i.backdrop_path,
+            vote_average: i.vote_average,
+            release_date: i.release_date,
+            first_air_date: i.first_air_date,
+            overview: i.overview
+          });
+        } else {
+          // Self-healing: Fetch from TMDB
+          try {
+            const details = await tmdb.getDetails(i.tmdb_id, i.media_type as 'movie' | 'tv');
+            
+            // Add to result immediately
+            watchlist.push({
+              id: details.id,
+              media_type: details.media_type,
+              title: details.title,
+              name: details.name,
+              poster_path: details.poster_path,
+              backdrop_path: details.backdrop_path,
+              vote_average: details.vote_average,
+              release_date: details.release_date,
+              first_air_date: details.first_air_date,
+              overview: details.overview
+            });
+
+            // Queue update to DB
+            updates.push(supabase.from('watchlists').update({
+              title: details.title,
+              name: details.name,
+              poster_path: details.poster_path,
+              backdrop_path: details.backdrop_path,
+              vote_average: details.vote_average,
+              release_date: details.release_date,
+              first_air_date: details.first_air_date,
+              overview: details.overview
+            }).eq('tmdb_id', i.tmdb_id).eq('user_id', (await supabase.auth.getUser()).data.user?.id));
+            
+          } catch (err) {
+            console.error(`Failed to self-heal item ${i.tmdb_id}:`, err);
+            // Push placeholder if fetch fails, to avoid crashing UI
+            watchlist.push({
+              id: i.tmdb_id,
+              media_type: i.media_type as 'movie' | 'tv',
+              title: 'Error loading',
+              name: 'Error loading',
+              poster_path: undefined
+            });
+          }
+        }
+      }
+
+      // Execute updates in background
+      if (updates.length > 0) {
+        Promise.all(updates).then(() => console.log(`Self-healed ${updates.length} watchlist items`));
+      }
+    }
 
     const watchedIds = (watchedMoviesData || []).map(i => i.tmdb_id);
 
@@ -150,7 +220,15 @@ export const userContentService = {
       .from('watchlists')
       .insert({
         tmdb_id: item.id,
-        media_type: item.media_type
+        media_type: item.media_type,
+        title: item.title,
+        name: item.name,
+        poster_path: item.poster_path,
+        backdrop_path: item.backdrop_path,
+        vote_average: item.vote_average,
+        release_date: item.release_date,
+        first_air_date: item.first_air_date,
+        overview: item.overview
       });
 
     if (error) console.error('Error adding to watchlist:', error);
