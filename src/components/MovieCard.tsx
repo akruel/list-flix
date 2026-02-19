@@ -2,7 +2,7 @@ import React from 'react';
 import type { ContentItem } from '../types';
 import { tmdb } from '../services/tmdb';
 import { Star, Check } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 import { useStore } from '../store/useStore';
 import { useSeriesProgress } from '../hooks/useSeriesProgress';
 import { Card, CardContent } from "@/components/ui/card"
@@ -40,7 +40,8 @@ export const MovieCard: React.FC<MovieCardProps> = ({ item, showProgress = false
 
   return (
     <Link 
-      to={`/details/${item.media_type}/${item.id}`}
+      to="/details/$type/$id"
+      params={{ type: item.media_type, id: String(item.id) }}
       className="block"
     >
       <Card className="group relative overflow-hidden hover:scale-105 transition-transform duration-200 shadow-lg border-0 bg-card">

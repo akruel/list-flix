@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { Share2, Trash2, Users, ArrowLeft, Check, Pencil, X } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { listService } from '../services/listService';
@@ -151,7 +151,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
       setIsDeleting(true);
       await listService.deleteList(list.id);
       toast.success('Lista excluída com sucesso');
-      navigate('/lists');
+      navigate({ to: '/lists' });
     } catch (err) {
       console.error(err);
       toast.error('Erro ao excluir lista');
@@ -170,7 +170,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         <h2 className="text-2xl text-destructive mb-4">{error || 'List not found'}</h2>
         <Button
           variant="link"
-          onClick={() => navigate('/lists')}
+          onClick={() => navigate({ to: '/lists' })}
           className="mx-auto"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -189,7 +189,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate('/lists')}
+            onClick={() => navigate({ to: '/lists' })}
             title="Voltar"
             className="mt-1 shrink-0"
           >

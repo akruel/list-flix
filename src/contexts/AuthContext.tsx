@@ -7,6 +7,11 @@ import { authService } from '../services/auth';
 
 export type AuthStatus = 'loading' | 'none' | 'anonymous' | 'authenticated';
 
+export interface AuthContextSnapshot {
+  status: AuthStatus;
+  user: UserProfile | null;
+}
+
 interface AuthContextValue {
   status: AuthStatus;
   user: UserProfile | null;

@@ -1,11 +1,13 @@
 import path from "path"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -71,6 +73,21 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('react') || id.includes('scheduler')) return 'react-vendor'
+          if (id.includes('@tanstack/react-router')) return 'router-vendor'
+          if (id.includes('@supabase')) return 'supabase-vendor'
+          if (id.includes('@radix-ui')) return 'radix-vendor'
+          if (id.includes('lucide-react')) return 'icons-vendor'
+          return 'vendor'
+        },
+      },
     },
   },
 })

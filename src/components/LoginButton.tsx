@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserMenu } from './UserMenu';
@@ -28,7 +28,7 @@ export function LoginButton() {
             setIsLoginOptionsOpen(true);
             return;
           }
-          navigate('/auth');
+          navigate({ to: '/auth' });
         }}
         variant="secondary"
         className="rounded-full"

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from '@tanstack/react-router';
 import { Plus, Users, Trash2, Sparkles, ChevronDown } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { toast } from 'sonner';
@@ -133,7 +133,8 @@ export function CustomLists() {
         {lists.map((list) => (
           <Link
             key={list.id}
-            to={`/lists/${list.id}`}
+            to="/lists/$id"
+            params={{ id: list.id }}
             className="block h-full"
           >
             <Card className="h-full hover:bg-accent/50 transition-colors group relative border-border bg-card">

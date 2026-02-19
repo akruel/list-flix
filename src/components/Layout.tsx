@@ -1,4 +1,4 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation } from '@tanstack/react-router';
 import { Home, Search, List } from 'lucide-react';
 import clsx from 'clsx';
 import { LoginButton } from './LoginButton';

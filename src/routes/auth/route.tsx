@@ -1,84 +1,89 @@
-import { useEffect, useState } from 'react';
-import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2, LogIn, Mail, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '../contexts/AuthContext';
-import { authService } from '../services/auth';
-import { GoogleIcon } from '../components/icons/GoogleIcon';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Loader2, LogIn, Mail, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { GoogleIcon } from '@/components/icons/GoogleIcon'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { useAuth } from '@/contexts/AuthContext'
+import { getPostLoginDestination } from '@/lib/postLoginNavigation'
+import { authService } from '@/services/auth'
 
-export function AuthPage() {
-  const { status, signInWithGoogle, signInWithOtp, continueAsGuest } = useAuth();
-  const navigate = useNavigate();
+export const Route = createFileRoute('/auth')({
+  component: AuthRouteComponent,
+})
 
-  const [showEmailInput, setShowEmailInput] = useState(false);
-  const [email, setEmail] = useState('');
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isOtpLoading, setIsOtpLoading] = useState(false);
-  const [isGuestLoading, setIsGuestLoading] = useState(false);
+function AuthRouteComponent() {
+  const { status, signInWithGoogle, signInWithOtp, continueAsGuest } = useAuth()
+  const navigate = useNavigate()
+
+  const [showEmailInput, setShowEmailInput] = useState(false)
+  const [email, setEmail] = useState('')
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
+  const [isOtpLoading, setIsOtpLoading] = useState(false)
+  const [isGuestLoading, setIsGuestLoading] = useState(false)
 
   useEffect(() => {
     if (status === 'anonymous' || status === 'authenticated') {
-      const target = authService.consumePostLoginTarget() ?? '/';
-      navigate(target, { replace: true });
+      const target = getPostLoginDestination(authService.consumePostLoginTarget())
+      navigate({ ...target, replace: true })
     }
-  }, [navigate, status]);
+  }, [navigate, status])
 
   const handleGoogleLogin = async () => {
-    setIsGoogleLoading(true);
+    setIsGoogleLoading(true)
     try {
-      await signInWithGoogle();
+      await signInWithGoogle()
     } catch (error) {
-      console.error('Google login error:', error);
-      toast.error('Não foi possível iniciar login com Google.');
-      setIsGoogleLoading(false);
+      console.error('Google login error:', error)
+      toast.error('Não foi possível iniciar login com Google.')
+      setIsGoogleLoading(false)
     }
-  };
+  }
 
   const handleSendOtp = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!email) return;
+    event.preventDefault()
+    if (!email) return
 
-    setIsOtpLoading(true);
+    setIsOtpLoading(true)
     try {
-      await signInWithOtp(email);
+      await signInWithOtp(email)
       toast.success('Link de login enviado para seu email!', {
         id: 'login-link-sent',
         duration: 3000,
         closeButton: false,
-      });
-      setShowEmailInput(false);
-      setEmail('');
+      })
+      setShowEmailInput(false)
+      setEmail('')
     } catch (error) {
-      console.error('OTP login error:', error);
-      toast.error('Erro ao enviar link de login.');
+      console.error('OTP login error:', error)
+      toast.error('Erro ao enviar link de login.')
     } finally {
-      setIsOtpLoading(false);
+      setIsOtpLoading(false)
     }
-  };
+  }
 
   const handleContinueAsGuest = async () => {
-    setIsGuestLoading(true);
+    setIsGuestLoading(true)
     try {
-      await continueAsGuest();
-      const target = authService.consumePostLoginTarget() ?? '/';
-      navigate(target, { replace: true });
+      await continueAsGuest()
+      const target = getPostLoginDestination(authService.consumePostLoginTarget())
+      navigate({ ...target, replace: true })
     } catch (error) {
-      console.error('Guest sign-in error:', error);
-      toast.error('Não foi possível continuar como visitante.');
-      setIsGuestLoading(false);
+      console.error('Guest sign-in error:', error)
+      toast.error('Não foi possível continuar como visitante.')
+      setIsGuestLoading(false)
     }
-  };
+  }
 
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    );
+    )
   }
 
   return (
@@ -158,5 +163,5 @@ export function AuthPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

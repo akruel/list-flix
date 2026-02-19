@@ -1,44 +1,49 @@
-import React, { useState, useEffect } from 'react';
-import { tmdb } from '../services/tmdb';
-import type { ContentItem } from '../types';
-import { MovieCard } from '../components/MovieCard';
-import { Search as SearchIcon } from 'lucide-react';
-import { ContentGridSkeleton } from '../components/skeletons';
+import { useEffect, useState } from 'react'
+import { createFileRoute } from '@tanstack/react-router'
+import { Search as SearchIcon } from 'lucide-react'
+import { MovieCard } from '@/components/MovieCard'
+import { ContentGridSkeleton } from '@/components/skeletons'
+import { tmdb } from '@/services/tmdb'
+import type { ContentItem } from '@/types'
 
-export const Search: React.FC = () => {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ContentItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [debouncedQuery, setDebouncedQuery] = useState(query);
+export const Route = createFileRoute('/_protected/search')({
+  component: SearchRouteComponent,
+})
 
-  // Debounce effect
+function SearchRouteComponent() {
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState<ContentItem[]>([])
+  const [loading, setLoading] = useState(false)
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
+
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [query]);
+      setDebouncedQuery(query)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [query])
 
   useEffect(() => {
     const search = async () => {
       if (!debouncedQuery.trim()) {
-        setResults([]);
-        return;
+        setResults([])
+        return
       }
 
-      setLoading(true);
+      setLoading(true)
       try {
-        const data = await tmdb.search(debouncedQuery);
-        setResults(data);
+        const data = await tmdb.search(debouncedQuery)
+        setResults(data)
       } catch (error) {
-        console.error('Error searching:', error);
+        console.error('Error searching:', error)
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+    }
 
-    search();
-  }, [debouncedQuery]);
+    void search()
+  }, [debouncedQuery])
 
   return (
     <div>
@@ -74,5 +79,5 @@ export const Search: React.FC = () => {
         </>
       )}
     </div>
-  );
-};
+  )
+}

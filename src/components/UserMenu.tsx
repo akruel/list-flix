@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from '@tanstack/react-router';
 import { LogOut, User } from 'lucide-react';
 import { toast } from 'sonner';
 import type { UserProfile } from '../types';
@@ -32,7 +32,7 @@ export function UserMenu({ user }: UserMenuProps) {
     try {
       await signOutToGuest();
       setIsLogoutDialogOpen(false);
-      navigate('/', { replace: true });
+      navigate({ to: '/', replace: true });
     } catch (error) {
       console.error('Error signing out to guest mode:', error);
       toast.error('Não foi possível continuar como visitante.');
@@ -46,7 +46,7 @@ export function UserMenu({ user }: UserMenuProps) {
     try {
       await signOutFully();
       setIsLogoutDialogOpen(false);
-      navigate('/auth', { replace: true });
+      navigate({ to: '/auth', replace: true });
     } catch (error) {
       console.error('Error signing out fully:', error);
       toast.error('Não foi possível sair totalmente.');
