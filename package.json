@@ -10,6 +10,10 @@
     "lint:fix": "eslint . --fix",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
+    "test": "npm run test:unit-ui",
+    "test:unit-ui": "vitest run --project unit --project ui --coverage",
+    "test:rls": "bash ./scripts/test-rls.sh",
+    "test:e2e": "bash ./scripts/test-e2e.sh",
     "db:migration:new": "supabase migration new",
     "db:push": "supabase db push"
   },
@@ -44,9 +48,14 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.58.2",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
+    "@vitest/coverage-v8": "^3.2.4",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.22",
     "baseline-browser-mapping": "^2.10.0",
@@ -58,6 +67,8 @@
     "tailwindcss": "^3.4.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vite": "^7.2.4",
+    "vitest": "^3.2.4",
+    "jsdom": "^26.1.0"
   }
 }

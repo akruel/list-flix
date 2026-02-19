@@ -1,73 +1,72 @@
-# React + TypeScript + Vite
+# ListFlix
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicação React + Vite + Supabase para descoberta de filmes/séries e listas compartilhadas.
 
-Currently, two official plugins are available:
+## Pré-requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Node.js 22+
+- npm 10+
+- Docker (para Supabase local em testes de RLS e E2E)
+- Supabase CLI
 
-## React Compiler
+## Instalação
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Desenvolvimento
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+npm run dev
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Testes
+
+### Unit + UI (rápido, sem Docker)
+
+```bash
+npm test
+# ou
+npm run test:unit-ui
+```
+
+### RLS / migrations (Supabase local real)
+
+```bash
+npm run test:rls
+```
+
+### E2E (Playwright + Supabase local real)
+
+```bash
+npm run test:e2e
+```
+
+## Observações de execução
+
+- `npm test` não depende de Docker.
+- `npm run test:rls` e `npm run test:e2e` exigem Docker ativo.
+- Os wrappers de teste sobem/reaproveitam o stack local do Supabase automaticamente.
+
+## Troubleshooting
+
+### Docker indisponível
+
+Se aparecer erro de daemon do Docker:
+
+1. Inicie o Docker Desktop.
+2. Rode novamente `npm run test:rls` ou `npm run test:e2e`.
+
+### Stack local do Supabase em estado inconsistente
+
+```bash
+supabase stop
+supabase start
+```
+
+### Browsers do Playwright ausentes
+
+```bash
+npx playwright install chromium
 ```
