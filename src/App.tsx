@@ -1,46 +1,116 @@
-import { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { BrowserRouter, Navigate, Outlet, Route, Routes, matchPath, useLocation } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { Layout } from './components/Layout';
-import { Home } from './pages/Home';
+import { MigrationConflictModal } from './components/MigrationConflictModal';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { authService } from './services/auth';
 import { useStore } from './store/useStore';
-import { MigrationConflictModal } from './components/MigrationConflictModal';
 
-// Placeholders for other pages to avoid build errors
+import { Home } from './pages/Home';
 import { Search } from './pages/Search';
 import { MyList } from './pages/MyList';
 import { Details } from './pages/Details';
-
 import { SharedList } from './pages/SharedList';
 import { JoinListPage } from './pages/JoinListPage';
+import { AuthPage } from './pages/AuthPage';
+import { AuthCallbackPage } from './pages/AuthCallbackPage';
 
-function App() {
+const FullScreenLoader = () => (
+  <div className="min-h-screen flex items-center justify-center bg-background">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
+
+function ProtectedRoute({ blocked }: { blocked: boolean }) {
+  const { status } = useAuth();
+  const location = useLocation();
+
+  if (status === 'loading') {
+    return <FullScreenLoader />;
+  }
+
+  if (status === 'none') {
+    const isInviteRoute = Boolean(matchPath('/lists/:id/join', location.pathname));
+    if (isInviteRoute) {
+      authService.savePostLoginTarget(`${location.pathname}${location.search}`);
+    }
+
+    return <Navigate to="/auth" replace />;
+  }
+
+  if (blocked) {
+    return <FullScreenLoader />;
+  }
+
+  return <Outlet />;
+}
+
+function AppContent() {
+  const { status, user } = useAuth();
   const syncWithSupabase = useStore((state) => state.syncWithSupabase);
+  const location = useLocation();
+
   const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [isSessionProcessing, setIsSessionProcessing] = useState(false);
+  const lastHandledUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const init = async () => {
-      const result = await authService.initializeAuth();
-      
-      if (result && typeof result === 'object' && 'migrationConflict' in result) {
-        if (result.migrationConflict) {
+    if (status === 'none') {
+      setShowMigrationModal(false);
+      setIsSessionProcessing(false);
+      lastHandledUserIdRef.current = null;
+    }
+  }, [status]);
+
+  useEffect(() => {
+    const isAuthRoute = location.pathname.startsWith('/auth');
+    if (isAuthRoute) return;
+
+    if (status !== 'anonymous' && status !== 'authenticated') return;
+
+    const userId = user?.id;
+    if (!userId) return;
+    if (lastHandledUserIdRef.current === userId) return;
+
+    let cancelled = false;
+
+    const initializeSession = async () => {
+      setIsSessionProcessing(true);
+
+      try {
+        const finalizeResult = await authService.finalizePostLogin();
+        if (cancelled) return;
+
+        if (finalizeResult.migrationConflict) {
           setShowMigrationModal(true);
-        } else if (result.userId) {
-          await syncWithSupabase();
+          return;
         }
-      } else if (result) {
-        // Fallback for any legacy return type or unexpected case
+
         await syncWithSupabase();
+        if (cancelled) return;
+        lastHandledUserIdRef.current = userId;
+      } catch (error) {
+        console.error('Session initialization failed:', error);
+      } finally {
+        if (!cancelled) {
+          setIsSessionProcessing(false);
+        }
       }
     };
-    init();
-  }, [syncWithSupabase]);
+
+    void initializeSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname, status, syncWithSupabase, user?.id]);
 
   const handleKeepLocal = async () => {
-    const oldUserId = localStorage.getItem('migration_old_user_id');
-    const newUserId = await authService.getUserId();
-    
+    const oldUserId = localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY);
+    const newUserId = user?.id ?? await authService.getUserId();
+
     if (oldUserId && newUserId) {
       try {
         await authService.migrateAnonymousData(oldUserId, newUserId);
@@ -48,21 +118,41 @@ function App() {
         console.error('Manual migration failed:', error);
       }
     }
-    
-    localStorage.removeItem('migration_old_user_id');
+
+    authService.clearMigrationOldUserId();
     setShowMigrationModal(false);
-    await syncWithSupabase();
+
+    try {
+      await syncWithSupabase();
+      if (newUserId) {
+        lastHandledUserIdRef.current = newUserId;
+      }
+    } catch (error) {
+      console.error('Sync after manual migration failed:', error);
+    }
   };
 
   const handleUseAccount = async () => {
-    localStorage.removeItem('migration_old_user_id');
+    const currentUserId = user?.id ?? await authService.getUserId();
+
+    authService.clearMigrationOldUserId();
     setShowMigrationModal(false);
-    await syncWithSupabase();
+
+    try {
+      await syncWithSupabase();
+      if (currentUserId) {
+        lastHandledUserIdRef.current = currentUserId;
+      }
+    } catch (error) {
+      console.error('Sync after selecting account data failed:', error);
+    }
   };
+
+  const isProtectedBlocked = isSessionProcessing || showMigrationModal;
 
   return (
     <>
-      <Toaster 
+      <Toaster
         position="top-center"
         expand={false}
         richColors
@@ -75,25 +165,40 @@ function App() {
           },
         }}
       />
-      <MigrationConflictModal 
+
+      <MigrationConflictModal
         isOpen={showMigrationModal}
         onKeepLocal={handleKeepLocal}
         onUseAccount={handleUseAccount}
       />
-      <BrowserRouter>
+
       <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Home />} />
-          <Route path="search" element={<Search />} />
-          <Route path="lists" element={<MyList />} />
-          <Route path="shared" element={<SharedList />} />
-          <Route path="details/:type/:id" element={<Details />} />
-          <Route path="lists/:id" element={<MyList />} />
-          <Route path="lists/:id/join" element={<JoinListPage />} />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+        <Route element={<ProtectedRoute blocked={isProtectedBlocked} />}>
+          <Route path="/" element={<Layout />}>
+            <Route index element={<Home />} />
+            <Route path="search" element={<Search />} />
+            <Route path="lists" element={<MyList />} />
+            <Route path="shared" element={<SharedList />} />
+            <Route path="details/:type/:id" element={<Details />} />
+            <Route path="lists/:id" element={<MyList />} />
+            <Route path="lists/:id/join" element={<JoinListPage />} />
+          </Route>
         </Route>
       </Routes>
-      </BrowserRouter>
     </>
+  );
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
 
