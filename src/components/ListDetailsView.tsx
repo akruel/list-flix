@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { Share2, Trash2, Users, ArrowLeft, Check, Pencil, X } from 'lucide-react';
+import { Share2, Trash2, Users, ArrowLeft, Check, Pencil, X, UserMinus } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { listService } from '../services/listService';
 import { tmdb } from '../services/tmdb';
@@ -57,6 +57,8 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingName, setEditingName] = useState('');
+  const [memberToRemove, setMemberToRemove] = useState<ListMember | null>(null);
+  const [isRemovingMember, setIsRemovingMember] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -160,6 +162,31 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     }
   };
 
+  const handleRemoveMember = async () => {
+    if (!list || !memberToRemove) return;
+
+    try {
+      setIsRemovingMember(true);
+      await listService.removeListMember(list.id, memberToRemove.user_id);
+      setMembers((prev) =>
+        prev.filter(
+          (member) =>
+            !(
+              member.list_id === memberToRemove.list_id &&
+              member.user_id === memberToRemove.user_id
+            ),
+        ),
+      );
+      toast.success('Membro removido com sucesso');
+      setMemberToRemove(null);
+    } catch (err) {
+      console.error(err);
+      toast.error('Falha ao remover membro');
+    } finally {
+      setIsRemovingMember(false);
+    }
+  };
+
   if (loading) {
     return <ListDetailsSkeleton />;
   }
@@ -257,23 +284,37 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
                 <Users size={16} className="shrink-0" />
                 <div className="flex flex-wrap gap-2">
                   {members.map(member => (
-                    <Badge 
-                      key={member.user_id} 
-                      variant="outline"
-                      className={`gap-1 ${
-                        member.role === 'owner' 
-                          ? 'border-yellow-500/50 text-yellow-500' 
-                          : member.role === 'editor'
-                          ? 'border-purple-500/50 text-purple-500'
-                          : 'border-blue-500/50 text-blue-500'
-                      }`}
-                      title={`Role: ${member.role}`}
-                    >
-                      {member.member_name || 'Anonymous'}
-                      {member.role === 'owner' && <span>★</span>}
-                      {member.role === 'editor' && <span>✏️</span>}
-                      {member.role === 'viewer' && <span>👁️</span>}
-                    </Badge>
+                    <div key={member.user_id} className="inline-flex items-center gap-1">
+                      <Badge
+                        variant="outline"
+                        className={`gap-1 ${
+                          member.role === 'owner'
+                            ? 'border-yellow-500/50 text-yellow-500'
+                            : member.role === 'editor'
+                            ? 'border-purple-500/50 text-purple-500'
+                            : 'border-blue-500/50 text-blue-500'
+                        }`}
+                        title={`Role: ${member.role}`}
+                      >
+                        {member.member_name || 'Anonymous'}
+                        {member.role === 'owner' && <span>★</span>}
+                        {member.role === 'editor' && <span>✏️</span>}
+                        {member.role === 'viewer' && <span>👁️</span>}
+                      </Badge>
+
+                      {list.role === 'owner' && member.role !== 'owner' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setMemberToRemove(member)}
+                          disabled={isRemovingMember}
+                          className="h-6 w-6 rounded-full text-destructive hover:text-destructive"
+                          title="Remover membro"
+                        >
+                          <UserMinus className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -365,6 +406,24 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         title="Excluir Lista"
         description="Tem certeza que deseja excluir esta lista? Esta ação não pode ser desfeita e todos os itens da lista serão perdidos."
         isDeleting={isDeleting}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={!!memberToRemove}
+        onClose={() => {
+          if (isRemovingMember) return;
+          setMemberToRemove(null);
+        }}
+        onConfirm={() => {
+          void handleRemoveMember();
+        }}
+        title="Remover membro"
+        description={
+          memberToRemove
+            ? `Tem certeza que deseja remover ${memberToRemove.member_name || 'este membro'} desta lista? Essa pessoa poderá entrar novamente usando um convite.`
+            : ''
+        }
+        isDeleting={isRemovingMember}
       />
     </div>
   );

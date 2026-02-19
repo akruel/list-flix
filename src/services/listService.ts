@@ -130,6 +130,16 @@ export const listService = {
     if (error) throw error;
   },
 
+  async removeListMember(listId: string, memberUserId: string): Promise<void> {
+    const { error } = await supabase
+      .from('list_members')
+      .delete()
+      .eq('list_id', listId)
+      .eq('user_id', memberUserId);
+
+    if (error) throw error;
+  },
+
   async joinList(listId: string, memberName: string, role: 'editor' | 'viewer' = 'viewer'): Promise<void> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('User not authenticated');
