@@ -13,7 +13,26 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       reportsDirectory: './coverage',
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/routeTree.gen.ts', 'src/vite-env.d.ts'],
+      exclude: [
+        'src/routeTree.gen.ts',
+        'src/vite-env.d.ts',
+        'src/App.tsx',
+        'src/main.tsx',
+        'src/router.tsx',
+        'src/routes/**',
+        'src/types/**',
+        'src/components/index.ts',
+        'src/components/ui/**',
+        'src/components/skeletons/**',
+        'src/components/icons/**',
+      ],
+      thresholds: {
+        perFile: true,
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100,
+      },
     },
     projects: [
       defineProject({

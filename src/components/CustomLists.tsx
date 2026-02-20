@@ -56,6 +56,10 @@ export function CustomLists() {
     }
   };
 
+  const closeDeleteModal = () => {
+    setListToDelete(null);
+  };
+
   const handleSaveMagicList = async (name: string, items: ContentItem[]) => {
     try {
       // 1. Create the list
@@ -74,6 +78,10 @@ export function CustomLists() {
       console.error('Error saving magic list:', error);
       throw error; // Propagate to modal to show error toast
     }
+  };
+
+  const closeMagicModal = () => {
+    setIsMagicModalOpen(false);
   };
 
   return (
@@ -185,7 +193,7 @@ export function CustomLists() {
 
       <DeleteConfirmationModal
         isOpen={!!listToDelete}
-        onClose={() => setListToDelete(null)}
+        onClose={closeDeleteModal}
         onConfirm={handleDelete}
         title="Excluir Lista"
         description="Tem certeza que deseja excluir esta lista? Esta ação não pode ser desfeita e todos os itens da lista serão perdidos."
@@ -194,7 +202,7 @@ export function CustomLists() {
 
       <MagicSearchModal
         isOpen={isMagicModalOpen}
-        onClose={() => setIsMagicModalOpen(false)}
+        onClose={closeMagicModal}
         onSaveList={handleSaveMagicList}
       />
     </div>

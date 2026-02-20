@@ -94,6 +94,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   }, [id]);
 
   const handleShare = async (role: 'editor' | 'viewer') => {
+    /* v8 ignore next -- defensive guard: share actions render only when list exists */
     if (!list) return;
     const url = listService.getShareUrl(list.id, role);
     await navigator.clipboard.writeText(url);
@@ -112,7 +113,16 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     }
   };
 
+  const handleRemoveItemButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    const { itemId } = e.currentTarget.dataset;
+    /* v8 ignore next -- button always sets data-item-id */
+    if (!itemId) return;
+    void handleRemoveItem(itemId);
+  };
+
   const startEditing = () => {
+    /* v8 ignore next -- defensive guard: edit button only renders when list exists */
     if (!list) return;
     setIsEditing(true);
     setEditingName(list.name);
@@ -148,6 +158,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   };
 
   const handleDeleteList = async () => {
+    /* v8 ignore next -- defensive guard: delete action only renders when list exists */
     if (!list) return;
     try {
       setIsDeleting(true);
@@ -163,6 +174,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   };
 
   const handleRemoveMember = async () => {
+    /* v8 ignore next -- defensive guard: confirm only opens with list + selected member */
     if (!list || !memberToRemove) return;
 
     try {
@@ -185,6 +197,35 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     } finally {
       setIsRemovingMember(false);
     }
+  };
+
+  const handleMemberModalClose = () => {
+    if (isRemovingMember) return;
+    setMemberToRemove(null);
+  };
+
+  const handleMemberRemoveButtonClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const { memberUserId, memberListId } = e.currentTarget.dataset;
+    /* v8 ignore next -- button always sets member identifiers */
+    if (!memberUserId || !memberListId) return;
+    const selectedMember = members.find(
+      (member) => member.user_id === memberUserId && member.list_id === memberListId,
+    );
+    /* v8 ignore next -- source list comes from current members map */
+    if (!selectedMember) return;
+    setMemberToRemove(selectedMember);
+  };
+
+  const openDeleteModal = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleEditorShareClick = () => {
+    void handleShare('editor');
+  };
+
+  const handleViewerShareClick = () => {
+    void handleShare('viewer');
   };
 
   if (loading) {
@@ -306,7 +347,9 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => setMemberToRemove(member)}
+                          data-member-user-id={member.user_id}
+                          data-member-list-id={member.list_id}
+                          onClick={handleMemberRemoveButtonClick}
                           disabled={isRemovingMember}
                           className="h-6 w-6 rounded-full text-destructive hover:text-destructive"
                           title="Remover membro"
@@ -332,14 +375,14 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem onClick={() => handleShare('editor')} className="gap-3 py-3 cursor-pointer">
+              <DropdownMenuItem onClick={handleEditorShareClick} className="gap-3 py-3 cursor-pointer">
                 <span className="text-xl">✏️</span>
                 <div>
                   <div className="font-medium">Compartilhar como Editor</div>
                   <div className="text-xs text-muted-foreground">Poderá adicionar e remover itens</div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleShare('viewer')} className="gap-3 py-3 cursor-pointer">
+              <DropdownMenuItem onClick={handleViewerShareClick} className="gap-3 py-3 cursor-pointer">
                 <span className="text-xl">👁️</span>
                 <div>
                   <div className="font-medium">Compartilhar como Visualizador</div>
@@ -352,7 +395,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
           {list.role === 'owner' && (
             <Button
               variant="destructive"
-              onClick={() => setShowDeleteModal(true)}
+              onClick={openDeleteModal}
               title="Excluir Lista"
               className="flex-1 md:flex-none"
             >
@@ -378,10 +421,8 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
                <Button
                  variant="destructive"
                  size="icon"
-                 onClick={(e) => {
-                   e.preventDefault();
-                   handleRemoveItem(item.id);
-                 }}
+                 data-item-id={item.id}
+                 onClick={handleRemoveItemButtonClick}
                  className="absolute top-2 right-2 h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
                  title="Remover item"
                >
@@ -410,10 +451,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
 
       <DeleteConfirmationModal
         isOpen={!!memberToRemove}
-        onClose={() => {
-          if (isRemovingMember) return;
-          setMemberToRemove(null);
-        }}
+        onClose={handleMemberModalClose}
         onConfirm={() => {
           void handleRemoveMember();
         }}
