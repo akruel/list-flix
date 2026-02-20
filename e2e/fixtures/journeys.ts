@@ -34,6 +34,7 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
       SCENARIO_IDS.SEARCH_QUERY_RESULTS,
       SCENARIO_IDS.SEARCH_RESULT_OPENS_DETAILS,
       SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA,
+      SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK,
       SCENARIO_IDS.DETAILS_VALID_RENDER,
     ],
     touchedPaths: ['/auth', '/', '/search', '/shared', '/details/$type/$id'],
@@ -68,6 +69,7 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
     objective: 'Criar lista manual pela UI e abrir detalhes da lista',
     blocking: true,
     requiredScenarioIds: [
+      SCENARIO_IDS.LISTS_INDEX_RENDER,
       SCENARIO_IDS.LIST_MANUAL_CREATE_OPEN_FORM,
       SCENARIO_IDS.LIST_MANUAL_CREATE_SUBMIT_SUCCESS,
     ],
@@ -94,6 +96,7 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
       SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK,
       SCENARIO_IDS.LIST_SHARE_COPY_VIEWER_LINK,
       SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN,
+      SCENARIO_IDS.LISTS_JOIN_EDITOR_FLOW,
       SCENARIO_IDS.LISTS_JOIN_VIEWER_READ_ONLY,
     ],
     touchedPaths: ['/auth', '/lists/', '/lists/$id', '/lists/$id/join'],

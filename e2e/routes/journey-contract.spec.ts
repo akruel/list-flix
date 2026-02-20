@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { expect, test } from '../fixtures/test'
 import { journeyCoverageManifest } from '../fixtures/journeys'
+import { SCENARIO_IDS } from '../fixtures/routes'
 
 function walkFilesRecursively(rootDir: string): string[] {
   const entries = fs.readdirSync(rootDir, { withFileTypes: true })
@@ -100,6 +101,21 @@ test('JOURNEY_CONTRACT_SCENARIOS: required scenarios must exist and cannot be sk
 
   expect(missingScenarioIds).toEqual([])
   expect(requiredButSkipped).toEqual([])
+})
+
+test('JOURNEY_CONTRACT_SCENARIO_COVERAGE: all SCENARIO_IDS must belong to journeys and vice-versa', () => {
+  const declaredScenarioIds = Object.keys(SCENARIO_IDS).sort()
+  const journeyScenarioIds = Array.from(
+    new Set(journeyCoverageManifest.flatMap((journey) => journey.requiredScenarioIds)),
+  ).sort() as string[]
+
+  const missingInJourneys = declaredScenarioIds.filter((scenarioId) => !journeyScenarioIds.includes(scenarioId))
+  const unknownJourneyScenarioIds = journeyScenarioIds.filter(
+    (scenarioId) => !declaredScenarioIds.includes(scenarioId),
+  )
+
+  expect(missingInJourneys).toEqual([])
+  expect(unknownJourneyScenarioIds).toEqual([])
 })
 
 test('JOURNEY_CONTRACT_PATHS: all public paths and NOT_FOUND must belong to journeys', () => {

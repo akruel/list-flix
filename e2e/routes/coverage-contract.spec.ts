@@ -61,6 +61,12 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     expectation: 'render',
   },
   {
+    routePath: '/shared',
+    routeFile: 'src/routes/_protected/shared/route.tsx',
+    scenarioId: SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK,
+    expectation: 'render',
+  },
+  {
     routePath: '/details/$type/$id',
     routeFile: 'src/routes/_protected/details/$type/$id.tsx',
     scenarioId: SCENARIO_IDS.DETAILS_VALID_RENDER,
@@ -97,6 +103,42 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     expectation: 'render',
   },
   {
+    routePath: '/lists/',
+    routeFile: 'src/routes/_protected/lists/index.tsx',
+    scenarioId: SCENARIO_IDS.LIST_MANUAL_CREATE_OPEN_FORM,
+    expectation: 'render',
+  },
+  {
+    routePath: '/lists/',
+    routeFile: 'src/routes/_protected/lists/index.tsx',
+    scenarioId: SCENARIO_IDS.LIST_SMART_OPEN_MODAL,
+    expectation: 'render',
+  },
+  {
+    routePath: '/lists/',
+    routeFile: 'src/routes/_protected/lists/index.tsx',
+    scenarioId: SCENARIO_IDS.LIST_SMART_SUGGEST_RESULTS,
+    expectation: 'render',
+  },
+  {
+    routePath: '/lists/$id',
+    routeFile: 'src/routes/_protected/lists/$id.tsx',
+    scenarioId: SCENARIO_IDS.LIST_MANUAL_CREATE_SUBMIT_SUCCESS,
+    expectation: 'render',
+  },
+  {
+    routePath: '/lists/$id',
+    routeFile: 'src/routes/_protected/lists/$id.tsx',
+    scenarioId: SCENARIO_IDS.LIST_SMART_SAVE_SUCCESS,
+    expectation: 'render',
+  },
+  {
+    routePath: '/lists/$id',
+    routeFile: 'src/routes/_protected/lists/$id.tsx',
+    scenarioId: SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK,
+    expectation: 'render',
+  },
+  {
     routePath: '/lists/$id',
     routeFile: 'src/routes/_protected/lists/$id.tsx',
     scenarioId: SCENARIO_IDS.LISTS_JOIN_EDITOR_FLOW,
@@ -112,6 +154,12 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     routePath: '/lists/$id',
     routeFile: 'src/routes/_protected/lists/$id.tsx',
     scenarioId: SCENARIO_IDS.LISTS_JOIN_VIEWER_READ_ONLY,
+    expectation: 'render',
+  },
+  {
+    routePath: '/lists/$id/join',
+    routeFile: 'src/routes/_protected/lists/$id.join.tsx',
+    scenarioId: SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN,
     expectation: 'render',
   },
   {
@@ -170,15 +218,26 @@ function getPublicPathsFromRouteTree(repoRoot: string): string[] {
   return Array.from(fullPathsBlock[1].matchAll(/'([^']+)'/g), (match) => match[1]).sort()
 }
 
-function getScenarioSpecSource(repoRoot: string): string {
+function getRouteSpecFiles(repoRoot: string): string[] {
   const specsDir = path.join(repoRoot, 'e2e', 'routes')
 
-  const specFiles = walkFilesRecursively(specsDir)
+  return walkFilesRecursively(specsDir)
     .filter((filePath) => filePath.endsWith('.spec.ts'))
     .filter((filePath) => !filePath.endsWith('coverage-contract.spec.ts'))
     .filter((filePath) => !filePath.endsWith('journey-contract.spec.ts'))
+}
 
-  return specFiles.map((filePath) => fs.readFileSync(filePath, 'utf8')).join('\n')
+function extractScenarioIds(specSources: string[]): Set<string> {
+  const ids = new Set<string>()
+  const scenarioRegex = /SCENARIO_IDS\.([A-Z0-9_]+)/g
+
+  for (const source of specSources) {
+    for (const match of source.matchAll(scenarioRegex)) {
+      ids.add(match[1])
+    }
+  }
+
+  return ids
 }
 
 test('ROUTE_MANIFEST_FILES: every route file in manifest exists', () => {
@@ -209,11 +268,25 @@ test('ROUTE_PATH_CONTRACT: every public routeTree path and NOT_FOUND are represe
   expect(missingPublicPaths).toEqual([])
 })
 
-test('ROUTE_SCENARIO_MAPPING: manifest scenario IDs exist in route specs', () => {
+test('ROUTE_SCENARIO_MAPPING: route specs, manifest and SCENARIO_IDS stay in sync', () => {
   const repoRoot = process.cwd()
-  const source = getScenarioSpecSource(repoRoot)
-  const scenarioIds = Array.from(new Set(routeCoverageManifest.map((entry) => entry.scenarioId))).sort()
-  const missingScenarioIds = scenarioIds.filter((scenarioId) => !source.includes(scenarioId))
+  const specFiles = getRouteSpecFiles(repoRoot)
+  const specSources = specFiles.map((filePath) => fs.readFileSync(filePath, 'utf8'))
+  const specScenarioIds = extractScenarioIds(specSources)
+  const manifestScenarioIds = new Set<string>(routeCoverageManifest.map((entry) => entry.scenarioId))
+  const declaredScenarioIds = new Set<string>(Object.keys(SCENARIO_IDS))
 
-  expect(missingScenarioIds).toEqual([])
+  const unknownScenarioIdsInSpecs = Array.from(specScenarioIds)
+    .filter((scenarioId) => !declaredScenarioIds.has(scenarioId))
+    .sort()
+  const missingInManifest = Array.from(specScenarioIds)
+    .filter((scenarioId) => !manifestScenarioIds.has(scenarioId))
+    .sort()
+  const missingInSpecs = Array.from(manifestScenarioIds)
+    .filter((scenarioId) => !specScenarioIds.has(scenarioId))
+    .sort()
+
+  expect(unknownScenarioIdsInSpecs).toEqual([])
+  expect(missingInManifest).toEqual([])
+  expect(missingInSpecs).toEqual([])
 })
