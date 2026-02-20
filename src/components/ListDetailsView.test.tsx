@@ -13,7 +13,9 @@ const mocks = vi.hoisted(() => ({
   removeListItem: vi.fn(),
   deleteList: vi.fn(),
   removeListMember: vi.fn(),
-  getShareUrl: vi.fn(() => 'https://listflix.local/lists/list-1/join?role=viewer'),
+  getShareUrl: vi.fn<(listId: string, role: 'editor' | 'viewer') => string>(() =>
+    'https://listflix.local/lists/list-1/join?role=viewer',
+  ),
   tmdbGetDetails: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -571,9 +573,9 @@ describe('ListDetailsView', () => {
   })
 
   it('keeps member modal open when close is clicked during removal', async () => {
-    let resolveRemoval: (() => void) | null = null
+    let resolveRemoval: () => void = () => {}
     const pendingRemoval = new Promise<void>((resolve) => {
-      resolveRemoval = resolve
+      resolveRemoval = () => resolve()
     })
 
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }))
@@ -589,7 +591,7 @@ describe('ListDetailsView', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Fechar modal' }))
     expect(screen.getByTestId('modal-Remover membro')).toBeInTheDocument()
 
-    resolveRemoval?.()
+    resolveRemoval()
 
     await waitFor(() => {
       expect(screen.queryByTestId('modal-Remover membro')).not.toBeInTheDocument()

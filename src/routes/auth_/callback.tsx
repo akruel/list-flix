@@ -99,7 +99,7 @@ function AuthCallbackRouteComponent() {
 
   if (state === 'error') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background px-4">
+      <div data-testid="route-auth-callback" className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md text-center space-y-4">
           <h1 className="text-2xl font-bold text-foreground">Falha no login</h1>
           <p className="text-sm text-muted-foreground">{errorMessage}</p>
@@ -113,7 +113,7 @@ function AuthCallbackRouteComponent() {
 
   return (
     <>
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div data-testid="route-auth-callback" className="min-h-screen flex items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Finalizando autenticação...</p>

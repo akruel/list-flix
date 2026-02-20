@@ -87,7 +87,7 @@ function AuthRouteComponent() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
+    <div data-testid="route-auth" className="min-h-screen flex items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md border-border bg-card">
         <CardHeader className="space-y-2 text-center">
           <CardTitle className="text-2xl font-bold">Entrar no ListFlix</CardTitle>

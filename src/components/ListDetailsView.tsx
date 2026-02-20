@@ -251,7 +251,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   const canEdit = list.role === 'owner' || list.role === 'editor';
 
   return (
-    <div className="animate-in fade-in duration-300">
+    <div data-testid="route-list-details" className="animate-in fade-in duration-300">
       <div className="flex flex-col md:flex-row md:items-start gap-4 mb-8">
         <div className="flex items-start gap-4 w-full md:w-auto flex-1">
           <Button
@@ -369,20 +369,31 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         <div className="flex items-center gap-2 w-full md:w-auto pl-[3.25rem] md:pl-0 mt-2 md:mt-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button className="bg-purple-600 hover:bg-purple-700 text-white flex-1 md:flex-none">
+              <Button
+                data-testid="list-details-share-trigger"
+                className="bg-purple-600 hover:bg-purple-700 text-white flex-1 md:flex-none"
+              >
                 {copied ? <Check className="mr-2 h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />}
                 {copied ? 'Copiado!' : 'Compartilhar'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuItem onClick={handleEditorShareClick} className="gap-3 py-3 cursor-pointer">
+              <DropdownMenuItem
+                data-testid="list-details-share-editor"
+                onClick={handleEditorShareClick}
+                className="gap-3 py-3 cursor-pointer"
+              >
                 <span className="text-xl">✏️</span>
                 <div>
                   <div className="font-medium">Compartilhar como Editor</div>
                   <div className="text-xs text-muted-foreground">Poderá adicionar e remover itens</div>
                 </div>
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleViewerShareClick} className="gap-3 py-3 cursor-pointer">
+              <DropdownMenuItem
+                data-testid="list-details-share-viewer"
+                onClick={handleViewerShareClick}
+                className="gap-3 py-3 cursor-pointer"
+              >
                 <span className="text-xl">👁️</span>
                 <div>
                   <div className="font-medium">Compartilhar como Visualizador</div>

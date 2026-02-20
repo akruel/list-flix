@@ -85,24 +85,30 @@ export function CustomLists() {
   };
 
   return (
-    <div>
+    <div data-testid="custom-lists">
       <div className="flex justify-between items-center mb-8">
         <h2 className="text-2xl font-bold text-white">Listas Personalizadas</h2>
         
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button>
+            <Button data-testid="custom-lists-new-list-trigger">
               <Plus className="mr-2 h-4 w-4" />
               Nova Lista
               <ChevronDown className="ml-2 h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
-            <DropdownMenuItem onClick={() => setIsCreating(true)}>
+            <DropdownMenuItem
+              data-testid="custom-lists-option-manual"
+              onClick={() => setIsCreating(true)}
+            >
               <Plus className="mr-2 h-4 w-4" />
               Lista Manual
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsMagicModalOpen(true)}>
+            <DropdownMenuItem
+              data-testid="custom-lists-option-smart"
+              onClick={() => setIsMagicModalOpen(true)}
+            >
               <Sparkles className="mr-2 h-4 w-4 text-yellow-400" />
               Lista Inteligente
             </DropdownMenuItem>
@@ -115,6 +121,7 @@ export function CustomLists() {
           <CardContent className="pt-6">
             <form onSubmit={handleCreate} className="flex gap-4">
               <Input
+                data-testid="custom-lists-manual-name-input"
                 type="text"
                 value={newListName}
                 onChange={(e) => setNewListName(e.target.value)}
@@ -122,10 +129,11 @@ export function CustomLists() {
                 className="flex-1"
                 autoFocus
               />
-              <Button type="submit">
+              <Button type="submit" data-testid="custom-lists-manual-submit">
                 Criar
               </Button>
               <Button
+                data-testid="custom-lists-manual-cancel"
                 type="button"
                 variant="ghost"
                 onClick={() => setIsCreating(false)}
@@ -143,6 +151,7 @@ export function CustomLists() {
             key={list.id}
             to="/lists/$id"
             params={{ id: list.id }}
+            data-testid="custom-lists-card-link"
             className="block h-full"
           >
             <Card className="h-full hover:bg-accent/50 transition-colors group relative border-border bg-card">

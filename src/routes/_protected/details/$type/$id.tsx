@@ -100,7 +100,7 @@ function DetailsRouteComponent() {
   const buy = providers?.buy || []
 
   return (
-    <div className="pb-10">
+    <div data-testid="route-details" className="pb-10">
       <div className="relative h-[40vh] md:h-[60vh] w-full">
         <div className="absolute inset-0">
           <img
@@ -150,6 +150,7 @@ function DetailsRouteComponent() {
         <div className="space-y-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
+              data-testid="details-add-button"
               onClick={handleToggleList}
               className={`py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
                 isSaved
@@ -161,6 +162,7 @@ function DetailsRouteComponent() {
               {isSaved ? 'Salvo' : 'Adicionar'}
             </button>
             <button
+              data-testid="details-toggle-watched-button"
               onClick={handleToggleWatched}
               className={`py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors ${
                 watched

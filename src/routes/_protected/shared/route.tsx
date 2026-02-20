@@ -61,7 +61,7 @@ function SharedRouteComponent() {
 
   if (loading) {
     return (
-      <div>
+      <div data-testid="route-shared">
         <h1 className="text-3xl font-bold mb-6">Lista Compartilhada</h1>
         <ContentGridSkeleton />
       </div>
@@ -70,14 +70,14 @@ function SharedRouteComponent() {
 
   if (error) {
     return (
-      <div className="text-center py-20 text-red-400">
+      <div data-testid="route-shared" className="text-center py-20 text-red-400">
         <p className="text-xl">{error}</p>
       </div>
     )
   }
 
   return (
-    <div>
+    <div data-testid="route-shared">
       <h1 className="text-3xl font-bold mb-6">Lista Compartilhada</h1>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {items.map((item) => (

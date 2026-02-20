@@ -46,10 +46,11 @@ function SearchRouteComponent() {
   }, [debouncedQuery])
 
   return (
-    <div>
+    <div data-testid="route-search">
       <div className="relative mb-8">
         <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
         <input
+          data-testid="search-input"
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}

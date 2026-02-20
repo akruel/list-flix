@@ -120,6 +120,7 @@ function JoinListRouteComponent() {
   return (
     <Dialog open={true} onOpenChange={handleDialogChange}>
       <DialogContent
+        data-testid="route-list-join"
         className="w-full max-w-md bg-card text-card-foreground"
         hideClose={isBlockingClose}
         onEscapeKeyDown={(event) => {

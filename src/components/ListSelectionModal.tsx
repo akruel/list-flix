@@ -93,6 +93,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({ isOpen, 
             <div className="space-y-1">
               {/* Default List */}
               <Button
+                data-testid="list-selection-default"
                 variant="ghost"
                 onClick={handleToggleDefaultList}
                 className="w-full justify-between h-auto py-3 px-3 hover:bg-gray-800"
@@ -154,6 +155,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({ isOpen, 
         
         <div className="pt-4 border-t border-gray-800">
           <Button 
+            data-testid="list-selection-done"
             onClick={onClose}
             className="w-full bg-purple-600 hover:bg-purple-700 text-white"
           >

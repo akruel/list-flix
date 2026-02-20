@@ -4,8 +4,8 @@ const baseURL = process.env.PLAYWRIGHT_TEST_BASE_URL ?? 'http://127.0.0.1:4173'
 
 export default defineConfig({
   testDir: './e2e',
-  workers: 1,
-  fullyParallel: false,
+  workers: process.env.CI ? 4 : 4,
+  fullyParallel: true,
   retries: process.env.CI ? 2 : 0,
   reporter: [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
@@ -23,6 +23,7 @@ export default defineConfig({
       VITE_SUPABASE_URL: process.env.VITE_SUPABASE_URL ?? 'http://127.0.0.1:54321',
       VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? '',
       VITE_TMDB_ACCESS_TOKEN: process.env.VITE_TMDB_ACCESS_TOKEN ?? 'test-token',
+      VITE_GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY ?? 'test-gemini-key',
     },
   },
   projects: [

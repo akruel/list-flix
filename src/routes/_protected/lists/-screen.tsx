@@ -43,13 +43,14 @@ export function MyListScreen({ listId }: MyListScreenProps) {
   })
 
   return (
-    <div>
+    <div data-testid="route-lists-screen">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl md:text-3xl font-bold">Minhas Listas</h1>
       </div>
 
       <div className="flex gap-4 mb-8 border-b border-gray-800 pb-1">
         <button
+          data-testid="lists-tab-watchlist"
           onClick={() => handleTabChange('watchlist')}
           className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
             activeTab === 'watchlist'
@@ -66,6 +67,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
           )}
         </button>
         <button
+          data-testid="lists-tab-custom"
           onClick={() => handleTabChange('custom')}
           className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
             activeTab === 'custom'
@@ -88,6 +90,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
           <div className="flex justify-between items-center mb-6">
             <div className="flex flex-wrap gap-2">
               <button
+                data-testid="lists-filter-all"
                 onClick={() => setFilter('all')}
                 className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
                   filter === 'all'
@@ -99,6 +102,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
                 Todos ({myList.length})
               </button>
               <button
+                data-testid="lists-filter-watched"
                 onClick={() => setFilter('watched')}
                 className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
                   filter === 'watched'
@@ -110,6 +114,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
                 Assistidos ({myList.filter((item) => isWatched(item.id)).length})
               </button>
               <button
+                data-testid="lists-filter-unwatched"
                 onClick={() => setFilter('unwatched')}
                 className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
                   filter === 'unwatched'

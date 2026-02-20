@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { MovieCard } from './MovieCard'
+import type { ContentItem } from '../types'
 
 const mocks = vi.hoisted(() => ({
   isWatched: vi.fn(),
@@ -53,7 +54,12 @@ describe('MovieCard', () => {
     mocks.getImageUrl.mockReturnValue('https://img.local/poster.jpg')
   })
 
-  it.each([
+  const metadataCases: Array<{
+    caseName: string
+    item: ContentItem
+    expectedTitle: string
+    expectedYear: string
+  }> = [
     {
       caseName: 'movie metadata',
       item: {
@@ -78,7 +84,9 @@ describe('MovieCard', () => {
       expectedTitle: 'Series One',
       expectedYear: '2019',
     },
-  ])('renders $caseName', ({ item, expectedTitle, expectedYear }) => {
+  ]
+
+  it.each(metadataCases)('renders $caseName', ({ item, expectedTitle, expectedYear }) => {
     render(<MovieCard item={item} />)
 
     expect(screen.getByText(expectedTitle)).toBeInTheDocument()

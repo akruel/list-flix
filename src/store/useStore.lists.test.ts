@@ -328,6 +328,7 @@ describe('useStore shared lists actions', () => {
         1: {
           100: { season_number: 1, episode_number: 1 },
           200: { season_number: 2, episode_number: 1 },
+          300: { season_number: 3, episode_number: 1 },
         },
       },
       seasonNumber: 1,

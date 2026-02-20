@@ -98,7 +98,10 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 bg-gray-900 border-gray-800">
+      <DialogContent
+        data-testid="magic-list-modal"
+        className="max-w-4xl max-h-[90vh] flex flex-col p-0 gap-0 bg-gray-900 border-gray-800"
+      >
         <DialogHeader className="p-6 border-b border-gray-800">
           <DialogTitle className="flex items-center gap-2 text-xl font-bold text-white">
             <Sparkles className="h-6 w-6 text-primary" />
@@ -114,6 +117,7 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
               </p>
               <form onSubmit={handleSuggest} className="w-full max-w-lg space-y-4">
                 <Textarea
+                  data-testid="magic-list-prompt-input"
                   value={prompt}
                   onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setPrompt(e.target.value)}
                   placeholder="Ex: Filmes de suspense para assistir no final de semana..."
@@ -121,6 +125,7 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
                   autoFocus
                 />
                 <Button
+                  data-testid="magic-list-suggest-button"
                   type="submit"
                   disabled={isLoading || !prompt.trim()}
                   className="w-full"
@@ -147,6 +152,7 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
                   <div className="flex-1 w-full space-y-2">
                     <label className="text-sm text-gray-400">Nome da Lista</label>
                     <Input
+                      data-testid="magic-list-name-input"
                       type="text"
                       value={suggestedName}
                       onChange={(e) => setSuggestedName(e.target.value)}
@@ -154,6 +160,7 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
                     />
                   </div>
                   <Button
+                    data-testid="magic-list-save-button"
                     onClick={handleSave}
                     disabled={isLoading}
                     className="whitespace-nowrap"
@@ -165,7 +172,7 @@ export function MagicSearchModal({ isOpen, onClose, onSaveList }: MagicSearchMod
               </div>
 
               <ScrollArea className="flex-1 p-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div data-testid="magic-list-results-grid" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {results.map((item) => (
                     <MovieCard key={item.id} item={item} />
                   ))}
