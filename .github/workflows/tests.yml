@@ -10,9 +10,13 @@ on:
 permissions:
   contents: read
 
+env:
+  CI: true
+
 jobs:
   unit-ui:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -39,6 +43,7 @@ jobs:
 
   rls:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
       - name: Checkout
@@ -52,15 +57,40 @@ jobs:
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
+        with:
+          version: 2.58.5
+
+      - name: Print Supabase CLI version
+        run: |
+          which supabase
+          supabase --version
+
+      - name: Assert Supabase CLI version
+        run: |
+          EXPECTED="2.58.5"
+          ACTUAL="$(supabase --version | sed -E 's/[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+          echo "Using Supabase CLI $ACTUAL (expected $EXPECTED)"
+          test "$ACTUAL" = "$EXPECTED"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify Docker
+        run: docker info
 
       - name: Run RLS tests
         run: npm run test:rls
 
+      - name: Debug Supabase on failure
+        if: failure()
+        run: |
+          supabase status || true
+          docker ps -a || true
+          docker logs supabase_db_list-flix --tail 200 || true
+
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
@@ -74,15 +104,40 @@ jobs:
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
+        with:
+          version: 2.58.5
+
+      - name: Print Supabase CLI version
+        run: |
+          which supabase
+          supabase --version
+
+      - name: Assert Supabase CLI version
+        run: |
+          EXPECTED="2.58.5"
+          ACTUAL="$(supabase --version | sed -E 's/[^0-9]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')"
+          echo "Using Supabase CLI $ACTUAL (expected $EXPECTED)"
+          test "$ACTUAL" = "$EXPECTED"
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify Docker
+        run: docker info
 
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
       - name: Run E2E tests
         run: npm run test:e2e
+
+      - name: Upload Playwright test-results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+          if-no-files-found: ignore
 
       - name: Upload Playwright report
         if: always()
