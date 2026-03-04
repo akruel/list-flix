@@ -29,3 +29,6 @@ test-results
 
 # Environments
 .env
+
+# AI
+.agents/
