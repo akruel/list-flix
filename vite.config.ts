@@ -1,13 +1,13 @@
 import path from "path"
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { TanStackRouterVite } from '@tanstack/router-plugin/vite'
+import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    TanStackRouterVite({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
@@ -80,11 +80,18 @@ export default defineConfig({
       output: {
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined
-          if (id.includes('react') || id.includes('scheduler')) return 'react-vendor'
-          if (id.includes('@tanstack/react-router')) return 'router-vendor'
-          if (id.includes('@supabase')) return 'supabase-vendor'
-          if (id.includes('@radix-ui')) return 'radix-vendor'
-          if (id.includes('lucide-react')) return 'icons-vendor'
+
+          // Keep React itself isolated without accidentally matching packages like
+          // @tanstack/react-router or @radix-ui/react-*.
+          if (id.includes('/node_modules/react/')) return 'react-vendor'
+          if (id.includes('/node_modules/react-dom/')) return 'react-vendor'
+          if (id.includes('/node_modules/scheduler/')) return 'react-vendor'
+
+          if (id.includes('/node_modules/@tanstack/')) return 'router-vendor'
+          if (id.includes('/node_modules/@supabase/')) return 'supabase-vendor'
+          if (id.includes('/node_modules/@radix-ui/')) return 'radix-vendor'
+          if (id.includes('/node_modules/lucide-react/')) return 'icons-vendor'
+
           return 'vendor'
         },
       },
