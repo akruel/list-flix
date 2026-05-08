@@ -42,6 +42,28 @@ Always run `lint -> typecheck -> knip -> test` before submitting.
 - E2E tests clean DB automatically before each run
 - CI uses Supabase CLI v2.58.5
 
+## Commit Message Convention
+
+Follow the project pattern (Conventional Commits):
+
+```
+<type>: <description>
+```
+
+**Types**: `fix`, `feat`, `refactor`, `chore`, `docs`, `test`, `style`, `perf`
+
+**Rules**:
+- Description in English, starting with capital letter
+- Use imperative mood ("Add" not "Added", "Remove" not "Removed")
+- Be concise and describe the "why" rather than "what"
+- Keep under 72 characters when possible
+
+**Examples from the project**:
+- `fix: Remove deprecated baseUrl and fix security vulnerabilities`
+- `feat: Add linters and formatter for AI-assisted development robustness`
+- `refactor: Add Knip and clean up dead code`
+- `chore: Ignore routeTree.gen.ts in Prettier`
+
 ## Existing Agent Rules
 
 See `.agent/rules/code-style-guide.md` for additional context (triggered always).
