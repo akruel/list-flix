@@ -57,8 +57,8 @@ function SearchRouteComponent() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar filmes ou séries..."
-           className="w-full rounded-xl bg-gray-800 py-4 pl-12 pr-4 text-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-         />
+          className="w-full rounded-xl bg-gray-800 py-4 pl-12 pr-4 text-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+        />
       </div>
 
       {loading ? (

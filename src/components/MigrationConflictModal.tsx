@@ -41,39 +41,39 @@ export function MigrationConflictModal({
           </DialogDescription>
         </DialogHeader>
 
-         <div className="grid gap-4 py-4">
-           <div
-             className="cursor-pointer rounded-md border bg-muted/50 p-4 hover:border-green-500"
-             onClick={onKeepLocal}
-             onKeyDown={(e) => {
-               if (e.key === "Enter" || e.key === " ") {
-                 e.preventDefault();
-                 onKeepLocal();
-               }
-             }}
-             role="button"
-             tabIndex={0}
-             aria-pressed="false"
-           >
-             <h4 className="mb-1 font-medium">Manter dados locais</h4>
-             <p className="text-sm text-muted-foreground">
-               Seus dados locais serão mesclados com os dados da sua conta.
-             </p>
-           </div>
+        <div className="grid gap-4 py-4">
+          <div
+            className="cursor-pointer rounded-md border bg-muted/50 p-4 hover:border-green-500"
+            onClick={onKeepLocal}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onKeepLocal();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed="false"
+          >
+            <h4 className="mb-1 font-medium">Manter dados locais</h4>
+            <p className="text-sm text-muted-foreground">
+              Seus dados locais serão mesclados com os dados da sua conta.
+            </p>
+          </div>
 
-           <div
-             className="cursor-pointer rounded-md border bg-muted/50 p-4 hover:border-green-500"
-             onClick={onUseAccount}
-             onKeyDown={(e) => {
-               if (e.key === "Enter" || e.key === " ") {
-                 e.preventDefault();
-                 onUseAccount();
-               }
-             }}
-             role="button"
-             tabIndex={0}
-             aria-pressed="false"
-           >
+          <div
+            className="cursor-pointer rounded-md border bg-muted/50 p-4 hover:border-green-500"
+            onClick={onUseAccount}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onUseAccount();
+              }
+            }}
+            role="button"
+            tabIndex={0}
+            aria-pressed="false"
+          >
             <h4 className="mb-1 font-medium">Usar dados da conta</h4>
             <p className="text-sm text-muted-foreground">
               Os dados locais deste dispositivo serão descartados e substituídos

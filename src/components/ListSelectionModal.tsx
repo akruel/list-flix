@@ -73,7 +73,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
         await listService.removeListItem(itemId);
         setMembership((prev) => {
           const next = Object.fromEntries(
-            Object.entries(prev).filter(([key]) => key !== listId)
+            Object.entries(prev).filter(([key]) => key !== listId),
           );
           return next;
         });

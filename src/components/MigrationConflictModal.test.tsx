@@ -121,11 +121,11 @@ describe("MigrationConflictModal", () => {
     const option = screen.getByRole("button", { name: /Usar dados da conta/i });
     fireEvent.keyDown(option, { key: " " });
 
-     expect(onUseAccount).toHaveBeenCalledOnce();
-     expect(onKeepLocal).not.toHaveBeenCalled();
-   });
+    expect(onUseAccount).toHaveBeenCalledOnce();
+    expect(onKeepLocal).not.toHaveBeenCalled();
+  });
 
-   it("does not trigger callback with other keys", () => {
+  it("does not trigger callback with other keys", () => {
     const onKeepLocal = vi.fn();
     const onUseAccount = vi.fn();
 

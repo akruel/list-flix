@@ -140,8 +140,8 @@ export function MagicSearchModal({
                     setPrompt(e.target.value)
                   }
                   placeholder="Ex: Filmes de suspense para assistir no final de semana..."
-                   className="h-32 resize-none border-gray-700 bg-gray-800 focus:border-primary"
-                 />
+                  className="h-32 resize-none border-gray-700 bg-gray-800 focus:border-primary"
+                />
                 <Button
                   data-testid="magic-list-suggest-button"
                   type="submit"
@@ -168,7 +168,10 @@ export function MagicSearchModal({
               <div className="border-b border-gray-800 bg-gray-900/50 p-6">
                 <div className="flex flex-col items-end gap-4 md:flex-row">
                   <div className="w-full flex-1 space-y-2">
-                    <label htmlFor="magic-list-name-input" className="text-sm text-gray-400">
+                    <label
+                      htmlFor="magic-list-name-input"
+                      className="text-sm text-gray-400"
+                    >
                       Nome da Lista
                     </label>
                     <Input

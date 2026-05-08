@@ -5,6 +5,7 @@
 ```bash
 npm run dev          # Start dev server
 npm run build        # Build (tsc -b && vite build)
+npm run format       # Prettier
 npm run lint         # ESLint
 npm run lint:fix     # ESLint fix
 npm run typecheck    # tsc --noEmit
@@ -19,7 +20,7 @@ npm run db:push      # Push to DB
 
 ## Test Order
 
-Always run `lint -> typecheck -> knip -> test` before submitting.
+Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 
 ## Architecture
 
@@ -53,12 +54,14 @@ Follow the project pattern (Conventional Commits):
 **Types**: `fix`, `feat`, `refactor`, `chore`, `docs`, `test`, `style`, `perf`
 
 **Rules**:
+
 - Description in English, starting with capital letter
 - Use imperative mood ("Add" not "Added", "Remove" not "Removed")
 - Be concise and describe the "why" rather than "what"
 - Keep under 72 characters when possible
 
 **Examples from the project**:
+
 - `fix: Remove deprecated baseUrl and fix security vulnerabilities`
 - `feat: Add linters and formatter for AI-assisted development robustness`
 - `refactor: Add Knip and clean up dead code`

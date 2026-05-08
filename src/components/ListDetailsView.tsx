@@ -299,8 +299,8 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
                   value={editingName}
                   onChange={(e) => setEditingName(e.target.value)}
                   onKeyDown={handleKeyDown}
-                   className="h-auto w-full px-3 py-1 text-2xl font-bold md:text-3xl"
-                 />
+                  className="h-auto w-full px-3 py-1 text-2xl font-bold md:text-3xl"
+                />
                 <div className="flex gap-2">
                   <Button
                     size="sm"

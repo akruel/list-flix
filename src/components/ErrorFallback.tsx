@@ -1,18 +1,23 @@
-import type { FallbackProps } from "react-error-boundary"
+import type { FallbackProps } from "react-error-boundary";
 
-export default function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
+export default function ErrorFallback({
+  error,
+  resetErrorBoundary,
+}: FallbackProps) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-      <h1 className="text-2xl font-bold text-destructive mb-4">Algo deu errado</h1>
-      <p className="text-muted-foreground mb-6 max-w-md">
+    <div className="flex min-h-screen flex-col items-center justify-center p-4 text-center">
+      <h1 className="mb-4 text-2xl font-bold text-destructive">
+        Algo deu errado
+      </h1>
+      <p className="mb-6 max-w-md text-muted-foreground">
         {error.message || "Ocorreu um erro inesperado. Tente novamente."}
       </p>
       <button
         onClick={resetErrorBoundary}
-        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        className="rounded-md bg-primary px-4 py-2 text-primary-foreground transition-colors hover:bg-primary/90"
       >
         Tentar novamente
       </button>
     </div>
-  )
+  );
 }
