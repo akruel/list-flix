@@ -1,0 +1,10 @@
+pre-commit:
+  commands:
+    format:
+      run: npx prettier --write .
+    lint:
+      run: npx eslint .
+    typecheck:
+      run: npx tsc --noEmit
+    knip:
+      run: npx knip
