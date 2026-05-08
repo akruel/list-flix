@@ -36,12 +36,7 @@ export default defineConfig([
     },
     rules: {
       "simple-import-sort/imports": "error",
-      "no-secrets/no-secrets": [
-        "error",
-        { ignoreContent: [/via\.placeholder\.com/, /markEpisodeAsUnwatched/] },
-      ],
       "security/detect-object-injection": "off",
-      "security/detect-possible-timing-attacks": "warn",
       "@typescript-eslint/no-dynamic-delete": "warn",
       "@typescript-eslint/no-non-null-assertion": "warn",
       ...jsxA11yRecommendedRules,
