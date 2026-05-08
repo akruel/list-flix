@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ListSelectionModal } from "@/components/ListSelectionModal";
 import { SeasonList } from "@/components/SeasonList";
 import { DetailsSkeleton } from "@/components/skeletons";
+import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 import { useStore } from "@/store/useStore";
 import type { ContentDetails, Provider } from "@/types";
@@ -56,7 +57,7 @@ function DetailsRouteComponent() {
           });
         }
       } catch (error) {
-        console.error("Error fetching details:", error);
+        logger.error("Error fetching details:", error);
       } finally {
         setLoading(false);
       }

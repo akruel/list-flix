@@ -146,6 +146,7 @@ describe("ai service", () => {
     await import("./ai");
 
     expect(consoleErrorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("[ListFlix ERROR]"),
       "VITE_GEMINI_API_KEY is missing",
     );
 

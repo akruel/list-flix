@@ -42,9 +42,9 @@ vi.mock("sonner", () => ({
 }));
 
 vi.mock("@tanstack/react-router", () => ({
-  Link: ({ children, to }: { children: ReactNode; to: string }) => (
-    <a data-to={to}>{children}</a>
-  ),
+   Link: ({ children, to }: { children: ReactNode; to: string }) => (
+     <a href="https://test.com" data-to={to}>{children}</a>
+   ),
 }));
 
 vi.mock("@/components/ui/dropdown-menu", () => ({

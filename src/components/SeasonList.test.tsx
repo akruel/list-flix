@@ -150,7 +150,7 @@ describe("SeasonList", () => {
     const seasonToggleButtons = screen.getAllByRole("button", {
       name: /Marcar como/i,
     });
-    await userEvent.click(seasonToggleButtons[0]!);
+    await userEvent.click(seasonToggleButtons[0]);
 
     expect(mocks.getSeasonDetails).not.toHaveBeenCalled();
     expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledWith(
@@ -194,7 +194,7 @@ describe("SeasonList", () => {
       const seasonToggleButtons = screen.getAllByRole("button", {
         name: /Marcar como/i,
       });
-      await userEvent.click(seasonToggleButtons[0]!);
+      await userEvent.click(seasonToggleButtons[0]);
 
       if (expectedWatchedCall) {
         await waitFor(() => {
@@ -219,7 +219,7 @@ describe("SeasonList", () => {
     const seasonToggleButtons = screen.getAllByRole("button", {
       name: /Marcar como/i,
     });
-    await userEvent.click(seasonToggleButtons[0]!);
+    await userEvent.click(seasonToggleButtons[0]);
 
     await waitFor(() => {
       expect(mocks.toastError).toHaveBeenCalledWith(

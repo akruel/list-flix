@@ -78,10 +78,14 @@ describe("userContentService", () => {
               ? { data: [{ tmdb_id: 20 }] }
               : { data: [{ tmdb_episode_id: 1001 }] },
         ),
-      insert: vi.fn().mockImplementation((payload: unknown[]) => {
-        inserts[table] = payload;
-        return Promise.resolve({ error: null });
-      }),
+        insert: vi.fn().mockImplementation((payload: unknown[]) => {
+         if (Object.hasOwn(inserts, table)) {
+           inserts[table] = payload;
+         } else {
+           inserts[table as keyof typeof inserts] = payload as never;
+         }
+         return Promise.resolve({ error: null });
+       }),
     }));
 
     await userContentService.syncLocalData(
@@ -290,6 +294,7 @@ describe("userContentService", () => {
       } else {
         await new Promise((resolve) => setTimeout(resolve, 0));
         expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining("[ListFlix INFO]"),
           "Self-healed 1 watchlist items",
         );
       }

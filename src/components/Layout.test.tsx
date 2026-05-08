@@ -18,7 +18,7 @@ vi.mock("@tanstack/react-router", () => ({
     className?: string;
     children: ReactNode;
   }) => (
-    <a data-to={to} className={className}>
+    <a href="https://test.com" data-to={to} className={className}>
       {children}
     </a>
   ),

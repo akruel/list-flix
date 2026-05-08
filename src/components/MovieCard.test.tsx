@@ -22,7 +22,7 @@ vi.mock("@tanstack/react-router", () => ({
     to: string;
     params: Record<string, string>;
   }) => (
-    <a data-to={to} data-params={JSON.stringify(params)}>
+    <a href="https://test.com" data-to={to} data-params={JSON.stringify(params)}>
       {children}
     </a>
   ),

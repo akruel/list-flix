@@ -54,6 +54,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const profile = await authService.getUserProfile();
 
+    // eslint-disable-next-line security/detect-possible-timing-attacks
     if (token !== updateTokenRef.current) {
       return;
     }

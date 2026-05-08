@@ -90,7 +90,7 @@ describe("LoginOptionsDialog", () => {
     expect(screen.getByPlaceholderText("seu@email.com")).toBeInTheDocument();
 
     const buttons = screen.getAllByRole("button");
-    await userEvent.click(buttons[buttons.length - 1]!);
+    await userEvent.click(buttons[buttons.length - 1]);
     expect(
       screen.queryByPlaceholderText("seu@email.com"),
     ).not.toBeInTheDocument();

@@ -121,8 +121,10 @@ export const useStore = create<ListStore>()(
         episodeNumber,
       ) => {
         set((state) => {
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
-          if (currentShowEpisodes[episodeId]) return state;
+          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+            ? state.watchedEpisodes[showId]
+            : {};
+          if (Object.hasOwn(currentShowEpisodes, episodeId)) return state;
 
           userContentService.markAsWatched(episodeId, "episode", {
             show_id: showId,
@@ -147,11 +149,14 @@ export const useStore = create<ListStore>()(
 
       markEpisodeAsUnwatched: (showId, episodeId) => {
         set((state) => {
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+            ? state.watchedEpisodes[showId]
+            : {};
           userContentService.markAsUnwatched(episodeId);
 
-          const remainingEpisodes = { ...currentShowEpisodes };
-          delete remainingEpisodes[episodeId];
+          const remainingEpisodes = Object.fromEntries(
+            Object.entries(currentShowEpisodes).filter(([key]) => key !== String(episodeId))
+          );
 
           return {
             watchedEpisodes: {
@@ -170,7 +175,9 @@ export const useStore = create<ListStore>()(
             episodes,
           );
 
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+            ? state.watchedEpisodes[showId]
+            : {};
           const newEpisodes = { ...currentShowEpisodes };
 
           episodes.forEach((ep) => {
@@ -193,20 +200,21 @@ export const useStore = create<ListStore>()(
         set((state) => {
           userContentService.markSeasonAsUnwatched(showId, seasonNumber);
 
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
-          const remainingEpisodes = { ...currentShowEpisodes };
+          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+            ? state.watchedEpisodes[showId]
+            : {};
 
           // Remove all episodes that belong to this season
-          Object.entries(remainingEpisodes).forEach(([epId, meta]) => {
-            if (meta.season_number === seasonNumber) {
-              delete remainingEpisodes[Number(epId)];
-            }
-          });
+          const remaining = Object.fromEntries(
+            Object.entries(currentShowEpisodes).filter(
+              ([, meta]) => meta.season_number !== seasonNumber,
+            ),
+          );
 
           return {
             watchedEpisodes: {
               ...state.watchedEpisodes,
-              [showId]: remainingEpisodes,
+              [showId]: remaining,
             },
           };
         });

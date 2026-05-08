@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
 import { authService } from "@/services/auth";
 import { listService } from "@/services/listService";
 
@@ -65,7 +66,7 @@ function JoinListRouteComponent() {
 
         setStatus("input");
       } catch (err) {
-        console.error(err);
+        logger.error(err);
         setStatus("error");
         setError("Não foi possível carregar os detalhes da lista.");
       }
@@ -94,7 +95,7 @@ function JoinListRouteComponent() {
         navigate({ to: "/lists/$id", params: { id } });
       }, 1500);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       setStatus("error");
       setError("Não foi possível entrar na lista.");
     }
