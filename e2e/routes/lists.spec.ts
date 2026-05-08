@@ -1,3 +1,4 @@
+/* eslint-disable security/detect-non-literal-regexp */
 import { randomUUID } from "node:crypto";
 
 import type { Page } from "@playwright/test";

@@ -121,7 +121,10 @@ export const useStore = create<ListStore>()(
         episodeNumber,
       ) => {
         set((state) => {
-          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
             ? state.watchedEpisodes[showId]
             : {};
           if (Object.hasOwn(currentShowEpisodes, episodeId)) return state;
@@ -149,13 +152,18 @@ export const useStore = create<ListStore>()(
 
       markEpisodeAsUnwatched: (showId, episodeId) => {
         set((state) => {
-          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
             ? state.watchedEpisodes[showId]
             : {};
           userContentService.markAsUnwatched(episodeId);
 
           const remainingEpisodes = Object.fromEntries(
-            Object.entries(currentShowEpisodes).filter(([key]) => key !== String(episodeId))
+            Object.entries(currentShowEpisodes).filter(
+              ([key]) => key !== String(episodeId),
+            ),
           );
 
           return {
@@ -175,7 +183,10 @@ export const useStore = create<ListStore>()(
             episodes,
           );
 
-          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
             ? state.watchedEpisodes[showId]
             : {};
           const newEpisodes = { ...currentShowEpisodes };
@@ -200,7 +211,10 @@ export const useStore = create<ListStore>()(
         set((state) => {
           userContentService.markSeasonAsUnwatched(showId, seasonNumber);
 
-          const currentShowEpisodes = Object.hasOwn(state.watchedEpisodes, showId)
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
             ? state.watchedEpisodes[showId]
             : {};
 
