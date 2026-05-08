@@ -1,37 +1,45 @@
-import { Link, Outlet, useLocation } from '@tanstack/react-router';
-import { Home, Search, List } from 'lucide-react';
-import clsx from 'clsx';
-import { LoginButton } from './LoginButton';
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
+import clsx from "clsx";
+import { Home, List, Search } from "lucide-react";
+
+import { LoginButton } from "./LoginButton";
 
 export const Layout: React.FC = () => {
   const location = useLocation();
 
   const navItems = [
-    { icon: Home, label: 'Início', path: '/' },
-    { icon: Search, label: 'Buscar', path: '/search' },
-    { icon: List, label: 'Minhas Listas', path: '/lists' },
+    { icon: Home, label: "Início", path: "/" },
+    { icon: Search, label: "Buscar", path: "/search" },
+    { icon: List, label: "Minhas Listas", path: "/lists" },
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20 md:pb-0">
-      <header className="bg-background/80 backdrop-blur-md sticky top-0 z-50 border-b border-border">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-background pb-20 text-foreground md:pb-0">
+      <header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-md">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Link
+            to="/"
+            className="bg-gradient-to-r from-purple-500 to-pink-500 bg-clip-text text-2xl font-bold text-transparent"
+          >
             ListFlix
           </Link>
-          <nav className="hidden md:flex gap-6">
+          <nav className="hidden gap-6 md:flex">
             {navItems.map((item) => {
-              const isActive = item.path === '/' 
-                ? location.pathname === '/' 
-                : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
-              
+              const isActive =
+                item.path === "/"
+                  ? location.pathname === "/"
+                  : location.pathname === item.path ||
+                    location.pathname.startsWith(`${item.path}/`);
+
               return (
-                <Link 
-                  key={item.path} 
+                <Link
+                  key={item.path}
                   to={item.path}
                   className={clsx(
-                    "flex items-center gap-2 hover:text-primary transition-colors",
-                    isActive ? "text-primary font-medium" : "text-muted-foreground"
+                    "flex items-center gap-2 transition-colors hover:text-primary",
+                    isActive
+                      ? "font-medium text-primary"
+                      : "text-muted-foreground",
                   )}
                 >
                   <item.icon size={20} />
@@ -51,20 +59,22 @@ export const Layout: React.FC = () => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border z-50 pb-safe">
-        <div className="flex justify-around items-center h-16">
+      <nav className="pb-safe fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden">
+        <div className="flex h-16 items-center justify-around">
           {navItems.map((item) => {
-            const isActive = item.path === '/' 
-              ? location.pathname === '/' 
-              : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+            const isActive =
+              item.path === "/"
+                ? location.pathname === "/"
+                : location.pathname === item.path ||
+                  location.pathname.startsWith(`${item.path}/`);
 
             return (
-              <Link 
-                key={item.path} 
+              <Link
+                key={item.path}
                 to={item.path}
                 className={clsx(
                   "flex flex-col items-center gap-1 text-xs",
-                  isActive ? "text-primary" : "text-muted-foreground"
+                  isActive ? "text-primary" : "text-muted-foreground",
                 )}
               >
                 <item.icon size={24} />

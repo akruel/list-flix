@@ -1,5 +1,12 @@
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface LogoutChoiceDialogProps {
   open: boolean;
@@ -22,15 +29,24 @@ export function LogoutChoiceDialog({
         <DialogHeader>
           <DialogTitle>Como você quer sair?</DialogTitle>
           <DialogDescription>
-            Você pode continuar usando o app como visitante ou sair totalmente para a tela de autenticação.
+            Você pode continuar usando o app como visitante ou sair totalmente
+            para a tela de autenticação.
           </DialogDescription>
         </DialogHeader>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onContinueAsGuest} disabled={isLoading}>
+          <Button
+            variant="outline"
+            onClick={onContinueAsGuest}
+            disabled={isLoading}
+          >
             Continuar como visitante
           </Button>
-          <Button variant="destructive" onClick={onSignOutFully} disabled={isLoading}>
+          <Button
+            variant="destructive"
+            onClick={onSignOutFully}
+            disabled={isLoading}
+          >
             Sair totalmente
           </Button>
         </DialogFooter>

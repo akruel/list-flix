@@ -1,13 +1,14 @@
-import '@testing-library/jest-dom/vitest'
-import { cleanup } from '@testing-library/react'
-import { vi } from 'vitest'
-import { afterEach } from 'vitest'
+import "@testing-library/jest-dom/vitest";
+
+import { cleanup } from "@testing-library/react";
+import { vi } from "vitest";
+import { afterEach } from "vitest";
 
 afterEach(() => {
-  cleanup()
-})
+  cleanup();
+});
 
-Object.defineProperty(window, 'matchMedia', {
+Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
     matches: false,
@@ -19,7 +20,7 @@ Object.defineProperty(window, 'matchMedia', {
     removeEventListener: vi.fn(),
     dispatchEvent: vi.fn(),
   })),
-})
+});
 
 class ResizeObserverMock {
   observe() {}
@@ -27,12 +28,12 @@ class ResizeObserverMock {
   disconnect() {}
 }
 
-vi.stubGlobal('ResizeObserver', ResizeObserverMock)
+vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 
-Object.defineProperty(navigator, 'clipboard', {
+Object.defineProperty(navigator, "clipboard", {
   configurable: true,
   value: {
     writeText: vi.fn().mockResolvedValue(undefined),
-    readText: vi.fn().mockResolvedValue(''),
+    readText: vi.fn().mockResolvedValue(""),
   },
-})
+});

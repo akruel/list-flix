@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
-import { RouterProvider } from '@tanstack/react-router';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { router } from './router';
+import { RouterProvider } from "@tanstack/react-router";
+import { useEffect } from "react";
+
+import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { router } from "./router";
 
 function AppRouter() {
   const { status, user } = useAuth();

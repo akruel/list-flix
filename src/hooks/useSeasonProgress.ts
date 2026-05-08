@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
-import { useStore } from '../store/useStore';
+import { useMemo } from "react";
+
+import { useStore } from "../store/useStore";
 
 interface SeasonProgress {
   watchedCount: number;
@@ -17,13 +18,14 @@ interface SeasonProgress {
 export const useSeasonProgress = (
   showId: number,
   seasonNumber: number,
-  totalEpisodes: number
+  totalEpisodes: number,
 ): SeasonProgress => {
   const { getSeasonProgress } = useStore();
 
   const progress = useMemo(() => {
     const { watchedCount } = getSeasonProgress(showId, seasonNumber);
-    const percentage = totalEpisodes > 0 ? Math.round((watchedCount / totalEpisodes) * 100) : 0;
+    const percentage =
+      totalEpisodes > 0 ? Math.round((watchedCount / totalEpisodes) * 100) : 0;
 
     return {
       watchedCount,

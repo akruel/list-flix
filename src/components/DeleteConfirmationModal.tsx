@@ -1,5 +1,6 @@
-import React from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from "lucide-react";
+import React from "react";
+
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -8,8 +9,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
@@ -20,7 +21,9 @@ interface DeleteConfirmationModalProps {
   isDeleting?: boolean;
 }
 
-export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = ({
+export const DeleteConfirmationModal: React.FC<
+  DeleteConfirmationModalProps
+> = ({
   isOpen,
   onClose,
   onConfirm,
@@ -29,13 +32,14 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
   isDeleting = false,
 }) => {
   return (
-    <AlertDialog open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
+    <AlertDialog
+      open={isOpen}
+      onOpenChange={(open: boolean) => !open && onClose()}
+    >
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {description}
-          </AlertDialogDescription>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
@@ -48,7 +52,7 @@ export const DeleteConfirmationModal: React.FC<DeleteConfirmationModalProps> = (
             }}
           >
             {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isDeleting ? 'Excluindo...' : 'Sim, excluir'}
+            {isDeleting ? "Excluindo..." : "Sim, excluir"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

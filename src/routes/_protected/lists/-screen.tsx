@@ -1,101 +1,102 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { Eye, EyeOff, LayoutGrid, List } from 'lucide-react'
-import { CustomLists } from '@/components/CustomLists'
-import { ListDetailsView } from '@/components/ListDetailsView'
-import { MovieCard } from '@/components/MovieCard'
-import { useStore } from '@/store/useStore'
+import { useNavigate } from "@tanstack/react-router";
+import { Eye, EyeOff, LayoutGrid, List } from "lucide-react";
+import { useEffect, useState } from "react";
 
-type FilterType = 'all' | 'watched' | 'unwatched'
-type TabType = 'watchlist' | 'custom'
+import { CustomLists } from "@/components/CustomLists";
+import { ListDetailsView } from "@/components/ListDetailsView";
+import { MovieCard } from "@/components/MovieCard";
+import { useStore } from "@/store/useStore";
+
+type FilterType = "all" | "watched" | "unwatched";
+type TabType = "watchlist" | "custom";
 
 interface MyListScreenProps {
-  listId?: string
+  listId?: string;
 }
 
 export function MyListScreen({ listId }: MyListScreenProps) {
-  const navigate = useNavigate()
-  const { myList, isWatched } = useStore()
+  const navigate = useNavigate();
+  const { myList, isWatched } = useStore();
 
-  const [filter, setFilter] = useState<FilterType>('all')
+  const [filter, setFilter] = useState<FilterType>("all");
   const [activeTab, setActiveTab] = useState<TabType>(
-    listId ? 'custom' : 'watchlist',
-  )
+    listId ? "custom" : "watchlist",
+  );
 
   useEffect(() => {
     if (listId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveTab('custom')
+      setActiveTab("custom");
     }
-  }, [listId])
+  }, [listId]);
 
   const handleTabChange = (tab: TabType) => {
-    setActiveTab(tab)
+    setActiveTab(tab);
     if (listId) {
-      navigate({ to: '/lists' })
+      navigate({ to: "/lists" });
     }
-  }
+  };
 
   const filteredList = myList.filter((item) => {
-    if (filter === 'watched') return isWatched(item.id)
-    if (filter === 'unwatched') return !isWatched(item.id)
-    return true
-  })
+    if (filter === "watched") return isWatched(item.id);
+    if (filter === "unwatched") return !isWatched(item.id);
+    return true;
+  });
 
   return (
     <div data-testid="route-lists-screen">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold">Minhas Listas</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold md:text-3xl">Minhas Listas</h1>
       </div>
 
-      <div className="flex gap-4 mb-8 border-b border-gray-800 pb-1">
+      <div className="mb-8 flex gap-4 border-b border-gray-800 pb-1">
         <button
           data-testid="lists-tab-watchlist"
-          onClick={() => handleTabChange('watchlist')}
-          className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
-            activeTab === 'watchlist'
-              ? 'text-purple-500'
-              : 'text-gray-400 hover:text-gray-300'
+          onClick={() => handleTabChange("watchlist")}
+          className={`relative px-2 pb-3 text-sm font-medium transition-colors ${
+            activeTab === "watchlist"
+              ? "text-purple-500"
+              : "text-gray-400 hover:text-gray-300"
           }`}
         >
           <div className="flex items-center gap-2">
             <List size={18} />
             Para Assistir
           </div>
-          {activeTab === 'watchlist' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
+          {activeTab === "watchlist" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full bg-purple-500" />
           )}
         </button>
         <button
           data-testid="lists-tab-custom"
-          onClick={() => handleTabChange('custom')}
-          className={`pb-3 px-2 text-sm font-medium transition-colors relative ${
-            activeTab === 'custom'
-              ? 'text-purple-500'
-              : 'text-gray-400 hover:text-gray-300'
+          onClick={() => handleTabChange("custom")}
+          className={`relative px-2 pb-3 text-sm font-medium transition-colors ${
+            activeTab === "custom"
+              ? "text-purple-500"
+              : "text-gray-400 hover:text-gray-300"
           }`}
         >
           <div className="flex items-center gap-2">
             <LayoutGrid size={18} />
             Listas Personalizadas
           </div>
-          {activeTab === 'custom' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500 rounded-t-full" />
+          {activeTab === "custom" && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full bg-purple-500" />
           )}
         </button>
       </div>
 
-      {activeTab === 'watchlist' ? (
+      {activeTab === "watchlist" ? (
         <>
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6 flex items-center justify-between">
             <div className="flex flex-wrap gap-2">
               <button
                 data-testid="lists-filter-all"
-                onClick={() => setFilter('all')}
-                className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
-                  filter === 'all'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                onClick={() => setFilter("all")}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm ${
+                  filter === "all"
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
                 <List size={16} />
@@ -103,46 +104,50 @@ export function MyListScreen({ listId }: MyListScreenProps) {
               </button>
               <button
                 data-testid="lists-filter-watched"
-                onClick={() => setFilter('watched')}
-                className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
-                  filter === 'watched'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                onClick={() => setFilter("watched")}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm ${
+                  filter === "watched"
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
                 <Eye size={16} />
-                Assistidos ({myList.filter((item) => isWatched(item.id)).length})
+                Assistidos ({myList.filter((item) => isWatched(item.id)).length}
+                )
               </button>
               <button
                 data-testid="lists-filter-unwatched"
-                onClick={() => setFilter('unwatched')}
-                className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg transition-colors text-xs md:text-sm font-medium ${
-                  filter === 'unwatched'
-                    ? 'bg-orange-600 text-white'
-                    : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+                onClick={() => setFilter("unwatched")}
+                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm ${
+                  filter === "unwatched"
+                    ? "bg-orange-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
                 <EyeOff size={16} />
-                Não Assistidos ({myList.filter((item) => !isWatched(item.id)).length})
+                Não Assistidos (
+                {myList.filter((item) => !isWatched(item.id)).length})
               </button>
             </div>
           </div>
 
           {filteredList.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredList.map((item) => (
                 <MovieCard key={item.id} item={item} showProgress={true} />
               ))}
             </div>
           ) : myList.length > 0 ? (
-            <div className="text-center py-20 text-gray-500">
-              <p className="text-xl mb-2">Nenhum item nesta categoria</p>
+            <div className="py-20 text-center text-gray-500">
+              <p className="mb-2 text-xl">Nenhum item nesta categoria</p>
               <p className="text-sm">Tente selecionar outro filtro.</p>
             </div>
           ) : (
-            <div className="text-center py-20 text-gray-500">
-              <p className="text-xl mb-2">Sua lista está vazia</p>
-              <p className="text-sm">Adicione filmes e séries para assistir depois.</p>
+            <div className="py-20 text-center text-gray-500">
+              <p className="mb-2 text-xl">Sua lista está vazia</p>
+              <p className="text-sm">
+                Adicione filmes e séries para assistir depois.
+              </p>
             </div>
           )}
         </>
@@ -152,5 +157,5 @@ export function MyListScreen({ listId }: MyListScreenProps) {
         <CustomLists />
       )}
     </div>
-  )
+  );
 }
