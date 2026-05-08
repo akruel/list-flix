@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
 import { getPostLoginDestination } from "@/lib/postLoginNavigation";
 import { authService } from "@/services/auth";
 
@@ -47,7 +48,7 @@ function AuthRouteComponent() {
     try {
       await signInWithGoogle();
     } catch (error) {
-      console.error("Google login error:", error);
+      logger.error("Google login error:", error);
       toast.error("Não foi possível iniciar login com Google.");
       setIsGoogleLoading(false);
     }
@@ -68,7 +69,7 @@ function AuthRouteComponent() {
       setShowEmailInput(false);
       setEmail("");
     } catch (error) {
-      console.error("OTP login error:", error);
+      logger.error("OTP login error:", error);
       toast.error("Erro ao enviar link de login.");
     } finally {
       setIsOtpLoading(false);
@@ -84,7 +85,7 @@ function AuthRouteComponent() {
       );
       navigate({ ...target, replace: true });
     } catch (error) {
-      console.error("Guest sign-in error:", error);
+      logger.error("Guest sign-in error:", error);
       toast.error("Não foi possível continuar como visitante.");
       setIsGuestLoading(false);
     }

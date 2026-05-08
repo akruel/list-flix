@@ -1,3 +1,4 @@
+import { logger } from "../lib/logger";
 import { supabase } from "../lib/supabase";
 import type {
   ContentItem,
@@ -109,7 +110,7 @@ export const userContentService = {
     if (promises.length > 0) {
       const results = await Promise.all(promises);
       results.forEach(({ error }) => {
-        if (error) console.error("Error syncing data:", error);
+        if (error) logger.error("Error syncing data:", error);
       });
     }
   },
@@ -133,7 +134,7 @@ export const userContentService = {
       watchedEpisodesError ||
       seriesCacheError
     ) {
-      console.error("Error fetching user content:", {
+      logger.error("Error fetching user content:", {
         watchlistError,
         watchedMoviesError,
         watchedEpisodesError,
@@ -210,7 +211,7 @@ export const userContentService = {
                 .eq("user_id", (await supabase.auth.getUser()).data.user?.id),
             );
           } catch (err) {
-            console.error(`Failed to self-heal item ${i.tmdb_id}:`, err);
+            logger.error(`Failed to self-heal item ${i.tmdb_id}:`, err);
             // Push placeholder if fetch fails, to avoid crashing UI
             watchlist.push({
               id: i.tmdb_id,
@@ -226,7 +227,7 @@ export const userContentService = {
       // Execute updates in background
       if (updates.length > 0) {
         Promise.all(updates).then(() =>
-          console.log(`Self-healed ${updates.length} watchlist items`),
+          logger.info(`Self-healed ${updates.length} watchlist items`),
         );
       }
     }
@@ -273,7 +274,7 @@ export const userContentService = {
       overview: item.overview,
     });
 
-    if (error) console.error("Error adding to watchlist:", error);
+    if (error) logger.error("Error adding to watchlist:", error);
   },
 
   async removeFromWatchlist(contentId: number) {
@@ -282,7 +283,7 @@ export const userContentService = {
       .delete()
       .match({ tmdb_id: contentId });
 
-    if (error) console.error("Error removing from watchlist:", error);
+    if (error) logger.error("Error removing from watchlist:", error);
   },
 
   async markAsWatched(
@@ -294,7 +295,7 @@ export const userContentService = {
       const { error } = await supabase.from("watched_movies").insert({
         tmdb_id: contentId,
       });
-      if (error) console.error("Error marking movie as watched:", error);
+      if (error) logger.error("Error marking movie as watched:", error);
     } else if (contentType === "episode") {
       const { error } = await supabase.from("watched_episodes").insert({
         tmdb_episode_id: contentId,
@@ -302,7 +303,7 @@ export const userContentService = {
         season_number: metadata.season_number,
         episode_number: metadata.episode_number,
       });
-      if (error) console.error("Error marking episode as watched:", error);
+      if (error) logger.error("Error marking episode as watched:", error);
     }
   },
 
@@ -318,9 +319,9 @@ export const userContentService = {
       .eq("tmdb_episode_id", contentId);
 
     if (movieError)
-      console.error("Error marking movie as unwatched:", movieError);
+      logger.error("Error marking movie as unwatched:", movieError);
     if (episodeError)
-      console.error("Error marking episode as unwatched:", episodeError);
+      logger.error("Error marking episode as unwatched:", episodeError);
   },
 
   async saveSeriesMetadata(showId: number, metadata: SeriesMetadata) {
@@ -331,7 +332,7 @@ export const userContentService = {
       updated_at: new Date().toISOString(),
     });
 
-    if (error) console.error("Error saving series metadata:", error);
+    if (error) logger.error("Error saving series metadata:", error);
   },
 
   async markSeasonAsWatched(
@@ -351,7 +352,7 @@ export const userContentService = {
       episodes: payload,
     });
 
-    if (error) console.error("Error marking season as watched:", error);
+    if (error) logger.error("Error marking season as watched:", error);
   },
 
   async markSeasonAsUnwatched(seriesId: number, seasonNumber: number) {
@@ -360,7 +361,7 @@ export const userContentService = {
       season_num: seasonNumber,
     });
 
-    if (error) console.error("Error marking season as unwatched:", error);
+    if (error) logger.error("Error marking season as unwatched:", error);
   },
 
   async hasData(userId: string): Promise<boolean> {

@@ -10,6 +10,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import { logger } from "@/lib/logger";
 
 import { useSeasonProgress } from "../hooks/useSeasonProgress";
 import { tmdb } from "../services/tmdb";
@@ -66,7 +67,7 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
 
         markSeasonAsWatched(tvId, seasonNumber, seasonEpisodes);
       } catch (error) {
-        console.error("Error fetching season details:", error);
+        logger.error("Error fetching season details:", error);
         toast.error("Erro ao marcar temporada como assistida / não assistida");
       }
     }
@@ -84,7 +85,7 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
       const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
       setEpisodes(data.episodes);
     } catch (error) {
-      console.error("Error fetching episodes:", error);
+      logger.error("Error fetching episodes:", error);
     } finally {
       setLoading(false);
     }

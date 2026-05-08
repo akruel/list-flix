@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { MigrationConflictModal } from "@/components/MigrationConflictModal";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
 import { getPostLoginDestination } from "@/lib/postLoginNavigation";
 import { authService } from "@/services/auth";
 
@@ -56,7 +57,7 @@ function AuthCallbackRouteComponent() {
 
         redirectAfterLogin();
       } catch (error) {
-        console.error("Auth callback finalization failed:", error);
+        logger.error("Auth callback finalization failed:", error);
         if (!cancelled) {
           setState("error");
           setErrorMessage("Erro ao finalizar login. Tente novamente.");
@@ -85,7 +86,7 @@ function AuthCallbackRouteComponent() {
       authService.clearMigrationOldUserId();
       redirectAfterLogin();
     } catch (error) {
-      console.error("Manual migration from callback failed:", error);
+      logger.error("Manual migration from callback failed:", error);
       setState("error");
       setErrorMessage("Não foi possível migrar seus dados locais.");
     }
@@ -96,7 +97,7 @@ function AuthCallbackRouteComponent() {
       authService.clearMigrationOldUserId();
       redirectAfterLogin();
     } catch (error) {
-      console.error("Failed to complete callback with account data:", error);
+      logger.error("Failed to complete callback with account data:", error);
       setState("error");
       setErrorMessage(
         "Não foi possível concluir o login com os dados da conta.",

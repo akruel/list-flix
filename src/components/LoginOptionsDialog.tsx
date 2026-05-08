@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
 
 import { useAuth } from "../contexts/AuthContext";
 import { GoogleIcon } from "./icons/GoogleIcon";
@@ -43,7 +44,7 @@ export function LoginOptionsDialog({
     try {
       await signInWithGoogle();
     } catch (error) {
-      console.error("Google login error from dialog:", error);
+      logger.error("Google login error from dialog:", error);
       toast.error("Não foi possível iniciar login com Google.");
       setIsGoogleLoading(false);
     }
@@ -63,7 +64,7 @@ export function LoginOptionsDialog({
       });
       closeDialog();
     } catch (error) {
-      console.error("OTP login error from dialog:", error);
+      logger.error("OTP login error from dialog:", error);
       toast.error("Erro ao enviar link de login.");
     } finally {
       setIsOtpLoading(false);

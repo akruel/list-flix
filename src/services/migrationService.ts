@@ -1,5 +1,7 @@
 import { toast } from "sonner";
 
+import { logger } from "@/lib/logger";
+
 import { supabase } from "../lib/supabase";
 
 export const migrationService = {
@@ -16,7 +18,7 @@ export const migrationService = {
         return;
       }
 
-      console.log(`Migrating data from ${oldUserId} to ${newUserId}`);
+      logger.info(`Migrating data from ${oldUserId} to ${newUserId}`);
 
       const { error } = await supabase.rpc("migrate_user_data", {
         old_user_id: oldUserId,
@@ -24,7 +26,7 @@ export const migrationService = {
       });
 
       if (error) {
-        console.error("Error migrating user data:", error);
+        logger.error("Error migrating user data:", error);
         throw error;
       }
 
@@ -34,7 +36,7 @@ export const migrationService = {
         closeButton: false,
       });
     } catch (error) {
-      console.error("Migration failed:", error);
+      logger.error("Migration failed:", error);
       toast.error(
         "Houve um problema ao migrar seus dados. Por favor, contate o suporte.",
       );

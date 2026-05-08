@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 import { supabase } from "../lib/supabase";
 import type { AuthProvider, UserProfile } from "../types";
 import { migrationService } from "./migrationService";
@@ -125,7 +127,7 @@ export const authService = {
             localStorage.removeItem(MIGRATION_OLD_USER_ID_KEY);
           }
         } catch (error) {
-          console.error("Migration failed during finalizePostLogin:", error);
+          logger.error("Migration failed during finalizePostLogin:", error);
           migrationConflict = true;
         }
       }

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
 import { tmdb } from "../services/tmdb";
@@ -89,7 +90,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
               );
               return { ...item, content: details };
             } catch (e) {
-              console.error(`Failed to fetch details for item ${item.id}`, e);
+              logger.error(`Failed to fetch details for item ${item.id}`, e);
               return item;
             }
           }),
@@ -99,7 +100,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         setItems(itemsWithContent);
         setMembers(members);
       } catch (err) {
-        console.error(err);
+        logger.error(err);
         setError("Failed to load list");
       } finally {
         setLoading(false);
@@ -124,7 +125,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
       await listService.removeListItem(itemId);
       setItems(items.filter((i) => i.id !== itemId));
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Falha ao remover item");
     }
   };
@@ -160,7 +161,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
       toast.success("Nome da lista atualizado");
       setIsEditing(false);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Erro ao atualizar nome da lista");
     }
   };
@@ -184,7 +185,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
       toast.success("Lista excluída com sucesso");
       navigate({ to: "/lists" });
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Erro ao excluir lista");
     } finally {
       setIsDeleting(false);
@@ -210,7 +211,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
       toast.success("Membro removido com sucesso");
       setMemberToRemove(null);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Falha ao remover membro");
     } finally {
       setIsRemovingMember(false);

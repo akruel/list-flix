@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
+import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 import type { ContentItem } from "@/types";
 
@@ -37,7 +38,7 @@ function SearchRouteComponent() {
         const data = await tmdb.search(debouncedQuery);
         setResults(data);
       } catch (error) {
-        console.error("Error searching:", error);
+        logger.error("Error searching:", error);
       } finally {
         setLoading(false);
       }

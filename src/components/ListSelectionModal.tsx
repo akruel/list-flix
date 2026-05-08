@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
 import { useStore } from "../store/useStore";
@@ -43,7 +44,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
           );
           setMembership(memberMap);
         } catch (error) {
-          console.error("Error loading lists:", error);
+          logger.error("Error loading lists:", error);
         } finally {
           setLoading(false);
         }
@@ -64,13 +65,16 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
   const handleToggleCustomList = async (listId: string) => {
     setToggling((prev) => ({ ...prev, [listId]: true }));
     try {
-      const itemId = membership[listId];
+      const itemId = Object.hasOwn(membership, listId)
+        ? membership[listId]
+        : undefined;
       if (itemId) {
         // Remove
         await listService.removeListItem(itemId);
         setMembership((prev) => {
-          const next = { ...prev };
-          delete next[listId];
+          const next = Object.fromEntries(
+            Object.entries(prev).filter(([key]) => key !== listId)
+          );
           return next;
         });
       } else {
@@ -85,7 +89,7 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
         setMembership(memberMap);
       }
     } catch (error) {
-      console.error("Error toggling list:", error);
+      logger.error("Error toggling list:", error);
     } finally {
       setToggling((prev) => ({ ...prev, [listId]: false }));
     }

@@ -1,11 +1,13 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+import { logger } from "@/lib/logger";
+
 import { tmdb } from "./tmdb";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-  console.error("VITE_GEMINI_API_KEY is missing");
+  logger.error("VITE_GEMINI_API_KEY is missing");
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -95,7 +97,7 @@ export const ai = {
 
       return JSON.parse(cleanText);
     } catch (error) {
-      console.error("Error getting AI suggestions:", error);
+      logger.error("Error getting AI suggestions:", error);
       throw error;
     }
   },

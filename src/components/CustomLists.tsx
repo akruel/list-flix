@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
 import { useStore } from "../store/useStore";
@@ -51,7 +52,7 @@ export function CustomLists() {
       toast.success("Lista excluída com sucesso");
       setListToDelete(null);
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       toast.error("Erro ao excluir lista");
     } finally {
       setIsDeleting(false);
@@ -77,7 +78,7 @@ export function CustomLists() {
       // 3. Refresh lists
       fetchLists();
     } catch (error) {
-      console.error("Error saving magic list:", error);
+      logger.error("Error saving magic list:", error);
       throw error; // Propagate to modal to show error toast
     }
   };

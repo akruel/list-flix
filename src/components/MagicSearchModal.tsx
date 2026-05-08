@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { logger } from "@/lib/logger";
 
 import { ai } from "../services/ai";
 import { tmdb } from "../services/tmdb";
@@ -74,7 +75,7 @@ export function MagicSearchModal({
       setResults(items);
       setStep("results");
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast.error("Erro ao gerar sugestões. Tente novamente.");
     } finally {
       setIsLoading(false);
@@ -93,7 +94,7 @@ export function MagicSearchModal({
       toast.success("Lista criada com sucesso!");
       handleClose();
     } catch (error) {
-      console.error(error);
+      logger.error(error);
       toast.error("Erro ao salvar a lista.");
     } finally {
       setIsLoading(false);
@@ -167,10 +168,11 @@ export function MagicSearchModal({
               <div className="border-b border-gray-800 bg-gray-900/50 p-6">
                 <div className="flex flex-col items-end gap-4 md:flex-row">
                   <div className="w-full flex-1 space-y-2">
-                    <label className="text-sm text-gray-400">
+                    <label htmlFor="magic-list-name-input" className="text-sm text-gray-400">
                       Nome da Lista
                     </label>
                     <Input
+                      id="magic-list-name-input"
                       data-testid="magic-list-name-input"
                       type="text"
                       value={suggestedName}

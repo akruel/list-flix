@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { Layout } from "@/components/Layout";
 import { MigrationConflictModal } from "@/components/MigrationConflictModal";
 import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
 import { authService } from "@/services/auth";
 import { useStore } from "@/store/useStore";
 
@@ -68,7 +69,7 @@ function ProtectedLayoutRouteComponent() {
         if (cancelled) return;
         lastHandledUserIdRef.current = userId;
       } catch (error) {
-        console.error("Session initialization failed:", error);
+        logger.error("Session initialization failed:", error);
       } finally {
         if (!cancelled) {
           setIsSessionProcessing(false);
@@ -93,7 +94,7 @@ function ProtectedLayoutRouteComponent() {
       try {
         await authService.migrateAnonymousData(oldUserId, newUserId);
       } catch (error) {
-        console.error("Manual migration failed:", error);
+        logger.error("Manual migration failed:", error);
       }
     }
 
@@ -106,7 +107,7 @@ function ProtectedLayoutRouteComponent() {
         lastHandledUserIdRef.current = newUserId;
       }
     } catch (error) {
-      console.error("Sync after manual migration failed:", error);
+      logger.error("Sync after manual migration failed:", error);
     }
   };
 
@@ -122,7 +123,7 @@ function ProtectedLayoutRouteComponent() {
         lastHandledUserIdRef.current = currentUserId;
       }
     } catch (error) {
-      console.error("Sync after selecting account data failed:", error);
+      logger.error("Sync after selecting account data failed:", error);
     }
   };
 

@@ -13,6 +13,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { logger } from "@/lib/logger";
 
 import { useAuth } from "../contexts/AuthContext";
 import type { UserProfile } from "../types";
@@ -36,7 +37,7 @@ export function UserMenu({ user }: UserMenuProps) {
       setIsLogoutDialogOpen(false);
       navigate({ to: "/", replace: true });
     } catch (error) {
-      console.error("Error signing out to guest mode:", error);
+      logger.error("Error signing out to guest mode:", error);
       toast.error("Não foi possível continuar como visitante.");
     } finally {
       setIsSigningOut(false);
@@ -50,7 +51,7 @@ export function UserMenu({ user }: UserMenuProps) {
       setIsLogoutDialogOpen(false);
       navigate({ to: "/auth", replace: true });
     } catch (error) {
-      console.error("Error signing out fully:", error);
+      logger.error("Error signing out fully:", error);
       toast.error("Não foi possível sair totalmente.");
     } finally {
       setIsSigningOut(false);

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
+import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 import type { ContentItem } from "@/types";
 
@@ -20,7 +21,7 @@ function HomeRouteComponent() {
         const data = await tmdb.getTrending("week");
         setTrending(data);
       } catch (error) {
-        console.error("Error fetching trending:", error);
+        logger.error("Error fetching trending:", error);
       } finally {
         setLoading(false);
       }

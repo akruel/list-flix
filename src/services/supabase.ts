@@ -1,3 +1,5 @@
+import { logger } from "@/lib/logger";
+
 import { supabase } from "../lib/supabase";
 
 export const supabaseService = {
@@ -10,7 +12,7 @@ export const supabaseService = {
       .eq("list_id", id);
 
     if (error) {
-      console.error("Error fetching shared list:", error);
+      logger.error("Error fetching shared list:", error);
       throw error;
     }
 

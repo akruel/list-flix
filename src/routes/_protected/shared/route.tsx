@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
+import { logger } from "@/lib/logger";
 import { supabaseService } from "@/services/supabase";
 import { tmdb } from "@/services/tmdb";
 import type { ContentItem } from "@/types";
@@ -52,7 +53,7 @@ function SharedRouteComponent() {
 
         setItems(results);
       } catch (err) {
-        console.error("Error loading shared list:", err);
+        logger.error("Error loading shared list:", err);
         setError("Erro ao carregar a lista compartilhada.");
       } finally {
         setLoading(false);
