@@ -104,9 +104,8 @@ export function LoginOptionsDialog({
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="seu@email.com"
-                  className="pl-9"
-                  autoFocus
-                />
+                   className="pl-9"
+                 />
               </div>
 
               <div className="flex gap-2">

@@ -46,10 +46,10 @@ export default defineConfig([
       "@typescript-eslint/no-non-null-assertion": "warn",
       ...jsxA11yRecommendedRules,
       "jsx-a11y/anchor-is-valid": "warn",
-      "jsx-a11y/no-autofocus": "warn",
+      "jsx-a11y/no-autofocus": "error",
       "jsx-a11y/label-has-associated-control": "warn",
-      "jsx-a11y/click-events-have-key-events": "warn",
-      "jsx-a11y/interactive-supports-focus": "warn",
+      "jsx-a11y/click-events-have-key-events": "error",
+      "jsx-a11y/interactive-supports-focus": "error",
     },
   },
 ]);

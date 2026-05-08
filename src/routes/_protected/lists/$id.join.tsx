@@ -186,10 +186,9 @@ function JoinListRouteComponent() {
                   type="text"
                   value={memberName}
                   onChange={(e) => setMemberName(e.target.value)}
-                  placeholder="Digite seu nome"
-                  required
-                  autoFocus
-                />
+                   placeholder="Digite seu nome"
+                   required
+                 />
               </div>
 
               <DialogFooter className="gap-2">

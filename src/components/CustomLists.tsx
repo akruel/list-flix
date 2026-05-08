@@ -128,9 +128,8 @@ export function CustomLists() {
                 value={newListName}
                 onChange={(e) => setNewListName(e.target.value)}
                 placeholder="Nome da Lista"
-                className="flex-1"
-                autoFocus
-              />
+                 className="flex-1"
+               />
               <Button type="submit" data-testid="custom-lists-manual-submit">
                 Criar
               </Button>

@@ -139,9 +139,8 @@ export function MagicSearchModal({
                     setPrompt(e.target.value)
                   }
                   placeholder="Ex: Filmes de suspense para assistir no final de semana..."
-                  className="h-32 resize-none border-gray-700 bg-gray-800 focus:border-primary"
-                  autoFocus
-                />
+                   className="h-32 resize-none border-gray-700 bg-gray-800 focus:border-primary"
+                 />
                 <Button
                   data-testid="magic-list-suggest-button"
                   type="submit"

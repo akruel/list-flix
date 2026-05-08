@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -85,5 +85,62 @@ describe("MigrationConflictModal", () => {
 
     expect(onKeepLocal).toHaveBeenCalledOnce();
     expect(onUseAccount).toHaveBeenCalledOnce();
+  });
+
+  it("triggers onKeepLocal with Enter key", () => {
+    const onKeepLocal = vi.fn();
+    const onUseAccount = vi.fn();
+
+    render(
+      <MigrationConflictModal
+        isOpen
+        onKeepLocal={onKeepLocal}
+        onUseAccount={onUseAccount}
+      />,
+    );
+
+    const option = screen.getByRole("button", { name: /Manter dados locais/i });
+    fireEvent.keyDown(option, { key: "Enter" });
+
+    expect(onKeepLocal).toHaveBeenCalledOnce();
+    expect(onUseAccount).not.toHaveBeenCalled();
+  });
+
+  it("triggers onUseAccount with Space key", () => {
+    const onKeepLocal = vi.fn();
+    const onUseAccount = vi.fn();
+
+    render(
+      <MigrationConflictModal
+        isOpen
+        onKeepLocal={onKeepLocal}
+        onUseAccount={onUseAccount}
+      />,
+    );
+
+    const option = screen.getByRole("button", { name: /Usar dados da conta/i });
+    fireEvent.keyDown(option, { key: " " });
+
+     expect(onUseAccount).toHaveBeenCalledOnce();
+     expect(onKeepLocal).not.toHaveBeenCalled();
+   });
+
+   it("does not trigger callback with other keys", () => {
+    const onKeepLocal = vi.fn();
+    const onUseAccount = vi.fn();
+
+    render(
+      <MigrationConflictModal
+        isOpen
+        onKeepLocal={onKeepLocal}
+        onUseAccount={onUseAccount}
+      />,
+    );
+
+    const option = screen.getByRole("button", { name: /Manter dados locais/i });
+    fireEvent.keyDown(option, { key: "Tab" });
+
+    expect(onKeepLocal).not.toHaveBeenCalled();
+    expect(onUseAccount).not.toHaveBeenCalled();
   });
 });
