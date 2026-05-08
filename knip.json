@@ -1,8 +1,13 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignore": [
-    "src/components/ui/**",
     "tests/**",
-    "e2e/**"
+    "e2e/**",
+    "src/components/ui/alert-dialog.tsx",
+    "src/components/ui/card.tsx",
+    "src/components/ui/dialog.tsx",
+    "src/components/ui/dropdown-menu.tsx",
+    "src/components/ui/scroll-area.tsx",
+    "src/components/ui/toast.tsx"
   ]
 }
