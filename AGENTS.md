@@ -8,6 +8,7 @@ npm run build        # Build (tsc -b && vite build)
 npm run lint         # ESLint
 npm run lint:fix     # ESLint fix
 npm run typecheck    # tsc --noEmit
+npm run knip         # Find unused deps, exports, files
 npm test             # Unit + UI tests (no Docker)
 npm run test:unit-ui # Same as above
 npm run test:rls     # RLS tests (requires Docker + Supabase CLI)
@@ -18,7 +19,7 @@ npm run db:push      # Push to DB
 
 ## Test Order
 
-Always run `lint -> typecheck -> test` before submitting.
+Always run `lint -> typecheck -> knip -> test` before submitting.
 
 ## Architecture
 

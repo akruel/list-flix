@@ -2,7 +2,6 @@ import { supabase } from '../lib/supabase';
 import type { ContentItem, WatchedEpisodeMetadata, SeriesMetadata, Episode } from '../types';
 import { tmdb } from './tmdb';
 
-export type InteractionType = 'watchlist' | 'watched';
 export type ContentType = 'movie' | 'tv' | 'episode';
 
 

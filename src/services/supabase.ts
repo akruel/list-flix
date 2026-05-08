@@ -1,11 +1,5 @@
 import { supabase } from '../lib/supabase';
 
-export interface SharedList {
-  id: string;
-  created_at: string;
-  items: { id: number; type: 'movie' | 'tv' }[];
-}
-
 export const supabaseService = {
   async getSharedList(id: string): Promise<{ id: number; type: 'movie' | 'tv' }[]> {
     const { data, error } = await supabase

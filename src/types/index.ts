@@ -23,16 +23,6 @@ export interface ContentItem {
   first_air_date?: string;
 }
 
-export interface UserContent {
-  id: string;
-  user_id: string;
-  content_id: number;
-  content_type: 'movie' | 'tv' | 'episode';
-  interaction_type: 'watchlist' | 'watched';
-  metadata: Record<string, unknown>;
-  created_at: string;
-}
-
 export interface List {
   id: string;
   name: string;
@@ -67,26 +57,26 @@ export interface Provider {
   logo_path: string;
 }
 
-export interface CastMember {
+interface CastMember {
   id: number;
   name: string;
   character: string;
   profile_path: string | null;
 }
 
-export interface Video {
+interface Video {
   key: string;
   name: string;
   type: string;
 }
 
-export interface Genre {
+interface Genre {
   id: number;
   name: string;
-  character?: string; // Some APIs might return this
+  character?: string;
 }
 
-export interface Season {
+interface Season {
   id: number;
   name: string;
   season_number: number;
