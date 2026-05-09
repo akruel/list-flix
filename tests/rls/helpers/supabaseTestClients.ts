@@ -2,16 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-function getRequiredEnv(names: string[]): string {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) return value;
-  }
-
-  throw new Error(
-    `Missing required environment variable. Tried: ${names.join(", ")}`,
-  );
-}
+import {
+  getRequiredEnv,
+  SUPABASE_AUTH_OPTIONS,
+} from "../../helpers/shared-clients";
 
 const supabaseUrl = getRequiredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
 const anonKey = getRequiredEnv([
@@ -24,14 +18,6 @@ const serviceRoleKey = getRequiredEnv([
   "SERVICE_ROLE_KEY",
 ]);
 
-const clientOptions = {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-};
-
 export interface TestUser {
   id: string;
   email: string;
@@ -42,11 +28,11 @@ export interface TestUser {
 export const adminClient = createClient(
   supabaseUrl,
   serviceRoleKey,
-  clientOptions,
+  SUPABASE_AUTH_OPTIONS,
 );
 
 export function createAnonClient(): SupabaseClient {
-  return createClient(supabaseUrl, anonKey, clientOptions);
+  return createClient(supabaseUrl, anonKey, SUPABASE_AUTH_OPTIONS);
 }
 
 export async function createAuthenticatedUser(
