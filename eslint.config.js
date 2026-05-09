@@ -20,6 +20,7 @@ export default defineConfig([
     "coverage",
     "playwright-report",
     "test-results",
+    "stryker-tmp",
     "src/routeTree.gen.ts",
   ]),
   {
