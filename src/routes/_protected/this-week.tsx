@@ -54,6 +54,7 @@ function ThisWeekComponent() {
         if (cancelled) return;
 
         const weekEpisodes: WeekEpisode[] = [];
+        let failCount = 0;
 
         for (const result of results) {
           if (result.status === "fulfilled") {
@@ -67,7 +68,14 @@ function ThisWeekComponent() {
                 episode: nextEp,
               });
             }
+          } else {
+            failCount++;
           }
+        }
+
+        if (weekEpisodes.length === 0 && failCount === results.length) {
+          setError("Erro ao carregar episódios da semana.");
+          return;
         }
 
         weekEpisodes.sort((a, b) =>
@@ -103,7 +111,7 @@ function ThisWeekComponent() {
   const sortedDays = Object.keys(groupedEpisodes).sort();
 
   return (
-    <div className="space-y-6">
+    <div data-testid="route-this-week" className="space-y-6">
       <div className="flex items-center gap-3">
         <CalendarDays className="h-6 w-6 text-purple-400" />
         <h1 className="text-2xl font-bold">Esta Semana</h1>

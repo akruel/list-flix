@@ -30,6 +30,7 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
     requiredScenarioIds: [
       SCENARIO_IDS.AUTH_PAGE_RENDER,
       SCENARIO_IDS.HOME_GUEST_RENDER,
+      SCENARIO_IDS.THIS_WEEK_RENDER,
       SCENARIO_IDS.SEARCH_ROUTE_RENDER,
       SCENARIO_IDS.SEARCH_QUERY_RESULTS,
       SCENARIO_IDS.SEARCH_RESULT_OPENS_DETAILS,
@@ -37,7 +38,14 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
       SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK,
       SCENARIO_IDS.DETAILS_VALID_RENDER,
     ],
-    touchedPaths: ["/auth", "/", "/search", "/shared", "/details/$type/$id"],
+    touchedPaths: [
+      "/auth",
+      "/",
+      "/this-week",
+      "/search",
+      "/shared",
+      "/details/$type/$id",
+    ],
   },
   {
     journeyId: JOURNEY_IDS.ACCESS_GUARDS,

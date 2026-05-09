@@ -20,10 +20,12 @@ function createMovieDetails(id: number) {
 }
 
 function createTvDetails(id: number) {
-  const today = new Date();
-  const futureDate = new Date(today);
-  futureDate.setDate(today.getDate() + 3);
-  const futureDateStr = futureDate.toISOString().split("T")[0];
+  const futureDate = new Date();
+  futureDate.setDate(futureDate.getDate() + 3);
+  const year = futureDate.getFullYear();
+  const month = String(futureDate.getMonth() + 1).padStart(2, "0");
+  const day = String(futureDate.getDate()).padStart(2, "0");
+  const futureDateStr = `${year}-${month}-${day}`;
 
   return {
     id,

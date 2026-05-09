@@ -8,6 +8,7 @@ export const ROUTE_TEST_IDS = {
   lists: "route-lists-screen",
   listJoin: "route-list-join",
   listDetails: "route-list-details",
+  thisWeek: "route-this-week",
 } as const;
 
 export const SCENARIO_IDS = {
@@ -17,6 +18,7 @@ export const SCENARIO_IDS = {
   HOME_GUEST_RENDER: "HOME_GUEST_RENDER",
   SEARCH_ROUTE_RENDER: "SEARCH_ROUTE_RENDER",
   SEARCH_QUERY_RESULTS: "SEARCH_QUERY_RESULTS",
+  THIS_WEEK_RENDER: "THIS_WEEK_RENDER",
   SEARCH_RESULT_OPENS_DETAILS: "SEARCH_RESULT_OPENS_DETAILS",
   SHARED_ROUTE_RENDER_FROM_DATA: "SHARED_ROUTE_RENDER_FROM_DATA",
   SHARED_ROUTE_INVALID_LINK: "SHARED_ROUTE_INVALID_LINK",
