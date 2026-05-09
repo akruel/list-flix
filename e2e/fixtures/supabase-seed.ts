@@ -2,24 +2,10 @@ import { randomUUID } from "node:crypto";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-function getRequiredEnv(names: string[]): string {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value) return value;
-  }
-
-  throw new Error(
-    `Missing required environment variable. Tried: ${names.join(", ")}`,
-  );
-}
-
-const clientOptions = {
-  auth: {
-    persistSession: false,
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-  },
-};
+import {
+  getRequiredEnv,
+  SUPABASE_AUTH_OPTIONS,
+} from "../../tests/helpers/shared-clients";
 
 interface SeedClients {
   supabaseUrl: string;
@@ -48,7 +34,11 @@ function getSeedClients(): SeedClients {
   cachedSeedClients = {
     supabaseUrl,
     anonKey,
-    adminClient: createClient(supabaseUrl, serviceRoleKey, clientOptions),
+    adminClient: createClient(
+      supabaseUrl,
+      serviceRoleKey,
+      SUPABASE_AUTH_OPTIONS,
+    ),
   };
 
   return cachedSeedClients;
@@ -56,7 +46,7 @@ function getSeedClients(): SeedClients {
 
 function createAnonClient(): SupabaseClient {
   const { supabaseUrl, anonKey } = getSeedClients();
-  return createClient(supabaseUrl, anonKey, clientOptions);
+  return createClient(supabaseUrl, anonKey, SUPABASE_AUTH_OPTIONS);
 }
 
 export interface SeededUser {

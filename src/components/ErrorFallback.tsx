@@ -10,7 +10,8 @@ export default function ErrorFallback({
         Algo deu errado
       </h1>
       <p className="mb-6 max-w-md text-muted-foreground">
-        {error.message || "Ocorreu um erro inesperado. Tente novamente."}
+        {(error instanceof Error && error.message) ||
+          "Ocorreu um erro inesperado. Tente novamente."}
       </p>
       <button
         onClick={resetErrorBoundary}
