@@ -10,6 +10,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import { formatDate, parseLocalDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 
 import { useSeasonProgress } from "../hooks/useSeasonProgress";
@@ -34,6 +35,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     isEpisodeWatched,
@@ -42,6 +44,8 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     markSeasonAsWatched,
     markSeasonAsUnwatched,
     getSeasonProgress,
+    getCachedSeason,
+    setCachedSeason,
   } = useStore();
 
   const handleSeasonToggle = async (
@@ -59,10 +63,16 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     } else {
       try {
         let seasonEpisodes = episodes;
-        // If episodes are not loaded or belong to a different season, fetch them
-        if (expandedSeason !== seasonNumber || episodes.length === 0) {
-          const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
-          seasonEpisodes = data.episodes;
+        const isCurrentSeason = expandedSeason === seasonNumber;
+        if (!isCurrentSeason || episodes.length === 0) {
+          const cached = getCachedSeason(tvId, seasonNumber);
+          if (cached) {
+            seasonEpisodes = cached.episodes;
+          } else {
+            const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
+            setCachedSeason(tvId, seasonNumber, data);
+            seasonEpisodes = data.episodes;
+          }
         }
 
         markSeasonAsWatched(tvId, seasonNumber, seasonEpisodes);
@@ -74,18 +84,28 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   };
 
   const handleExpandSeason = async (seasonNumber: number) => {
-    if (expandedSeason === seasonNumber) {
+    if (expandedSeason === seasonNumber && !error) {
       setExpandedSeason(null);
       return;
     }
 
     setExpandedSeason(seasonNumber);
+    setError(null);
+
+    const cached = getCachedSeason(tvId, seasonNumber);
+    if (cached) {
+      setEpisodes(cached.episodes);
+      return;
+    }
+
     setLoading(true);
     try {
       const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
+      setCachedSeason(tvId, seasonNumber, data);
       setEpisodes(data.episodes);
-    } catch (error) {
-      logger.error("Error fetching episodes:", error);
+    } catch (err) {
+      logger.error("Error fetching episodes:", err);
+      setError("Erro ao carregar episódios. Tente novamente.");
     } finally {
       setLoading(false);
     }
@@ -171,7 +191,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                       <p className="text-sm text-muted-foreground">
                         {season.episode_count} episódios •{" "}
                         {season.air_date
-                          ? new Date(season.air_date).getFullYear()
+                          ? parseLocalDate(season.air_date).getFullYear()
                           : "N/A"}
                       </p>
                       <SeasonProgress
@@ -231,6 +251,20 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                 <div className="border-t border-border bg-muted/30">
                   {loading ? (
                     <EpisodeListSkeleton />
+                  ) : error ? (
+                    <div className="flex flex-col items-center gap-3 p-6 text-center">
+                      <p className="text-sm text-muted-foreground">{error}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (expandedSeason !== null)
+                            handleExpandSeason(expandedSeason);
+                        }}
+                      >
+                        Tentar novamente
+                      </Button>
+                    </div>
                   ) : (
                     <div className="divide-y divide-border">
                       {episodes.map((episode) => {
@@ -271,11 +305,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                                     <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-xs">
                                       <span className="flex items-center gap-1">
                                         <Calendar size={12} />
-                                        {episode.air_date
-                                          ? new Date(
-                                              episode.air_date,
-                                            ).toLocaleDateString("pt-BR")
-                                          : "TBA"}
+                                        {formatDate(episode.air_date)}
                                       </span>
                                       <span>•</span>
                                       <span>

@@ -20,6 +20,11 @@ function createMovieDetails(id: number) {
 }
 
 function createTvDetails(id: number) {
+  const today = new Date();
+  const futureDate = new Date(today);
+  futureDate.setDate(today.getDate() + 3);
+  const futureDateStr = futureDate.toISOString().split("T")[0];
+
   return {
     id,
     media_type: "tv" as const,
@@ -44,6 +49,32 @@ function createTvDetails(id: number) {
         poster_path: null,
       },
     ],
+    next_episode_to_air: {
+      id: id * 1000 + 3,
+      name: "Next Episode",
+      season_number: 1,
+      episode_number: 3,
+      air_date: futureDateStr,
+      overview: "Mock next episode overview",
+      vote_average: 8.0,
+      vote_count: 10,
+      still_path: null,
+      runtime: 50,
+      show_id: id,
+    },
+    last_episode_to_air: {
+      id: id * 1000 + 2,
+      name: "Last Episode",
+      season_number: 1,
+      episode_number: 2,
+      air_date: "2024-05-27",
+      overview: "Mock last episode overview",
+      vote_average: 8.2,
+      vote_count: 15,
+      still_path: null,
+      runtime: 50,
+      show_id: id,
+    },
     credits: { cast: [] },
     videos: { results: [] },
     "watch/providers": { results: {} },

@@ -14,6 +14,8 @@ const mocks = vi.hoisted(() => ({
     markSeasonAsWatched: vi.fn(),
     markSeasonAsUnwatched: vi.fn(),
     getSeasonProgress: vi.fn(),
+    getCachedSeason: vi.fn(),
+    setCachedSeason: vi.fn(),
   },
   useSeasonProgress: vi.fn(),
 }));
@@ -67,6 +69,7 @@ describe("SeasonList", () => {
     vi.clearAllMocks();
     mocks.useStoreValue.isEpisodeWatched.mockReturnValue(false);
     mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
+    mocks.useStoreValue.getCachedSeason.mockReturnValue(null);
     mocks.useSeasonProgress.mockReturnValue({
       watchedCount: 0,
       totalCount: 2,
@@ -171,6 +174,105 @@ describe("SeasonList", () => {
     expect(screen.queryByText("Episode 1")).not.toBeInTheDocument();
   });
 
+  it("uses cached episodes on re-expand", async () => {
+    render(<SeasonList tvId={100} seasons={seasons} />);
+
+    await userEvent.click(screen.getByText("Season 1"));
+    await screen.findByText("Episode 1");
+    expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(screen.getByText("Season 1"));
+
+    mocks.useStoreValue.getCachedSeason.mockReturnValue({
+      _id: "1",
+      air_date: "2020-01-01",
+      episodes: [
+        {
+          id: 301,
+          name: "Cached Episode",
+          season_number: 1,
+          episode_number: 1,
+          air_date: "2020-01-10",
+          vote_average: 8.0,
+          overview: "Cached overview",
+          still_path: null,
+          runtime: 45,
+          show_id: 100,
+          vote_count: 0,
+        },
+      ],
+      name: "Season 1",
+      overview: "",
+      id: 1,
+      poster_path: null,
+      season_number: 1,
+    });
+
+    await userEvent.click(screen.getByText("Season 1"));
+    expect(await screen.findByText("Cached Episode")).toBeInTheDocument();
+    expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders watched season with green styling and Eye icon", () => {
+    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 2 });
+
+    render(<SeasonList tvId={100} seasons={seasons} />);
+
+    const buttons = screen.getAllByRole("button", {
+      name: /Marcar como não assistido/i,
+    });
+    expect(buttons.length).toBeGreaterThan(0);
+
+    const button = buttons[0];
+    expect(button.className).toContain("text-green-500");
+  });
+
+  it("marks season as watched using cached episodes when not expanded", async () => {
+    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
+    mocks.useStoreValue.getCachedSeason.mockReturnValue({
+      _id: "1",
+      air_date: "2020-01-01",
+      episodes: [
+        {
+          id: 501,
+          name: "Cached Toggle Episode",
+          season_number: 1,
+          episode_number: 1,
+          air_date: "2020-01-10",
+          vote_average: 8.0,
+          overview: "From cache",
+          still_path: null,
+          runtime: 45,
+          show_id: 100,
+          vote_count: 0,
+        },
+      ],
+      name: "Season 1",
+      overview: "",
+      id: 1,
+      poster_path: null,
+      season_number: 1,
+    });
+
+    render(<SeasonList tvId={100} seasons={seasons} />);
+
+    const seasonToggleButtons = screen.getAllByRole("button", {
+      name: /Marcar como/i,
+    });
+    await userEvent.click(seasonToggleButtons[0]);
+
+    await waitFor(() => {
+      expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledWith(
+        100,
+        1,
+        expect.arrayContaining([
+          expect.objectContaining({ id: 501, name: "Cached Toggle Episode" }),
+        ]),
+      );
+    });
+    expect(mocks.getSeasonDetails).not.toHaveBeenCalled();
+  });
+
   it.each([
     {
       caseName: "marks season as unwatched when fully watched",
@@ -207,6 +309,38 @@ describe("SeasonList", () => {
     },
   );
 
+  it("handles retry button after expand error", async () => {
+    mocks.getSeasonDetails
+      .mockRejectedValueOnce(new Error("expand failed"))
+      .mockResolvedValueOnce({
+        episodes: [
+          {
+            id: 401,
+            name: "Retried Episode",
+            season_number: 1,
+            episode_number: 1,
+            still_path: null,
+            air_date: "2020-01-10",
+            vote_average: 7.5,
+            overview: "Retry success",
+          },
+        ],
+      });
+
+    render(<SeasonList tvId={100} seasons={seasons} />);
+
+    await userEvent.click(screen.getByText("Season 1"));
+    expect(
+      await screen.findByText("Erro ao carregar episódios. Tente novamente."),
+    ).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Tentar novamente/i }),
+    );
+    expect(await screen.findByText("Retried Episode")).toBeInTheDocument();
+    expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(2);
+  });
+
   it("shows toast error when season details fail on watched toggle", async () => {
     mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
     mocks.getSeasonDetails.mockRejectedValue(new Error("season failed"));
@@ -225,7 +359,7 @@ describe("SeasonList", () => {
     });
   });
 
-  it("handles expand season fetch errors", async () => {
+  it("handles expand season fetch errors and shows error UI", async () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
@@ -235,9 +369,12 @@ describe("SeasonList", () => {
 
     await userEvent.click(screen.getByText("Season 1"));
 
-    await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalled();
-    });
+    expect(
+      await screen.findByText("Erro ao carregar episódios. Tente novamente."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Tentar novamente/i }),
+    ).toBeInTheDocument();
 
     consoleErrorSpy.mockRestore();
   });
