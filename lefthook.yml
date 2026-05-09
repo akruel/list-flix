@@ -8,3 +8,8 @@ pre-commit:
       run: npm run typecheck
     knip:
       run: npm run knip
+
+commit-msg:
+  commands:
+    commitlint:
+      run: npx commitlint --edit "$1"
