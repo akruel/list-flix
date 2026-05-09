@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { LogOut, User } from 'lucide-react';
-import { toast } from 'sonner';
-import type { UserProfile } from '../types';
-import { useAuth } from '../contexts/AuthContext';
-import { LogoutChoiceDialog } from './LogoutChoiceDialog';
+import { useNavigate } from "@tanstack/react-router";
+import { LogOut, User } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,9 +12,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
+} from "@/components/ui/dropdown-menu";
+import { logger } from "@/lib/logger";
+
+import { useAuth } from "../contexts/AuthContext";
+import type { UserProfile } from "../types";
+import { LogoutChoiceDialog } from "./LogoutChoiceDialog";
 
 interface UserMenuProps {
   user: UserProfile;
@@ -32,10 +35,10 @@ export function UserMenu({ user }: UserMenuProps) {
     try {
       await signOutToGuest();
       setIsLogoutDialogOpen(false);
-      navigate({ to: '/', replace: true });
+      navigate({ to: "/", replace: true });
     } catch (error) {
-      console.error('Error signing out to guest mode:', error);
-      toast.error('Não foi possível continuar como visitante.');
+      logger.error("Error signing out to guest mode:", error);
+      toast.error("Não foi possível continuar como visitante.");
     } finally {
       setIsSigningOut(false);
     }
@@ -46,10 +49,10 @@ export function UserMenu({ user }: UserMenuProps) {
     try {
       await signOutFully();
       setIsLogoutDialogOpen(false);
-      navigate({ to: '/auth', replace: true });
+      navigate({ to: "/auth", replace: true });
     } catch (error) {
-      console.error('Error signing out fully:', error);
-      toast.error('Não foi possível sair totalmente.');
+      logger.error("Error signing out fully:", error);
+      toast.error("Não foi possível sair totalmente.");
     } finally {
       setIsSigningOut(false);
     }
@@ -61,7 +64,10 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={user.avatarUrl || ''} alt={user.displayName || 'User'} />
+              <AvatarImage
+                src={user.avatarUrl || ""}
+                alt={user.displayName || "User"}
+              />
               <AvatarFallback>
                 <User className="h-4 w-4" />
               </AvatarFallback>
@@ -71,9 +77,11 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuContent className="w-56" align="end" forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">{user.displayName || 'Usuário'}</p>
+              <p className="text-sm font-medium leading-none">
+                {user.displayName || "Usuário"}
+              </p>
               <p className="text-xs leading-none text-muted-foreground">
-                {user.email || 'Sem email'}
+                {user.email || "Sem email"}
               </p>
             </div>
           </DropdownMenuLabel>

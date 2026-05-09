@@ -1,11 +1,20 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
-import type { UserProfile } from '../types';
-import { supabase } from '../lib/supabase';
-import { authService } from '../services/auth';
+import type { Session } from "@supabase/supabase-js";
+import type { ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
-export type AuthStatus = 'loading' | 'none' | 'anonymous' | 'authenticated';
+import { supabase } from "../lib/supabase";
+import { authService } from "../services/auth";
+import type { UserProfile } from "../types";
+
+export type AuthStatus = "loading" | "none" | "anonymous" | "authenticated";
 
 export interface AuthContextSnapshot {
   status: AuthStatus;
@@ -30,7 +39,7 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const [status, setStatus] = useState<AuthStatus>('loading');
+  const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<UserProfile | null>(null);
   const updateTokenRef = useRef(0);
 
@@ -39,50 +48,55 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     if (!session) {
       setUser(null);
-      setStatus('none');
+      setStatus("none");
       return;
     }
 
     const profile = await authService.getUserProfile();
 
+    // eslint-disable-next-line security/detect-possible-timing-attacks
     if (token !== updateTokenRef.current) {
       return;
     }
 
     if (!profile) {
       setUser(null);
-      setStatus('none');
+      setStatus("none");
       return;
     }
 
     setUser(profile);
-    setStatus(profile.isAnonymous ? 'anonymous' : 'authenticated');
+    setStatus(profile.isAnonymous ? "anonymous" : "authenticated");
   }, []);
 
   const refreshProfile = useCallback(async () => {
     const profile = await authService.getUserProfile();
     if (!profile) {
       setUser(null);
-      setStatus('none');
+      setStatus("none");
       return;
     }
 
     setUser(profile);
-    setStatus(profile.isAnonymous ? 'anonymous' : 'authenticated');
+    setStatus(profile.isAnonymous ? "anonymous" : "authenticated");
   }, []);
 
   useEffect(() => {
     let active = true;
 
     const initialize = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!active) return;
       await applySession(session);
     };
 
     initialize();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       void applySession(session);
     });
 
@@ -92,16 +106,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [applySession]);
 
-  const value = useMemo<AuthContextValue>(() => ({
-    status,
-    user,
-    refreshProfile,
-    signInWithGoogle: () => authService.signInWithGoogle(),
-    signInWithOtp: (email: string) => authService.signInWithOtp(email),
-    continueAsGuest: () => authService.signInAnonymously().then(() => undefined),
-    signOutToGuest: () => authService.signOutToGuest(),
-    signOutFully: () => authService.signOutFully(),
-  }), [refreshProfile, status, user]);
+  const value = useMemo<AuthContextValue>(
+    () => ({
+      status,
+      user,
+      refreshProfile,
+      signInWithGoogle: () => authService.signInWithGoogle(),
+      signInWithOtp: (email: string) => authService.signInWithOtp(email),
+      continueAsGuest: () =>
+        authService.signInAnonymously().then(() => undefined),
+      signOutToGuest: () => authService.signOutToGuest(),
+      signOutFully: () => authService.signOutFully(),
+    }),
+    [refreshProfile, status, user],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
@@ -110,7 +128,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
 
   return context;

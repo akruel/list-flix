@@ -1,22 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { LogIn } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { UserMenu } from './UserMenu';
-import { LoginOptionsDialog } from './LoginOptionsDialog';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
+import { useNavigate } from "@tanstack/react-router";
+import { LogIn } from "lucide-react";
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+
+import { useAuth } from "../contexts/AuthContext";
+import { LoginOptionsDialog } from "./LoginOptionsDialog";
+import { UserMenu } from "./UserMenu";
 
 export function LoginButton() {
   const navigate = useNavigate();
   const { status, user } = useAuth();
   const [isLoginOptionsOpen, setIsLoginOptionsOpen] = useState(false);
 
-  if (status === 'loading') {
-    return <Skeleton className="h-9 w-24 rounded-full" />;
+  if (status === "loading") {
+    return (
+      <Skeleton
+        className="h-9 w-24 rounded-full"
+        data-testid="login-button-skeleton"
+      />
+    );
   }
 
-  if (status === 'authenticated' && user) {
+  if (status === "authenticated" && user) {
     return <UserMenu user={user} />;
   }
 
@@ -24,16 +31,16 @@ export function LoginButton() {
     <>
       <Button
         onClick={() => {
-          if (status === 'anonymous') {
+          if (status === "anonymous") {
             setIsLoginOptionsOpen(true);
             return;
           }
-          navigate({ to: '/auth' });
+          navigate({ to: "/auth" });
         }}
         variant="secondary"
         className="rounded-full"
       >
-        <LogIn className="w-4 h-4 mr-2" />
+        <LogIn className="mr-2 h-4 w-4" />
         <span className="hidden sm:inline">Fazer Login</span>
       </Button>
 

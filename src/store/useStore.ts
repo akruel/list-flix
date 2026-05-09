@@ -1,8 +1,15 @@
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import type { ContentItem, List, WatchedEpisodeMetadata, SeriesMetadata, Episode } from '../types';
-import { userContentService } from '../services/userContent';
-import { listService } from '../services/listService';
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+import { listService } from "../services/listService";
+import { userContentService } from "../services/userContent";
+import type {
+  ContentItem,
+  Episode,
+  List,
+  SeriesMetadata,
+  WatchedEpisodeMetadata,
+} from "../types";
 
 interface ListStore {
   myList: ContentItem[];
@@ -15,17 +22,29 @@ interface ListStore {
   markAsWatched: (id: number) => void;
   markAsUnwatched: (id: number) => void;
   isWatched: (id: number) => boolean;
-  
-  markEpisodeAsWatched: (showId: number, episodeId: number, seasonNumber: number, episodeNumber: number) => void;
+
+  markEpisodeAsWatched: (
+    showId: number,
+    episodeId: number,
+    seasonNumber: number,
+    episodeNumber: number,
+  ) => void;
   markEpisodeAsUnwatched: (showId: number, episodeId: number) => void;
-  markSeasonAsWatched: (showId: number, seasonNumber: number, episodes: Episode[]) => void;
+  markSeasonAsWatched: (
+    showId: number,
+    seasonNumber: number,
+    episodes: Episode[],
+  ) => void;
   markSeasonAsUnwatched: (showId: number, seasonNumber: number) => void;
   isEpisodeWatched: (showId: number, episodeId: number) => boolean;
-  getSeasonProgress: (showId: number, seasonNumber: number) => { watchedCount: number };
+  getSeasonProgress: (
+    showId: number,
+    seasonNumber: number,
+  ) => { watchedCount: number };
   getSeriesProgress: (showId: number) => { watchedCount: number };
   saveSeriesMetadata: (showId: number, metadata: SeriesMetadata) => void;
   getSeriesMetadata: (showId: number) => SeriesMetadata | undefined;
-  
+
   syncWithSupabase: () => Promise<void>;
 
   // Shared Lists
@@ -44,7 +63,7 @@ export const useStore = create<ListStore>()(
       watchedEpisodes: {},
       seriesMetadata: {},
       lists: [],
-      
+
       addToList: (item) => {
         set((state) => {
           if (state.myList.some((i) => i.id === item.id)) return state;
@@ -69,11 +88,15 @@ export const useStore = create<ListStore>()(
       markAsWatched: (id) => {
         set((state) => {
           if (state.watchedIds.includes(id)) return state;
-          
+
           // Try to find item metadata from myList if available
-          const item = state.myList.find(i => i.id === id);
-          userContentService.markAsWatched(id, item?.media_type || 'movie', (item || {}) as Record<string, unknown>);
-          
+          const item = state.myList.find((i) => i.id === id);
+          userContentService.markAsWatched(
+            id,
+            item?.media_type || "movie",
+            (item || {}) as Record<string, unknown>,
+          );
+
           return { watchedIds: [...state.watchedIds, id] };
         });
       },
@@ -82,22 +105,34 @@ export const useStore = create<ListStore>()(
         set((state) => {
           userContentService.markAsUnwatched(id);
           return {
-            watchedIds: state.watchedIds.filter((watchedId) => watchedId !== id),
+            watchedIds: state.watchedIds.filter(
+              (watchedId) => watchedId !== id,
+            ),
           };
         });
       },
 
       isWatched: (id) => get().watchedIds.includes(id),
 
-      markEpisodeAsWatched: (showId, episodeId, seasonNumber, episodeNumber) => {
+      markEpisodeAsWatched: (
+        showId,
+        episodeId,
+        seasonNumber,
+        episodeNumber,
+      ) => {
         set((state) => {
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
-          if (currentShowEpisodes[episodeId]) return state;
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
+            ? state.watchedEpisodes[showId]
+            : {};
+          if (Object.hasOwn(currentShowEpisodes, episodeId)) return state;
 
-          userContentService.markAsWatched(episodeId, 'episode', { 
+          userContentService.markAsWatched(episodeId, "episode", {
             show_id: showId,
             season_number: seasonNumber,
-            episode_number: episodeNumber
+            episode_number: episodeNumber,
           });
 
           return {
@@ -105,49 +140,69 @@ export const useStore = create<ListStore>()(
               ...state.watchedEpisodes,
               [showId]: {
                 ...currentShowEpisodes,
-                [episodeId]: { season_number: seasonNumber, episode_number: episodeNumber }
-              }
-            }
+                [episodeId]: {
+                  season_number: seasonNumber,
+                  episode_number: episodeNumber,
+                },
+              },
+            },
           };
         });
       },
 
       markEpisodeAsUnwatched: (showId, episodeId) => {
         set((state) => {
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
+            ? state.watchedEpisodes[showId]
+            : {};
           userContentService.markAsUnwatched(episodeId);
 
-          const remainingEpisodes = { ...currentShowEpisodes };
-          delete remainingEpisodes[episodeId];
+          const remainingEpisodes = Object.fromEntries(
+            Object.entries(currentShowEpisodes).filter(
+              ([key]) => key !== String(episodeId),
+            ),
+          );
 
           return {
             watchedEpisodes: {
               ...state.watchedEpisodes,
-              [showId]: remainingEpisodes
-            }
+              [showId]: remainingEpisodes,
+            },
           };
         });
       },
 
       markSeasonAsWatched: (showId, seasonNumber, episodes) => {
         set((state) => {
-          userContentService.markSeasonAsWatched(showId, seasonNumber, episodes);
+          userContentService.markSeasonAsWatched(
+            showId,
+            seasonNumber,
+            episodes,
+          );
 
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
+            ? state.watchedEpisodes[showId]
+            : {};
           const newEpisodes = { ...currentShowEpisodes };
 
-          episodes.forEach(ep => {
+          episodes.forEach((ep) => {
             newEpisodes[ep.id] = {
               season_number: seasonNumber,
-              episode_number: ep.episode_number
+              episode_number: ep.episode_number,
             };
           });
 
           return {
             watchedEpisodes: {
               ...state.watchedEpisodes,
-              [showId]: newEpisodes
-            }
+              [showId]: newEpisodes,
+            },
           };
         });
       },
@@ -156,21 +211,25 @@ export const useStore = create<ListStore>()(
         set((state) => {
           userContentService.markSeasonAsUnwatched(showId, seasonNumber);
 
-          const currentShowEpisodes = state.watchedEpisodes[showId] || {};
-          const remainingEpisodes = { ...currentShowEpisodes };
+          const currentShowEpisodes = Object.hasOwn(
+            state.watchedEpisodes,
+            showId,
+          )
+            ? state.watchedEpisodes[showId]
+            : {};
 
           // Remove all episodes that belong to this season
-          Object.entries(remainingEpisodes).forEach(([epId, meta]) => {
-            if (meta.season_number === seasonNumber) {
-              delete remainingEpisodes[Number(epId)];
-            }
-          });
+          const remaining = Object.fromEntries(
+            Object.entries(currentShowEpisodes).filter(
+              ([, meta]) => meta.season_number !== seasonNumber,
+            ),
+          );
 
           return {
             watchedEpisodes: {
               ...state.watchedEpisodes,
-              [showId]: remainingEpisodes
-            }
+              [showId]: remaining,
+            },
           };
         });
       },
@@ -183,7 +242,7 @@ export const useStore = create<ListStore>()(
       getSeasonProgress: (showId, seasonNumber) => {
         const showEpisodes = get().watchedEpisodes[showId] || {};
         const watchedCount = Object.values(showEpisodes).filter(
-          (metadata) => metadata.season_number === seasonNumber
+          (metadata) => metadata.season_number === seasonNumber,
         ).length;
         return { watchedCount };
       },
@@ -192,7 +251,7 @@ export const useStore = create<ListStore>()(
         const showEpisodes = get().watchedEpisodes[showId] || {};
         // Filter out specials (season 0)
         const watchedCount = Object.values(showEpisodes).filter(
-          (metadata) => metadata.season_number !== 0
+          (metadata) => metadata.season_number !== 0,
         ).length;
         return { watchedCount };
       },
@@ -201,8 +260,8 @@ export const useStore = create<ListStore>()(
         set((state) => ({
           seriesMetadata: {
             ...state.seriesMetadata,
-            [showId]: metadata
-          }
+            [showId]: metadata,
+          },
         }));
         // Persist to Supabase
         userContentService.saveSeriesMetadata(showId, metadata);
@@ -215,11 +274,16 @@ export const useStore = create<ListStore>()(
       syncWithSupabase: async () => {
         const state = get();
         // 1. Upload local data to Supabase (migration)
-        await userContentService.syncLocalData(state.myList, state.watchedIds, state.watchedEpisodes);
-        
+        await userContentService.syncLocalData(
+          state.myList,
+          state.watchedIds,
+          state.watchedEpisodes,
+        );
+
         // 2. Fetch latest data from Supabase (source of truth)
-        const { watchlist, watchedIds, watchedEpisodes, seriesMetadata } = await userContentService.getUserContent();
-        
+        const { watchlist, watchedIds, watchedEpisodes, seriesMetadata } =
+          await userContentService.getUserContent();
+
         set({ myList: watchlist, watchedIds, watchedEpisodes, seriesMetadata });
       },
 
@@ -249,7 +313,7 @@ export const useStore = create<ListStore>()(
       },
     }),
     {
-      name: 'listflix-storage',
-    }
-  )
+      name: "listflix-storage",
+    },
+  ),
 );

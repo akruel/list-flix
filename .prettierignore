@@ -1,0 +1,9 @@
+dist
+coverage
+playwright-report
+test-results
+node_modules
+*.min.js
+*.map
+package-lock.json
+src/routeTree.gen.ts

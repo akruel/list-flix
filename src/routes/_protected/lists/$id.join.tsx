@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
-import type { FormEvent } from 'react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
+import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,111 +11,118 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { authService } from '@/services/auth'
-import { listService } from '@/services/listService'
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
+import { authService } from "@/services/auth";
+import { listService } from "@/services/listService";
 
 type JoinRouteSearch = {
-  role?: 'editor' | 'viewer'
-}
+  role?: "editor" | "viewer";
+};
 
-export const Route = createFileRoute('/_protected/lists/$id/join')({
+export const Route = createFileRoute("/_protected/lists/$id/join")({
   validateSearch: (search: Record<string, unknown>): JoinRouteSearch => ({
-    role: search.role === 'editor' || search.role === 'viewer' ? search.role : undefined,
+    role:
+      search.role === "editor" || search.role === "viewer"
+        ? search.role
+        : undefined,
   }),
   component: JoinListRouteComponent,
-})
+});
 
 function JoinListRouteComponent() {
-  const { id } = Route.useParams()
-  const { role = 'viewer' } = Route.useSearch()
-  const navigate = useNavigate()
-  const joinSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const { id } = Route.useParams();
+  const { role = "viewer" } = Route.useSearch();
+  const navigate = useNavigate();
+  const joinSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const [status, setStatus] = useState<
-    'loading' | 'input' | 'confirm' | 'joining' | 'success' | 'error'
-  >('loading')
-  const [listName, setListName] = useState<string>('')
-  const [memberName, setMemberName] = useState<string>('')
-  const [error, setError] = useState<string>('')
-  const isBlockingClose = status === 'joining' || status === 'success'
+    "loading" | "input" | "confirm" | "joining" | "success" | "error"
+  >("loading");
+  const [listName, setListName] = useState<string>("");
+  const [memberName, setMemberName] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const isBlockingClose = status === "joining" || status === "success";
 
   const closeToLists = () => {
-    navigate({ to: '/lists' })
-  }
+    navigate({ to: "/lists" });
+  };
 
   useEffect(() => {
     const init = async () => {
       try {
-        const name = await listService.getListName(id)
-        setListName(name)
+        const name = await listService.getListName(id);
+        setListName(name);
 
-        const profile = await authService.getUserProfile()
+        const profile = await authService.getUserProfile();
         if (profile && !profile.isAnonymous && profile.displayName) {
-          setMemberName(profile.displayName)
-          setStatus('confirm')
-          return
+          setMemberName(profile.displayName);
+          setStatus("confirm");
+          return;
         }
 
-        setStatus('input')
+        setStatus("input");
       } catch (err) {
-        console.error(err)
-        setStatus('error')
-        setError('Não foi possível carregar os detalhes da lista.')
+        logger.error(err);
+        setStatus("error");
+        setError("Não foi possível carregar os detalhes da lista.");
       }
-    }
+    };
 
-    void init()
-  }, [id])
+    void init();
+  }, [id]);
 
   useEffect(() => {
     return () => {
       if (joinSuccessTimeoutRef.current) {
-        clearTimeout(joinSuccessTimeoutRef.current)
-        joinSuccessTimeoutRef.current = null
+        clearTimeout(joinSuccessTimeoutRef.current);
+        joinSuccessTimeoutRef.current = null;
       }
-    }
-  }, [])
+    };
+  }, []);
 
   const handleJoinSubmit = async () => {
-    if (!memberName.trim()) return
+    if (!memberName.trim()) return;
 
-    setStatus('joining')
+    setStatus("joining");
     try {
-      await listService.joinList(id, memberName, role)
-      setStatus('success')
+      await listService.joinList(id, memberName, role);
+      setStatus("success");
       joinSuccessTimeoutRef.current = setTimeout(() => {
-        navigate({ to: '/lists/$id', params: { id } })
-      }, 1500)
+        navigate({ to: "/lists/$id", params: { id } });
+      }, 1500);
     } catch (err) {
-      console.error(err)
-      setStatus('error')
-      setError('Não foi possível entrar na lista.')
+      logger.error(err);
+      setStatus("error");
+      setError("Não foi possível entrar na lista.");
     }
-  }
+  };
 
   const handleJoin = (e: FormEvent) => {
-    e.preventDefault()
-    void handleJoinSubmit()
-  }
+    e.preventDefault();
+    void handleJoinSubmit();
+  };
 
   const handleDialogChange = (open: boolean) => {
     if (!open && !isBlockingClose) {
-      closeToLists()
+      closeToLists();
     }
-  }
+  };
 
   const roleBadgeClassName =
-    role === 'editor'
-      ? 'bg-purple-600/20 text-purple-400 border border-purple-500/50'
-      : 'bg-blue-600/20 text-blue-400 border border-blue-500/50'
+    role === "editor"
+      ? "bg-purple-600/20 text-purple-400 border border-purple-500/50"
+      : "bg-blue-600/20 text-blue-400 border border-blue-500/50";
 
   const roleDescription =
-    role === 'editor'
-      ? 'Você poderá adicionar e remover itens desta lista.'
-      : 'Você terá acesso somente para visualizar esta lista.'
+    role === "editor"
+      ? "Você poderá adicionar e remover itens desta lista."
+      : "Você terá acesso somente para visualizar esta lista.";
 
-  const roleLabel = role === 'editor' ? '✏️ Editor' : '👁️ Visualizador'
+  const roleLabel = role === "editor" ? "✏️ Editor" : "👁️ Visualizador";
 
   return (
     <Dialog open={true} onOpenChange={handleDialogChange}>
@@ -125,44 +132,54 @@ function JoinListRouteComponent() {
         hideClose={isBlockingClose}
         onEscapeKeyDown={(event) => {
           if (isBlockingClose) {
-            event.preventDefault()
+            event.preventDefault();
           }
         }}
         onPointerDownOutside={(event) => {
           if (isBlockingClose) {
-            event.preventDefault()
+            event.preventDefault();
           }
         }}
       >
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle>Entrar na lista</DialogTitle>
           <DialogDescription>
-            Você foi convidado para participar da lista{' '}
-            <span className="font-semibold text-foreground">"{listName || '...'}"</span>.
+            Você foi convidado para participar da lista{" "}
+            <span className="font-semibold text-foreground">
+              {listName || "..."}
+            </span>
+            .
           </DialogDescription>
         </DialogHeader>
 
-        {status === 'loading' && (
+        {status === "loading" && (
           <div className="py-6 text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">Carregando detalhes da lista...</p>
+            <Loader2 className="mx-auto mb-3 h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Carregando detalhes da lista...
+            </p>
           </div>
         )}
 
-        {status === 'input' && (
+        {status === "input" && (
           <>
             <div className="text-center">
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${roleBadgeClassName}`}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${roleBadgeClassName}`}
               >
                 {roleLabel}
               </span>
-              <p className="text-xs text-muted-foreground mt-2">{roleDescription}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {roleDescription}
+              </p>
             </div>
 
             <form onSubmit={handleJoin} className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="join-member-name" className="text-sm font-medium">
+                <label
+                  htmlFor="join-member-name"
+                  className="text-sm font-medium"
+                >
                   Seu nome
                 </label>
                 <Input
@@ -172,7 +189,6 @@ function JoinListRouteComponent() {
                   onChange={(e) => setMemberName(e.target.value)}
                   placeholder="Digite seu nome"
                   required
-                  autoFocus
                 />
               </div>
 
@@ -186,17 +202,18 @@ function JoinListRouteComponent() {
           </>
         )}
 
-        {status === 'confirm' && (
+        {status === "confirm" && (
           <div className="text-center">
-            <p className="text-muted-foreground mb-5">
-              Entrando na lista{' '}
-              <span className="font-semibold text-foreground">"{listName}"</span> como{' '}
+            <p className="mb-5 text-muted-foreground">
+              Entrando na lista{" "}
+              <span className="font-semibold text-foreground">{listName}</span>{" "}
+              como{" "}
               <span className="font-semibold text-primary">{memberName}</span>
             </p>
 
             <div className="mb-6 text-center">
               <span
-                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${roleBadgeClassName}`}
+                className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${roleBadgeClassName}`}
               >
                 {roleLabel}
               </span>
@@ -209,7 +226,7 @@ function JoinListRouteComponent() {
               <Button
                 type="button"
                 onClick={() => {
-                  void handleJoinSubmit()
+                  void handleJoinSubmit();
                 }}
               >
                 Confirmar entrada
@@ -218,7 +235,7 @@ function JoinListRouteComponent() {
             <Button
               type="button"
               variant="link"
-              onClick={() => setStatus('input')}
+              onClick={() => setStatus("input")}
               className="mt-2"
             >
               Entrar com outro nome
@@ -226,29 +243,33 @@ function JoinListRouteComponent() {
           </div>
         )}
 
-        {status === 'joining' && (
+        {status === "joining" && (
           <div className="py-6 text-center">
-            <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-3" />
+            <Loader2 className="mx-auto mb-3 h-10 w-10 animate-spin text-primary" />
             <p className="text-base font-medium">Entrando na lista...</p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="mt-1 text-sm text-muted-foreground">
               Aguarde enquanto confirmamos seu acesso.
             </p>
           </div>
         )}
 
-        {status === 'success' && (
+        {status === "success" && (
           <div className="py-6 text-center">
-            <div className="text-green-500 text-5xl mb-3">✓</div>
-            <p className="text-base font-medium">Você entrou na lista com sucesso.</p>
-            <p className="text-sm text-muted-foreground mt-1">Redirecionando...</p>
+            <div className="mb-3 text-5xl text-green-500">✓</div>
+            <p className="text-base font-medium">
+              Você entrou na lista com sucesso.
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Redirecionando...
+            </p>
           </div>
         )}
 
-        {status === 'error' && (
-          <div className="text-center py-4">
-            <div className="text-red-500 text-5xl mb-3">✕</div>
-            <p className="text-base font-medium mb-2">Algo deu errado</p>
-            <p className="text-sm text-muted-foreground mb-5">{error}</p>
+        {status === "error" && (
+          <div className="py-4 text-center">
+            <div className="mb-3 text-5xl text-red-500">✕</div>
+            <p className="mb-2 text-base font-medium">Algo deu errado</p>
+            <p className="mb-5 text-sm text-muted-foreground">{error}</p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeToLists}>
                 Voltar para minhas listas
@@ -258,5 +279,5 @@ function JoinListRouteComponent() {
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

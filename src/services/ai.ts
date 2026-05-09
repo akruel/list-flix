@@ -1,10 +1,13 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import { tmdb } from './tmdb';
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+import { logger } from "@/lib/logger";
+
+import { tmdb } from "./tmdb";
 
 const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 if (!API_KEY) {
-  console.error('VITE_GEMINI_API_KEY is missing');
+  logger.error("VITE_GEMINI_API_KEY is missing");
 }
 
 const genAI = new GoogleGenerativeAI(API_KEY);
@@ -14,11 +17,11 @@ export const ai = {
     try {
       // 1. Fetch genres to provide context
       const genres = await tmdb.getGenres();
-      const genresList = genres.map(g => `${g.id}:${g.name}`).join(', ');
+      const genresList = genres.map((g) => `${g.id}:${g.name}`).join(", ");
 
       // 2. Prepare the prompt
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
-      
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
       const systemPrompt = `
         You are a movie and TV show expert. Your goal is to translate a user's natural language request into a set of filters for the TMDB (The Movie Database) API.
         
@@ -85,14 +88,17 @@ export const ai = {
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       const text = response.text();
-      
+
       // Clean up the response if it contains markdown code blocks
-      const cleanText = text.replace(/```json/g, '').replace(/```/g, '').trim();
-      
+      const cleanText = text
+        .replace(/```json/g, "")
+        .replace(/```/g, "")
+        .trim();
+
       return JSON.parse(cleanText);
     } catch (error) {
-      console.error('Error getting AI suggestions:', error);
+      logger.error("Error getting AI suggestions:", error);
       throw error;
     }
-  }
+  },
 };

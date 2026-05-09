@@ -17,20 +17,10 @@ export interface ContentItem {
   poster_path?: string;
   backdrop_path?: string;
   overview?: string;
-  media_type: 'movie' | 'tv';
+  media_type: "movie" | "tv";
   vote_average?: number;
   release_date?: string;
   first_air_date?: string;
-}
-
-export interface UserContent {
-  id: string;
-  user_id: string;
-  content_id: number;
-  content_type: 'movie' | 'tv' | 'episode';
-  interaction_type: 'watchlist' | 'watched';
-  metadata: Record<string, unknown>;
-  created_at: string;
 }
 
 export interface List {
@@ -39,13 +29,13 @@ export interface List {
   owner_id: string;
   created_at: string;
   updated_at: string;
-  role?: 'owner' | 'editor' | 'viewer'; // Computed from list_members
+  role?: "owner" | "editor" | "viewer"; // Computed from list_members
 }
 
 export interface ListMember {
   list_id: string;
   user_id: string;
-  role: 'owner' | 'editor' | 'viewer';
+  role: "owner" | "editor" | "viewer";
   member_name?: string;
   created_at: string;
 }
@@ -54,11 +44,11 @@ export interface ListItem {
   id: string;
   list_id: string;
   content_id: number;
-  content_type: 'movie' | 'tv';
+  content_type: "movie" | "tv";
   added_by: string;
   created_at: string;
   // Joined fields
-  content?: ContentItem; 
+  content?: ContentItem;
 }
 
 export interface Provider {
@@ -67,26 +57,26 @@ export interface Provider {
   logo_path: string;
 }
 
-export interface CastMember {
+interface CastMember {
   id: number;
   name: string;
   character: string;
   profile_path: string | null;
 }
 
-export interface Video {
+interface Video {
   key: string;
   name: string;
   type: string;
 }
 
-export interface Genre {
+interface Genre {
   id: number;
   name: string;
-  character?: string; // Some APIs might return this
+  character?: string;
 }
 
-export interface Season {
+interface Season {
   id: number;
   name: string;
   season_number: number;
@@ -119,7 +109,7 @@ export interface ContentDetails extends ContentItem {
   videos: {
     results: Video[];
   };
-  'watch/providers'?: {
+  "watch/providers"?: {
     results: {
       BR?: {
         link: string;
@@ -160,7 +150,7 @@ export interface SeasonDetails {
   season_number: number;
 }
 
-export type AuthProvider = 'email' | 'google' | 'anonymous' | 'unknown';
+export type AuthProvider = "email" | "google" | "anonymous" | "unknown";
 
 export interface UserProfile {
   id: string;

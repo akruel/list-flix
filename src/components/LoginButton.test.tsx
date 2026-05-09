@@ -1,94 +1,95 @@
-import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { LoginButton } from './LoginButton'
+import { LoginButton } from "./LoginButton";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   useAuth: vi.fn(),
-}))
+}));
 
-vi.mock('@tanstack/react-router', () => ({
+vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
-}))
+}));
 
-vi.mock('../contexts/AuthContext', () => ({
+vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => mocks.useAuth(),
-}))
+}));
 
-vi.mock('./UserMenu', () => ({
+vi.mock("./UserMenu", () => ({
   UserMenu: ({ user }: { user: { displayName?: string } }) => (
-    <div data-testid="user-menu">{user.displayName ?? 'user'}</div>
+    <div data-testid="user-menu">{user.displayName ?? "user"}</div>
   ),
-}))
+}));
 
-vi.mock('./LoginOptionsDialog', () => ({
+vi.mock("./LoginOptionsDialog", () => ({
   LoginOptionsDialog: ({ open }: { open: boolean }) =>
     open ? <div data-testid="login-options-open">dialog open</div> : null,
-}))
+}));
 
-describe('LoginButton', () => {
+describe("LoginButton", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
-  it('renders skeleton while auth status is loading', () => {
+  it("renders skeleton while auth status is loading", () => {
     mocks.useAuth.mockReturnValue({
-      status: 'loading',
+      status: "loading",
       user: null,
-    })
+    });
 
-    const { container } = render(<LoginButton />)
+    render(<LoginButton />);
 
-    expect(container.querySelector('.animate-pulse')).not.toBeNull()
-  })
+    expect(screen.getByTestId("login-button-skeleton")).toBeInTheDocument();
+  });
 
-  it('renders user menu when user is authenticated', () => {
+  it("renders user menu when user is authenticated", () => {
     mocks.useAuth.mockReturnValue({
-      status: 'authenticated',
+      status: "authenticated",
       user: {
-        id: 'user-1',
-        displayName: 'Alice',
+        id: "user-1",
+        displayName: "Alice",
       },
-    })
+    });
 
-    render(<LoginButton />)
+    render(<LoginButton />);
 
-    expect(screen.getByTestId('user-menu')).toHaveTextContent('Alice')
-  })
+    expect(screen.getByTestId("user-menu")).toHaveTextContent("Alice");
+  });
 
   it.each([
     {
-      caseName: 'anonymous status opens login options',
-      status: 'anonymous',
+      caseName: "anonymous status opens login options",
+      status: "anonymous",
       shouldNavigate: false,
       dialogVisible: true,
     },
     {
-      caseName: 'unauthenticated status navigates to auth',
-      status: 'none',
+      caseName: "unauthenticated status navigates to auth",
+      status: "none",
       shouldNavigate: true,
       dialogVisible: false,
     },
-  ])('handles click for $caseName', async ({ status, shouldNavigate, dialogVisible }) => {
-    mocks.useAuth.mockReturnValue({
-      status,
-      user: null,
-    })
+  ])(
+    "handles click for $caseName",
+    async ({ status, shouldNavigate, dialogVisible }) => {
+      mocks.useAuth.mockReturnValue({
+        status,
+        user: null,
+      });
 
-    render(<LoginButton />)
+      render(<LoginButton />);
 
-    await userEvent.click(screen.getByRole('button'))
+      await userEvent.click(screen.getByRole("button"));
 
-    if (shouldNavigate) {
-      expect(mocks.navigate).toHaveBeenCalledWith({ to: '/auth' })
-      expect(screen.queryByTestId('login-options-open')).not.toBeInTheDocument()
-    } else {
-      expect(mocks.navigate).not.toHaveBeenCalled()
-      if (dialogVisible) {
-        expect(screen.getByTestId('login-options-open')).toBeInTheDocument()
-      }
-    }
-  })
-})
+      expect(mocks.navigate).toHaveBeenCalledTimes(shouldNavigate ? 1 : 0);
+      expect(mocks.navigate.mock.calls[0]?.[0]).toEqual(
+        shouldNavigate ? { to: "/auth" } : undefined,
+      );
+      expect(screen.queryByTestId("login-options-open") !== null).toBe(
+        dialogVisible,
+      );
+    },
+  );
+});

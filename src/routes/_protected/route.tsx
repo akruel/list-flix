@@ -1,131 +1,137 @@
-import { useEffect, useRef, useState } from 'react'
-import { createFileRoute, redirect, useLocation } from '@tanstack/react-router'
-import { Loader2 } from 'lucide-react'
-import { Layout } from '@/components/Layout'
-import { MigrationConflictModal } from '@/components/MigrationConflictModal'
-import { useAuth } from '@/contexts/AuthContext'
-import { authService } from '@/services/auth'
-import { useStore } from '@/store/useStore'
+import { createFileRoute, redirect, useLocation } from "@tanstack/react-router";
+import { Loader2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+
+import { Layout } from "@/components/Layout";
+import { MigrationConflictModal } from "@/components/MigrationConflictModal";
+import { useAuth } from "@/contexts/AuthContext";
+import { logger } from "@/lib/logger";
+import { authService } from "@/services/auth";
+import { useStore } from "@/store/useStore";
 
 const FullScreenLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
+  <div className="flex min-h-screen items-center justify-center bg-background">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
-)
+);
 
-export const Route = createFileRoute('/_protected')({
+export const Route = createFileRoute("/_protected")({
   beforeLoad: ({ context, location }) => {
-    if (context.auth.status === 'none') {
-      authService.savePostLoginTarget(`${location.pathname}${window.location.search}`)
-      throw redirect({ to: '/auth' })
+    if (context.auth.status === "none") {
+      authService.savePostLoginTarget(
+        `${location.pathname}${window.location.search}`,
+      );
+      throw redirect({ to: "/auth" });
     }
   },
   component: ProtectedLayoutRouteComponent,
-})
+});
 
 function ProtectedLayoutRouteComponent() {
-  const { status, user } = useAuth()
-  const syncWithSupabase = useStore((state) => state.syncWithSupabase)
-  const location = useLocation()
+  const { status, user } = useAuth();
+  const syncWithSupabase = useStore((state) => state.syncWithSupabase);
+  const location = useLocation();
 
-  const [showMigrationModal, setShowMigrationModal] = useState(false)
-  const [isSessionProcessing, setIsSessionProcessing] = useState(false)
-  const lastHandledUserIdRef = useRef<string | null>(null)
+  const [showMigrationModal, setShowMigrationModal] = useState(false);
+  const [isSessionProcessing, setIsSessionProcessing] = useState(false);
+  const lastHandledUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (status === 'none') {
-      setShowMigrationModal(false)
-      setIsSessionProcessing(false)
-      lastHandledUserIdRef.current = null
+    if (status === "none") {
+      setShowMigrationModal(false);
+      setIsSessionProcessing(false);
+      lastHandledUserIdRef.current = null;
     }
-  }, [status])
+  }, [status]);
 
   useEffect(() => {
-    if (status !== 'anonymous' && status !== 'authenticated') return
+    if (status !== "anonymous" && status !== "authenticated") return;
 
-    const userId = user?.id
-    if (!userId) return
-    if (lastHandledUserIdRef.current === userId) return
+    const userId = user?.id;
+    if (!userId) return;
+    if (lastHandledUserIdRef.current === userId) return;
 
-    let cancelled = false
+    let cancelled = false;
 
     const initializeSession = async () => {
-      setIsSessionProcessing(true)
+      setIsSessionProcessing(true);
 
       try {
-        const finalizeResult = await authService.finalizePostLogin()
-        if (cancelled) return
+        const finalizeResult = await authService.finalizePostLogin();
+        if (cancelled) return;
 
         if (finalizeResult.migrationConflict) {
-          setShowMigrationModal(true)
-          return
+          setShowMigrationModal(true);
+          return;
         }
 
-        await syncWithSupabase()
-        if (cancelled) return
-        lastHandledUserIdRef.current = userId
+        await syncWithSupabase();
+        if (cancelled) return;
+        lastHandledUserIdRef.current = userId;
       } catch (error) {
-        console.error('Session initialization failed:', error)
+        logger.error("Session initialization failed:", error);
       } finally {
         if (!cancelled) {
-          setIsSessionProcessing(false)
+          setIsSessionProcessing(false);
         }
       }
-    }
+    };
 
-    void initializeSession()
+    void initializeSession();
 
     return () => {
-      cancelled = true
-    }
-  }, [location.pathname, status, syncWithSupabase, user?.id])
+      cancelled = true;
+    };
+  }, [location.pathname, status, syncWithSupabase, user?.id]);
 
   const handleKeepLocal = async () => {
-    const oldUserId = localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY)
-    const newUserId = user?.id ?? await authService.getUserId()
+    const oldUserId = localStorage.getItem(
+      authService.MIGRATION_OLD_USER_ID_KEY,
+    );
+    const newUserId = user?.id ?? (await authService.getUserId());
 
     if (oldUserId && newUserId) {
       try {
-        await authService.migrateAnonymousData(oldUserId, newUserId)
+        await authService.migrateAnonymousData(oldUserId, newUserId);
       } catch (error) {
-        console.error('Manual migration failed:', error)
+        logger.error("Manual migration failed:", error);
       }
     }
 
-    authService.clearMigrationOldUserId()
-    setShowMigrationModal(false)
+    authService.clearMigrationOldUserId();
+    setShowMigrationModal(false);
 
     try {
-      await syncWithSupabase()
+      await syncWithSupabase();
       if (newUserId) {
-        lastHandledUserIdRef.current = newUserId
+        lastHandledUserIdRef.current = newUserId;
       }
     } catch (error) {
-      console.error('Sync after manual migration failed:', error)
+      logger.error("Sync after manual migration failed:", error);
     }
-  }
+  };
 
   const handleUseAccount = async () => {
-    const currentUserId = user?.id ?? await authService.getUserId()
+    const currentUserId = user?.id ?? (await authService.getUserId());
 
-    authService.clearMigrationOldUserId()
-    setShowMigrationModal(false)
+    authService.clearMigrationOldUserId();
+    setShowMigrationModal(false);
 
     try {
-      await syncWithSupabase()
+      await syncWithSupabase();
       if (currentUserId) {
-        lastHandledUserIdRef.current = currentUserId
+        lastHandledUserIdRef.current = currentUserId;
       }
     } catch (error) {
-      console.error('Sync after selecting account data failed:', error)
+      logger.error("Sync after selecting account data failed:", error);
     }
-  }
+  };
 
   const isProtectedBlocked =
-    status === 'loading' ||
-    status === 'none' ||
+    status === "loading" ||
+    status === "none" ||
     isSessionProcessing ||
-    showMigrationModal
+    showMigrationModal;
 
   if (isProtectedBlocked) {
     return (
@@ -137,7 +143,7 @@ function ProtectedLayoutRouteComponent() {
           onUseAccount={handleUseAccount}
         />
       </>
-    )
+    );
   }
 
   return (
@@ -149,5 +155,5 @@ function ProtectedLayoutRouteComponent() {
       />
       <Layout />
     </>
-  )
+  );
 }

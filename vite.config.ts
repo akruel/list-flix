@@ -1,74 +1,74 @@
-import path from "path"
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
-import { VitePWA } from 'vite-plugin-pwa'
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
+import react from "@vitejs/plugin-react";
+import path from "path";
+import { defineConfig } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: 'react', autoCodeSplitting: true }),
+    tanstackRouter({ target: "react", autoCodeSplitting: true }),
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webp}'],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webp}"],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\.themoviedb\.org\/.*/i,
-            handler: 'CacheFirst',
+            handler: "CacheFirst",
             options: {
-              cacheName: 'tmdb-api-cache',
+              cacheName: "tmdb-api-cache",
               expiration: {
                 maxEntries: 100,
-                maxAgeSeconds: 60 * 60 * 24 * 7 // 7 days
+                maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
               },
               cacheableResponse: {
-                statuses: [0, 200]
-              }
-            }
-          }
-        ]
+                statuses: [0, 200],
+              },
+            },
+          },
+        ],
       },
       manifest: {
-        name: 'ListFlix - Seu Guia de Streaming',
-        short_name: 'ListFlix',
-        description: 'Encontre onde assistir seus filmes e séries favoritos',
-        theme_color: '#111827',
-        background_color: '#111827',
-        display: 'standalone',
-        start_url: '/',
-        scope: '/',
-        orientation: 'portrait-primary',
+        name: "ListFlix - Seu Guia de Streaming",
+        short_name: "ListFlix",
+        description: "Encontre onde assistir seus filmes e séries favoritos",
+        theme_color: "#111827",
+        background_color: "#111827",
+        display: "standalone",
+        start_url: "/",
+        scope: "/",
+        orientation: "portrait-primary",
         icons: [
           {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'any'
+            src: "pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
           },
           {
-            src: 'pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png',
-            purpose: 'maskable'
+            src: "pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "maskable",
           },
           {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any'
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
           },
           {
-            src: 'pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png',
-            purpose: 'maskable'
-          }
-        ]
-      }
-    })
+            src: "pwa-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+        ],
+      },
+    }),
   ],
   resolve: {
     alias: {
@@ -79,22 +79,22 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
+          if (!id.includes("node_modules")) return undefined;
 
           // Keep React itself isolated without accidentally matching packages like
           // @tanstack/react-router or @radix-ui/react-*.
-          if (id.includes('/node_modules/react/')) return 'react-vendor'
-          if (id.includes('/node_modules/react-dom/')) return 'react-vendor'
-          if (id.includes('/node_modules/scheduler/')) return 'react-vendor'
+          if (id.includes("/node_modules/react/")) return "react-vendor";
+          if (id.includes("/node_modules/react-dom/")) return "react-vendor";
+          if (id.includes("/node_modules/scheduler/")) return "react-vendor";
 
-          if (id.includes('/node_modules/@tanstack/')) return 'router-vendor'
-          if (id.includes('/node_modules/@supabase/')) return 'supabase-vendor'
-          if (id.includes('/node_modules/@radix-ui/')) return 'radix-vendor'
-          if (id.includes('/node_modules/lucide-react/')) return 'icons-vendor'
+          if (id.includes("/node_modules/@tanstack/")) return "router-vendor";
+          if (id.includes("/node_modules/@supabase/")) return "supabase-vendor";
+          if (id.includes("/node_modules/@radix-ui/")) return "radix-vendor";
+          if (id.includes("/node_modules/lucide-react/")) return "icons-vendor";
 
-          return 'vendor'
+          return "vendor";
         },
       },
     },
   },
-})
+});

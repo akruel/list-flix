@@ -1,36 +1,42 @@
-import { useState } from 'react';
-import type { FormEvent } from 'react';
-import { Loader2, LogIn, Mail, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { useAuth } from '../contexts/AuthContext';
-import { GoogleIcon } from './icons/GoogleIcon';
+import { Loader2, LogIn, Mail, X } from "lucide-react";
+import type { FormEvent } from "react";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
+
+import { useAuth } from "../contexts/AuthContext";
+import { GoogleIcon } from "./icons/GoogleIcon";
 
 interface LoginOptionsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogProps) {
+export function LoginOptionsDialog({
+  open,
+  onOpenChange,
+}: LoginOptionsDialogProps) {
   const { signInWithGoogle, signInWithOtp } = useAuth();
 
   const [showEmailInput, setShowEmailInput] = useState(false);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState("");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isOtpLoading, setIsOtpLoading] = useState(false);
 
   const closeDialog = () => {
     onOpenChange(false);
     setShowEmailInput(false);
-    setEmail('');
+    setEmail("");
   };
 
   const handleGoogleLogin = async () => {
@@ -38,8 +44,8 @@ export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogPro
     try {
       await signInWithGoogle();
     } catch (error) {
-      console.error('Google login error from dialog:', error);
-      toast.error('Não foi possível iniciar login com Google.');
+      logger.error("Google login error from dialog:", error);
+      toast.error("Não foi possível iniciar login com Google.");
       setIsGoogleLoading(false);
     }
   };
@@ -51,15 +57,15 @@ export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogPro
     setIsOtpLoading(true);
     try {
       await signInWithOtp(email);
-      toast.success('Link de login enviado para seu email!', {
-        id: 'login-link-sent-dialog',
+      toast.success("Link de login enviado para seu email!", {
+        id: "login-link-sent-dialog",
         duration: 3000,
         closeButton: false,
       });
       closeDialog();
     } catch (error) {
-      console.error('OTP login error from dialog:', error);
-      toast.error('Erro ao enviar link de login.');
+      logger.error("OTP login error from dialog:", error);
+      toast.error("Erro ao enviar link de login.");
     } finally {
       setIsOtpLoading(false);
     }
@@ -71,7 +77,8 @@ export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogPro
         <DialogHeader>
           <DialogTitle>Entrar na sua conta</DialogTitle>
           <DialogDescription>
-            Você está como visitante. Escolha uma opção de login para vincular seus dados.
+            Você está como visitante. Escolha uma opção de login para vincular
+            seus dados.
           </DialogDescription>
         </DialogHeader>
 
@@ -99,7 +106,6 @@ export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogPro
                   onChange={(event) => setEmail(event.target.value)}
                   placeholder="seu@email.com"
                   className="pl-9"
-                  autoFocus
                 />
               </div>
 
@@ -110,7 +116,11 @@ export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogPro
                   className="flex-1"
                   disabled={isOtpLoading}
                 >
-                  {isOtpLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+                  {isOtpLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogIn className="h-4 w-4" />
+                  )}
                   Enviar link
                 </Button>
                 <Button
@@ -118,7 +128,7 @@ export function LoginOptionsDialog({ open, onOpenChange }: LoginOptionsDialogPro
                   variant="ghost"
                   onClick={() => {
                     setShowEmailInput(false);
-                    setEmail('');
+                    setEmail("");
                   }}
                   disabled={isOtpLoading}
                 >

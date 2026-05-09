@@ -1,30 +1,33 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { Plus, Users, Trash2, Sparkles, ChevronDown } from 'lucide-react';
-import { useStore } from '../store/useStore';
-import { toast } from 'sonner';
-import { DeleteConfirmationModal } from './DeleteConfirmationModal';
-import { MagicSearchModal } from './MagicSearchModal';
-import { listService } from '../services/listService';
-import type { ContentItem } from '../types';
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Link } from "@tanstack/react-router";
+import { ChevronDown, Plus, Sparkles, Trash2, Users } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
+
+import { listService } from "../services/listService";
+import { useStore } from "../store/useStore";
+import type { ContentItem } from "../types";
+import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
+import { MagicSearchModal } from "./MagicSearchModal";
 
 export function CustomLists() {
   const { lists, fetchLists, createList, deleteList } = useStore();
   const [isCreating, setIsCreating] = useState(false);
-  const [newListName, setNewListName] = useState('');
+  const [newListName, setNewListName] = useState("");
   const [listToDelete, setListToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  
+
   // Magic Search State
   const [isMagicModalOpen, setIsMagicModalOpen] = useState(false);
 
@@ -35,9 +38,9 @@ export function CustomLists() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
-    
+
     await createList(newListName);
-    setNewListName('');
+    setNewListName("");
     setIsCreating(false);
   };
 
@@ -46,11 +49,11 @@ export function CustomLists() {
     try {
       setIsDeleting(true);
       await deleteList(listToDelete);
-      toast.success('Lista excluída com sucesso');
+      toast.success("Lista excluída com sucesso");
       setListToDelete(null);
     } catch (err) {
-      console.error(err);
-      toast.error('Erro ao excluir lista');
+      logger.error(err);
+      toast.error("Erro ao excluir lista");
     } finally {
       setIsDeleting(false);
     }
@@ -64,18 +67,18 @@ export function CustomLists() {
     try {
       // 1. Create the list
       const newList = await createList(name);
-      
+
       // 2. Add items to the list
-      // We do this sequentially to avoid overwhelming the server/rate limits, 
+      // We do this sequentially to avoid overwhelming the server/rate limits,
       // but parallel could be faster. Given it's a POC, sequential is safer.
       for (const item of items) {
         await listService.addListItem(newList.id, item);
       }
-      
+
       // 3. Refresh lists
       fetchLists();
     } catch (error) {
-      console.error('Error saving magic list:', error);
+      logger.error("Error saving magic list:", error);
       throw error; // Propagate to modal to show error toast
     }
   };
@@ -86,9 +89,9 @@ export function CustomLists() {
 
   return (
     <div data-testid="custom-lists">
-      <div className="flex justify-between items-center mb-8">
+      <div className="mb-8 flex items-center justify-between">
         <h2 className="text-2xl font-bold text-white">Listas Personalizadas</h2>
-        
+
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button data-testid="custom-lists-new-list-trigger">
@@ -116,8 +119,8 @@ export function CustomLists() {
         </DropdownMenu>
       </div>
 
-      {isCreating && (
-        <Card className="mb-8 bg-card border-border">
+      {!!isCreating && (
+        <Card className="mb-8 border-border bg-card">
           <CardContent className="pt-6">
             <form onSubmit={handleCreate} className="flex gap-4">
               <Input
@@ -127,7 +130,6 @@ export function CustomLists() {
                 onChange={(e) => setNewListName(e.target.value)}
                 placeholder="Nome da Lista"
                 className="flex-1"
-                autoFocus
               />
               <Button type="submit" data-testid="custom-lists-manual-submit">
                 Criar
@@ -145,7 +147,7 @@ export function CustomLists() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {lists.map((list) => (
           <Link
             key={list.id}
@@ -154,19 +156,21 @@ export function CustomLists() {
             data-testid="custom-lists-card-link"
             className="block h-full"
           >
-            <Card className="h-full hover:bg-accent/50 transition-colors group relative border-border bg-card">
+            <Card className="group relative h-full border-border bg-card transition-colors hover:bg-accent/50">
               <CardHeader className="pb-2">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg md:text-xl font-semibold text-foreground group-hover:text-primary transition-colors">
+                <div className="flex items-start justify-between">
+                  <CardTitle className="text-lg font-semibold text-foreground transition-colors group-hover:text-primary md:text-xl">
                     {list.name}
                   </CardTitle>
-                  <Badge variant={list.role === 'owner' ? 'default' : 'secondary'}>
-                    {list.role === 'owner' ? 'Dono' : 'Visualizador'}
+                  <Badge
+                    variant={list.role === "owner" ? "default" : "secondary"}
+                  >
+                    {list.role === "owner" ? "Dono" : "Visualizador"}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center gap-2 text-muted-foreground text-xs md:text-sm">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground md:text-sm">
                   <Users size={16} />
                   <span>Lista Compartilhada</span>
                 </div>
@@ -174,7 +178,7 @@ export function CustomLists() {
                   Criado em {new Date(list.created_at).toLocaleDateString()}
                 </div>
 
-                {list.role === 'owner' && (
+                {list.role === "owner" && (
                   <Button
                     variant="destructive"
                     size="icon"
@@ -182,7 +186,7 @@ export function CustomLists() {
                       e.preventDefault();
                       setListToDelete(list.id);
                     }}
-                    className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8"
+                    className="absolute right-4 top-4 h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
                     title="Excluir Lista"
                   >
                     <Trash2 size={16} />
@@ -194,7 +198,7 @@ export function CustomLists() {
         ))}
 
         {lists.length === 0 && !isCreating && (
-          <div className="col-span-full text-center py-12 text-muted-foreground">
+          <div className="col-span-full py-12 text-center text-muted-foreground">
             <p>Você ainda não criou nenhuma lista personalizada.</p>
           </div>
         )}
