@@ -472,12 +472,23 @@ describe("ListDetailsView", () => {
       expect(mocks.toastError).toHaveBeenCalledTimes(
         expectedToastError ? 1 : 0,
       );
+      expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
+        expectedToastError ? "Falha ao remover item" : undefined,
+      );
     },
   );
 
   it.each([
-    { caseName: "save by Enter key", key: "Enter", shouldUpdate: true },
-    { caseName: "cancel by Escape key", key: "Escape", shouldUpdate: false },
+    {
+      caseName: "save by Enter key",
+      key: "Enter",
+      shouldUpdate: true,
+    },
+    {
+      caseName: "cancel by Escape key",
+      key: "Escape",
+      shouldUpdate: false,
+    },
   ])(
     "handles keyboard edit flow for $caseName",
     async ({ key, shouldUpdate }) => {
@@ -550,6 +561,9 @@ describe("ListDetailsView", () => {
 
       expect(mocks.toastError).toHaveBeenCalledTimes(
         expectedToastError ? 1 : 0,
+      );
+      expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
+        expectedToastError ? "Erro ao atualizar nome da lista" : undefined,
       );
     },
   );

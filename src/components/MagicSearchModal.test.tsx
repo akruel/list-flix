@@ -285,8 +285,14 @@ describe("MagicSearchModal", () => {
       });
 
       expect(mocks.toastSuccess).toHaveBeenCalledTimes(shouldSuccess ? 1 : 0);
+      expect(mocks.toastSuccess.mock.calls[0]?.[0]).toBe(
+        shouldSuccess ? "Lista criada com sucesso!" : undefined,
+      );
       expect(onClose).toHaveBeenCalledTimes(shouldSuccess ? 1 : 0);
       expect(mocks.toastError).toHaveBeenCalledTimes(shouldError ? 1 : 0);
+      expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
+        shouldError ? "Erro ao salvar a lista." : undefined,
+      );
     },
   );
 
