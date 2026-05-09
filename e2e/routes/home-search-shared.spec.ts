@@ -93,3 +93,16 @@ test(`[${SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK}] shows validation error for inv
   await expect(page.getByTestId(ROUTE_TEST_IDS.shared)).toBeVisible();
   await expect(page.getByText("Link inválido ou incompleto.")).toBeVisible();
 });
+
+test(`[${SCENARIO_IDS.THIS_WEEK_RENDER}] renders this-week route for empty watchlist`, async ({
+  page,
+}) => {
+  await continueAsGuest(page);
+
+  await page.goto("/this-week");
+
+  await expect(page.getByTestId(ROUTE_TEST_IDS.thisWeek)).toBeVisible();
+  await expect(
+    page.getByText("Você ainda não adicionou nenhuma série à sua lista."),
+  ).toBeVisible();
+});

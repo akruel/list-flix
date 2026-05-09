@@ -56,6 +56,12 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     expectation: "render",
   },
   {
+    routePath: "/this-week",
+    routeFile: "src/routes/_protected/this-week.tsx",
+    scenarioId: SCENARIO_IDS.THIS_WEEK_RENDER,
+    expectation: "render",
+  },
+  {
     routePath: "/shared",
     routeFile: "src/routes/_protected/shared/route.tsx",
     scenarioId: SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA,

@@ -5,6 +5,11 @@ import { useEffect, useState } from "react";
 import { ListSelectionModal } from "@/components/ListSelectionModal";
 import { SeasonList } from "@/components/SeasonList";
 import { DetailsSkeleton } from "@/components/skeletons";
+import {
+  formatDateLong,
+  getCountdownText,
+  parseLocalDate,
+} from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 import { useStore } from "@/store/useStore";
@@ -82,7 +87,7 @@ function DetailsRouteComponent() {
     details.media_type === "movie"
       ? details.release_date
       : details.first_air_date;
-  const year = date ? new Date(date).getFullYear() : "N/A";
+  const year = date ? parseLocalDate(date).getFullYear() : "N/A";
   const isSaved = isInList(details.id);
   const watched = isWatched(details.id);
 
@@ -208,31 +213,10 @@ function DetailsRouteComponent() {
                   <span className="text-2xl">📅</span>
                   <div>
                     <p className="font-semibold">
-                      {new Date(
-                        details.next_episode_to_air.air_date,
-                      ).toLocaleDateString("pt-BR", {
-                        weekday: "long",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      })}
+                      {formatDateLong(details.next_episode_to_air.air_date)}
                     </p>
                     <p className="text-xs text-gray-400">
-                      {(() => {
-                        const airDate = new Date(
-                          details.next_episode_to_air.air_date,
-                        );
-                        const today = new Date();
-                        const diffTime = airDate.getTime() - today.getTime();
-                        const diffDays = Math.ceil(
-                          diffTime / (1000 * 60 * 60 * 24),
-                        );
-
-                        if (diffDays === 0) return "Estreia hoje!";
-                        if (diffDays === 1) return "Estreia amanhã!";
-                        if (diffDays > 0) return `Faltam ${diffDays} dias`;
-                        return "Já disponível";
-                      })()}
+                      {getCountdownText(details.next_episode_to_air.air_date)}
                     </p>
                   </div>
                 </div>
@@ -266,9 +250,7 @@ function DetailsRouteComponent() {
                 </div>
                 <p className="text-sm text-gray-400">
                   Exibido em{" "}
-                  {new Date(
-                    details.last_episode_to_air.air_date,
-                  ).toLocaleDateString("pt-BR")}
+                  {formatDateLong(details.last_episode_to_air.air_date)}
                 </p>
                 {!!details.status && (
                   <p className="mt-2 text-xs text-gray-500">

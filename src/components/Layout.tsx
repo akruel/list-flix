@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
-import { Home, List, Search } from "lucide-react";
+import { CalendarDays, Home, List, Search } from "lucide-react";
 
 import { LoginButton } from "./LoginButton";
 
@@ -9,6 +9,7 @@ export function Layout() {
 
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
+    { icon: CalendarDays, label: "Semana", path: "/this-week" },
     { icon: Search, label: "Buscar", path: "/search" },
     { icon: List, label: "Minhas Listas", path: "/lists" },
   ];

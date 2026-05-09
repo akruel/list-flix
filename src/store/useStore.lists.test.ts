@@ -573,4 +573,26 @@ describe("useStore shared lists actions", () => {
       expect.objectContaining({ id: "list-2", name: "Keep Me" }),
     ]);
   });
+
+  it("getCachedSeason returns null when not cached", () => {
+    expect(useStore.getState().getCachedSeason(1, 1)).toBeNull();
+  });
+
+  it("setCachedSeason stores and getCachedSeason retrieves season data", () => {
+    const seasonData = {
+      _id: "123",
+      air_date: "2025-01-01",
+      episodes: [],
+      name: "Season 1",
+      overview: "",
+      id: 1,
+      poster_path: null,
+      season_number: 1,
+    };
+
+    useStore.getState().setCachedSeason(1, 1, seasonData);
+
+    expect(useStore.getState().getCachedSeason(1, 1)).toEqual(seasonData);
+    expect(useStore.getState().getCachedSeason(2, 1)).toBeNull();
+  });
 });
