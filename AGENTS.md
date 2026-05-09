@@ -67,6 +67,16 @@ Follow the project pattern (Conventional Commits):
 - `refactor: Add Knip and clean up dead code`
 - `chore: Ignore routeTree.gen.ts in Prettier`
 
+## PR Description Convention
+
+When creating pull requests, use bullet points for the description body:
+
+```
+- Added X
+- Fixed Y
+- Changed Z
+```
+
 ## Existing Agent Rules
 
 See `.agent/rules/code-style-guide.md` for additional context (triggered always).
