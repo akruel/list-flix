@@ -118,11 +118,7 @@ describe("MagicSearchModal", () => {
       "   ",
     );
 
-    fireEvent.submit(
-      screen
-        .getByRole("button", { name: /Sugerir/i })
-        .closest("form") as HTMLFormElement,
-    );
+    fireEvent.submit(screen.getByTestId("magic-list-form"));
 
     expect(mocks.getSuggestions).not.toHaveBeenCalled();
   });
@@ -288,17 +284,9 @@ describe("MagicSearchModal", () => {
         expect(onSaveList).toHaveBeenCalledWith("Sci-Fi", expect.any(Array));
       });
 
-      if (shouldSuccess) {
-        expect(mocks.toastSuccess).toHaveBeenCalledWith(
-          "Lista criada com sucesso!",
-        );
-        expect(onClose).toHaveBeenCalled();
-      }
-      if (shouldError) {
-        expect(mocks.toastError).toHaveBeenCalledWith(
-          "Erro ao salvar a lista.",
-        );
-      }
+      expect(mocks.toastSuccess).toHaveBeenCalledTimes(shouldSuccess ? 1 : 0);
+      expect(onClose).toHaveBeenCalledTimes(shouldSuccess ? 1 : 0);
+      expect(mocks.toastError).toHaveBeenCalledTimes(shouldError ? 1 : 0);
     },
   );
 

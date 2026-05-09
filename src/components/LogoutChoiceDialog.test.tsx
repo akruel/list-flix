@@ -55,21 +55,17 @@ describe("LogoutChoiceDialog", () => {
     );
 
     expect(screen.getByText("Como você quer sair?")).toBeInTheDocument();
-    if (disabled) {
-      expect(
-        screen.getByRole("button", { name: "Continuar como visitante" }),
-      ).toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: "Sair totalmente" }),
-      ).toBeDisabled();
-    } else {
-      expect(
-        screen.getByRole("button", { name: "Continuar como visitante" }),
-      ).not.toBeDisabled();
-      expect(
-        screen.getByRole("button", { name: "Sair totalmente" }),
-      ).not.toBeDisabled();
-    }
+    const disabledVal = disabled;
+    expect(
+      screen
+        .getByRole("button", { name: "Continuar como visitante" })
+        .hasAttribute("disabled"),
+    ).toBe(disabledVal);
+    expect(
+      screen
+        .getByRole("button", { name: "Sair totalmente" })
+        .hasAttribute("disabled"),
+    ).toBe(disabledVal);
   });
 
   it("calls action callbacks", async () => {

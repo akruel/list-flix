@@ -36,7 +36,10 @@ interface ListDetailsViewProps {
 }
 
 const ListDetailsSkeleton = () => (
-  <div className="space-y-8 duration-500 animate-in fade-in">
+  <div
+    className="space-y-8 duration-500 animate-in fade-in"
+    data-testid="list-details-skeleton"
+  >
     <div className="flex items-start justify-between">
       <div className="w-full max-w-lg space-y-4">
         <Skeleton className="h-10 w-2/3" />
@@ -473,7 +476,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
               </div>
             )}
 
-            {canEdit && (
+            {!!canEdit && (
               <Button
                 variant="destructive"
                 size="icon"
@@ -491,7 +494,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         {items.length === 0 && (
           <div className="col-span-full py-20 text-center text-muted-foreground">
             <p className="mb-2 text-xl">Esta lista está vazia</p>
-            {canEdit && (
+            {!!canEdit && (
               <p className="text-sm">Adicione filmes e séries para começar.</p>
             )}
           </div>

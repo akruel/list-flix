@@ -306,18 +306,12 @@ describe("authService", () => {
       expect(result.isAnonymous).toBe(false);
       expect(result.migrationConflict).toBe(hasRemoteData);
 
-      if (shouldMigrate) {
-        expect(
-          mockedMigrationService.migrateAnonymousUserData,
-        ).toHaveBeenCalledWith("anon-1", "auth-1");
-        expect(
-          localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY),
-        ).toBeNull();
-      } else {
-        expect(
-          mockedMigrationService.migrateAnonymousUserData,
-        ).not.toHaveBeenCalled();
-      }
+      expect(
+        mockedMigrationService.migrateAnonymousUserData.mock.calls,
+      ).toEqual(shouldMigrate ? [["anon-1", "auth-1"]] : []);
+      expect(localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY)).toBe(
+        shouldMigrate ? null : "anon-1",
+      );
 
       expect(ensureSpy).toHaveBeenCalledOnce();
     },
@@ -503,9 +497,7 @@ describe("authService", () => {
 
       expect(profile?.provider).toBe(expectedProvider);
       expect(profile?.displayName).toBe(expectedDisplayName);
-      if (user.is_anonymous === undefined) {
-        expect(profile?.isAnonymous).toBe(false);
-      }
+      expect(profile?.isAnonymous).toBe(user.is_anonymous ?? false);
     },
   );
 

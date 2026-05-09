@@ -119,9 +119,7 @@ describe.sequential("RLS: list_items policies", () => {
           content_type: "movie",
         });
 
-      if (viewerInsert.error) {
-        expect(viewerInsert.error).not.toBeNull();
-      }
+      expect(viewerInsert.error).not.toBeNull();
       expect(await hasItemWithContentId(fixture.listId, viewerContent)).toBe(
         false,
       );

@@ -367,15 +367,12 @@ describe("useStore shared lists actions", () => {
         watchedEpisodes,
       });
 
-      if (seasonNumber === 999) {
-        expect(useStore.getState().getSeriesProgress(1)).toEqual({
-          watchedCount: expected,
-        });
-      } else {
-        expect(useStore.getState().getSeasonProgress(1, seasonNumber)).toEqual({
-          watchedCount: expected,
-        });
-      }
+      const state = useStore.getState();
+      expect(
+        seasonNumber === 999
+          ? state.getSeriesProgress(1)
+          : state.getSeasonProgress(1, seasonNumber),
+      ).toEqual({ watchedCount: expected });
     },
   );
 

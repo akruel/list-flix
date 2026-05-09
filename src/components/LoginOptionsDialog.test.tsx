@@ -72,13 +72,10 @@ describe("LoginOptionsDialog", () => {
       expect(mocks.signInWithGoogle).toHaveBeenCalledOnce();
     });
 
-    if (shouldError) {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Não foi possível iniciar login com Google.",
-      );
-    } else {
-      expect(mocks.toastError).not.toHaveBeenCalled();
-    }
+    expect(mocks.toastError).toHaveBeenCalledTimes(shouldError ? 1 : 0);
+    expect(mocks.toastError.mock.calls[0]?.[0]).toEqual(
+      shouldError ? "Não foi possível iniciar login com Google." : undefined,
+    );
   });
 
   it("opens and closes email input", async () => {
@@ -140,15 +137,14 @@ describe("LoginOptionsDialog", () => {
       expect(mocks.signInWithOtp).toHaveBeenCalledWith("alice@example.com");
     });
 
-    if (shouldClose) {
-      expect(mocks.toastSuccess).toHaveBeenCalled();
-      expect(onOpenChange).toHaveBeenCalledWith(false);
-    }
-
-    if (shouldError) {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Erro ao enviar link de login.",
-      );
-    }
+    expect(mocks.toastSuccess).toHaveBeenCalledTimes(shouldClose ? 1 : 0);
+    expect(onOpenChange).toHaveBeenCalledTimes(shouldClose ? 1 : 0);
+    expect(onOpenChange.mock.calls[0]?.[0]).toEqual(
+      shouldClose ? false : undefined,
+    );
+    expect(mocks.toastError).toHaveBeenCalledTimes(shouldError ? 1 : 0);
+    expect(mocks.toastError.mock.calls[0]?.[0]).toEqual(
+      shouldError ? "Erro ao enviar link de login." : undefined,
+    );
   });
 });

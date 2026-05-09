@@ -119,7 +119,7 @@ export function CustomLists() {
         </DropdownMenu>
       </div>
 
-      {isCreating && (
+      {!!isCreating && (
         <Card className="mb-8 border-border bg-card">
           <CardContent className="pt-6">
             <form onSubmit={handleCreate} className="flex gap-4">

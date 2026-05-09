@@ -1,5 +1,4 @@
 import { Loader2 } from "lucide-react";
-import React from "react";
 
 import {
   AlertDialog,
@@ -21,16 +20,14 @@ interface DeleteConfirmationModalProps {
   isDeleting?: boolean;
 }
 
-export const DeleteConfirmationModal: React.FC<
-  DeleteConfirmationModalProps
-> = ({
+export function DeleteConfirmationModal({
   isOpen,
   onClose,
   onConfirm,
   title,
   description,
   isDeleting = false,
-}) => {
+}: DeleteConfirmationModalProps) {
   return (
     <AlertDialog
       open={isOpen}
@@ -51,11 +48,11 @@ export const DeleteConfirmationModal: React.FC<
               onConfirm();
             }}
           >
-            {isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {!!isDeleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {isDeleting ? "Excluindo..." : "Sim, excluir"}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
   );
-};
+}

@@ -128,13 +128,17 @@ describe("ListSelectionModal", () => {
     await screen.findByText("Minha Lista");
     await userEvent.click(screen.getByRole("button", { name: /Minha Lista/i }));
 
-    if (expectedCall === "remove") {
-      expect(mocks.storeValue.removeFromList).toHaveBeenCalledWith(10);
-      expect(mocks.storeValue.addToList).not.toHaveBeenCalled();
-    } else {
-      expect(mocks.storeValue.addToList).toHaveBeenCalledWith(content);
-      expect(mocks.storeValue.removeFromList).not.toHaveBeenCalled();
-    }
+    const isRemove = expectedCall === "remove";
+    expect(mocks.storeValue.removeFromList).toHaveBeenCalledTimes(
+      isRemove ? 1 : 0,
+    );
+    expect(mocks.storeValue.removeFromList.mock.calls[0]?.[0]).toEqual(
+      isRemove ? 10 : undefined,
+    );
+    expect(mocks.storeValue.addToList).toHaveBeenCalledTimes(isRemove ? 0 : 1);
+    expect(mocks.storeValue.addToList.mock.calls[0]?.[0]).toEqual(
+      isRemove ? undefined : content,
+    );
   });
 
   it("toggles custom list removal when membership exists", async () => {

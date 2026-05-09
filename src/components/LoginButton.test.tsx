@@ -39,9 +39,9 @@ describe("LoginButton", () => {
       user: null,
     });
 
-    const { container } = render(<LoginButton />);
+    render(<LoginButton />);
 
-    expect(container.querySelector(".animate-pulse")).not.toBeNull();
+    expect(screen.getByTestId("login-button-skeleton")).toBeInTheDocument();
   });
 
   it("renders user menu when user is authenticated", () => {
@@ -83,17 +83,13 @@ describe("LoginButton", () => {
 
       await userEvent.click(screen.getByRole("button"));
 
-      if (shouldNavigate) {
-        expect(mocks.navigate).toHaveBeenCalledWith({ to: "/auth" });
-        expect(
-          screen.queryByTestId("login-options-open"),
-        ).not.toBeInTheDocument();
-      } else {
-        expect(mocks.navigate).not.toHaveBeenCalled();
-        if (dialogVisible) {
-          expect(screen.getByTestId("login-options-open")).toBeInTheDocument();
-        }
-      }
+      expect(mocks.navigate).toHaveBeenCalledTimes(shouldNavigate ? 1 : 0);
+      expect(mocks.navigate.mock.calls[0]?.[0]).toEqual(
+        shouldNavigate ? { to: "/auth" } : undefined,
+      );
+      expect(screen.queryByTestId("login-options-open") !== null).toBe(
+        dialogVisible,
+      );
     },
   );
 });

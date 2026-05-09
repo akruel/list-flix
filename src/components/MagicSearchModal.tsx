@@ -132,6 +132,7 @@ export function MagicSearchModal({
               <form
                 onSubmit={handleSuggest}
                 className="w-full max-w-lg space-y-4"
+                data-testid="magic-list-form"
               >
                 <Textarea
                   data-testid="magic-list-prompt-input"

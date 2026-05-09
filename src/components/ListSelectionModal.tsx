@@ -1,5 +1,5 @@
 import { Check, Globe, Loader2, Lock } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -22,11 +22,11 @@ interface ListSelectionModalProps {
   content: ContentItem;
 }
 
-export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
+export function ListSelectionModal({
   isOpen,
   onClose,
   content,
-}) => {
+}: ListSelectionModalProps) {
   const { lists, fetchLists, addToList, removeFromList, isInList } = useStore();
   const [loading, setLoading] = useState(false);
   const [membership, setMembership] = useState<Record<string, string>>({}); // listId -> itemId
@@ -192,4 +192,4 @@ export const ListSelectionModal: React.FC<ListSelectionModalProps> = ({
       </DialogContent>
     </Dialog>
   );
-};
+}

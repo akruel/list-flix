@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { Check, Star } from "lucide-react";
-import React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,10 +14,7 @@ interface MovieCardProps {
   showProgress?: boolean; // Whether to show progress indicators (default: false)
 }
 
-export const MovieCard: React.FC<MovieCardProps> = ({
-  item,
-  showProgress = false,
-}) => {
+export function MovieCard({ item, showProgress = false }: MovieCardProps) {
   const title = item.media_type === "movie" ? item.title : item.name;
   const date =
     item.media_type === "movie" ? item.release_date : item.first_air_date;
@@ -61,15 +57,19 @@ export const MovieCard: React.FC<MovieCardProps> = ({
             className="h-full w-full object-cover"
             loading="lazy"
           />
-          {watched && (
-            <div className="absolute right-2 top-2 rounded-full bg-blue-600 p-2 text-white shadow-lg">
+          {!!watched && (
+            <div
+              className="absolute right-2 top-2 rounded-full bg-blue-600 p-2 text-white shadow-lg"
+              data-testid="watched-badge"
+            >
               <Check size={16} />
             </div>
           )}
-          {shouldShowProgress && (
+          {!!shouldShowProgress && (
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
               <div
                 className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+                data-testid="progress-fill"
                 style={{ width: `${progressPercentage}%` }}
                 title={`${watchedCount} de ${seriesMetadata?.total_episodes} episódios (${progressPercentage}%)`}
               />
@@ -99,4 +99,4 @@ export const MovieCard: React.FC<MovieCardProps> = ({
       </Card>
     </Link>
   );
-};
+}

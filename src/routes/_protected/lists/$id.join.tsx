@@ -146,7 +146,7 @@ function JoinListRouteComponent() {
           <DialogDescription>
             Você foi convidado para participar da lista{" "}
             <span className="font-semibold text-foreground">
-              "{listName || "..."}"
+              {listName || "..."}
             </span>
             .
           </DialogDescription>
@@ -206,9 +206,7 @@ function JoinListRouteComponent() {
           <div className="text-center">
             <p className="mb-5 text-muted-foreground">
               Entrando na lista{" "}
-              <span className="font-semibold text-foreground">
-                "{listName}"
-              </span>{" "}
+              <span className="font-semibold text-foreground">{listName}</span>{" "}
               como{" "}
               <span className="font-semibold text-primary">{memberName}</span>
             </p>

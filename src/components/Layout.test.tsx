@@ -51,11 +51,10 @@ describe("Layout", () => {
     expect(screen.getByTestId("layout-outlet")).toBeInTheDocument();
     expect(screen.getByTestId("login-button")).toBeInTheDocument();
 
-    const activeLinks = screen.getAllByText(activeLabel);
+    const activeLinks = screen.getAllByRole("link", { name: activeLabel });
     expect(activeLinks.length).toBeGreaterThan(0);
-    activeLinks.forEach((node) => {
-      const link = node.closest("a");
-      expect(link?.className).toContain("text-primary");
+    activeLinks.forEach((link) => {
+      expect(link.className).toContain("text-primary");
     });
   });
 
@@ -64,10 +63,9 @@ describe("Layout", () => {
 
     render(<Layout />);
 
-    const homeLinks = screen.getAllByText("Início");
-    homeLinks.forEach((node) => {
-      const link = node.closest("a");
-      expect(link?.className).toContain("text-muted-foreground");
+    const homeLinks = screen.getAllByRole("link", { name: "Início" });
+    homeLinks.forEach((link) => {
+      expect(link.className).toContain("text-muted-foreground");
     });
   });
 });

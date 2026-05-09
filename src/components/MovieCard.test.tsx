@@ -118,10 +118,7 @@ describe("MovieCard", () => {
       />,
     );
 
-    const watchedBadge = document.querySelector(
-      ".bg-blue-600.text-white.rounded-full",
-    );
-    expect(watchedBadge).not.toBeNull();
+    expect(screen.getByTestId("watched-badge")).toBeInTheDocument();
   });
 
   it.each([
@@ -195,16 +192,10 @@ describe("MovieCard", () => {
         />,
       );
 
-      const progressFill = document.querySelector(
-        ".bg-gradient-to-r.from-blue-500.to-purple-500",
-      ) as HTMLDivElement | null;
+      const progressFill = screen.queryByTestId("progress-fill");
 
-      if (shouldShow) {
-        expect(progressFill).not.toBeNull();
-        expect(progressFill?.style.width).toBe(expectedWidth);
-      } else {
-        expect(progressFill).toBeNull();
-      }
+      expect(progressFill !== null).toBe(shouldShow);
+      expect(progressFill?.style.width ?? null).toBe(expectedWidth);
     },
   );
 

@@ -289,15 +289,14 @@ describe("userContentService", () => {
       const result = await userContentService.getUserContent();
 
       expect(result.watchlist[0]?.title).toBe(expectedTitle);
-      if (getDetailsError) {
-        expect(consoleErrorSpy).toHaveBeenCalled();
-      } else {
+      expect(consoleErrorSpy).toHaveBeenCalledTimes(getDetailsError ? 1 : 0);
+      if (!getDetailsError) {
         await new Promise((resolve) => setTimeout(resolve, 0));
-        expect(consoleLogSpy).toHaveBeenCalledWith(
-          expect.stringContaining("[ListFlix INFO]"),
-          "Self-healed 1 watchlist items",
-        );
       }
+      const logMatcher = expect.stringContaining("[ListFlix INFO]");
+      expect(consoleLogSpy.mock.calls).toEqual(
+        getDetailsError ? [] : [[logMatcher, "Self-healed 1 watchlist items"]],
+      );
 
       consoleErrorSpy.mockRestore();
       consoleLogSpy.mockRestore();

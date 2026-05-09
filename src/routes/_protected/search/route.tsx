@@ -74,7 +74,7 @@ function SearchRouteComponent() {
           ) : (
             debouncedQuery && (
               <div className="py-12 text-center text-gray-500">
-                Nenhum resultado encontrado para "{debouncedQuery}"
+                Nenhum resultado encontrado para {debouncedQuery}
               </div>
             )
           )}

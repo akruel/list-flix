@@ -219,11 +219,9 @@ describe("CustomLists", () => {
 
     render(<CustomLists />);
 
-    if (shouldShowDelete) {
-      expect(screen.getByTitle("Excluir Lista")).toBeInTheDocument();
-    } else {
-      expect(screen.queryByTitle("Excluir Lista")).not.toBeInTheDocument();
-    }
+    expect(screen.queryByTitle("Excluir Lista") !== null).toBe(
+      shouldShowDelete,
+    );
   });
 
   it("deletes list and shows success toast", async () => {

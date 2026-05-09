@@ -30,7 +30,7 @@ interface SeasonListProps {
   }[];
 }
 
-export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
+export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -110,10 +110,13 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
   );
 
   // Component to show progress for a season
-  const SeasonProgress: React.FC<{
+  function SeasonProgress({
+    seasonNumber,
+    totalEpisodes,
+  }: {
     seasonNumber: number;
     totalEpisodes: number;
-  }> = ({ seasonNumber, totalEpisodes }) => {
+  }) {
     const progress = useSeasonProgress(tvId, seasonNumber, totalEpisodes);
 
     if (progress.watchedCount === 0) return null;
@@ -132,7 +135,7 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
         <Progress value={progressPercentage} className="h-1.5" />
       </div>
     );
-  };
+  }
 
   return (
     <div className="mt-8 space-y-4">
@@ -236,6 +239,7 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
                           <div
                             key={episode.id}
                             className="p-3 transition-colors hover:bg-accent/50 md:p-4"
+                            data-testid={`episode-row-${episode.id}`}
                           >
                             <div className="flex gap-3 md:gap-4">
                               <div className="relative aspect-video w-24 flex-shrink-0 overflow-hidden rounded bg-muted md:w-32">
@@ -324,4 +328,4 @@ export const SeasonList: React.FC<SeasonListProps> = ({ tvId, seasons }) => {
       </div>
     </div>
   );
-};
+}

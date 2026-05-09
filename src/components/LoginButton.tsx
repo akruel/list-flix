@@ -15,7 +15,12 @@ export function LoginButton() {
   const [isLoginOptionsOpen, setIsLoginOptionsOpen] = useState(false);
 
   if (status === "loading") {
-    return <Skeleton className="h-9 w-24 rounded-full" />;
+    return (
+      <Skeleton
+        className="h-9 w-24 rounded-full"
+        data-testid="login-button-skeleton"
+      />
+    );
   }
 
   if (status === "authenticated" && user) {

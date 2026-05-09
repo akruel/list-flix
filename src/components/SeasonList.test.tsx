@@ -196,17 +196,14 @@ describe("SeasonList", () => {
       });
       await userEvent.click(seasonToggleButtons[0]);
 
-      if (expectedWatchedCall) {
-        await waitFor(() => {
-          expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalled();
-        });
-      }
-      if (expectedUnwatchedCall) {
-        expect(mocks.useStoreValue.markSeasonAsUnwatched).toHaveBeenCalledWith(
-          100,
-          1,
+      await waitFor(() => {
+        expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledTimes(
+          expectedWatchedCall ? 1 : 0,
         );
-      }
+      });
+      expect(mocks.useStoreValue.markSeasonAsUnwatched.mock.calls).toEqual(
+        expectedUnwatchedCall ? [[100, 1]] : [],
+      );
     },
   );
 
@@ -328,22 +325,19 @@ describe("SeasonList", () => {
       await userEvent.click(screen.getByText("Season 1"));
       expect(await screen.findByText("Episode 1")).toBeInTheDocument();
 
-      const episodeTitle = screen.getByText("Episode 1");
-      const episodeRow =
-        episodeTitle.closest("div")?.parentElement?.parentElement;
+      const episodeRow = screen.getByTestId("episode-row-101");
       expect(episodeRow).not.toBeNull();
-      const episodeButton = within(episodeRow as HTMLElement).getByRole(
-        "button",
-        { name: /Marcar como/i },
-      );
+      const episodeButton = within(episodeRow).getByRole("button", {
+        name: /Marcar como/i,
+      });
       await userEvent.click(episodeButton);
 
-      if (expectedWatchedCall) {
-        expect(mocks.useStoreValue.markEpisodeAsWatched).toHaveBeenCalled();
-      }
-      if (expectedUnwatchedCall) {
-        expect(mocks.useStoreValue.markEpisodeAsUnwatched).toHaveBeenCalled();
-      }
+      expect(mocks.useStoreValue.markEpisodeAsWatched).toHaveBeenCalledTimes(
+        expectedWatchedCall ? 1 : 0,
+      );
+      expect(mocks.useStoreValue.markEpisodeAsUnwatched).toHaveBeenCalledTimes(
+        expectedUnwatchedCall ? 1 : 0,
+      );
     },
   );
 });

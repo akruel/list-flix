@@ -4,7 +4,7 @@ import { Home, List, Search } from "lucide-react";
 
 import { LoginButton } from "./LoginButton";
 
-export const Layout: React.FC = () => {
+export function Layout() {
   const location = useLocation();
 
   const navItems = [
@@ -86,4 +86,4 @@ export const Layout: React.FC = () => {
       </nav>
     </div>
   );
-};
+}

@@ -194,9 +194,9 @@ describe("ListDetailsView", () => {
   it("shows loading skeleton while list details are pending", () => {
     mocks.getListDetails.mockImplementation(() => new Promise(() => {}));
 
-    const { container } = render(<ListDetailsView id="list-1" />);
+    render(<ListDetailsView id="list-1" />);
 
-    expect(container.querySelector(".space-y-8.animate-in")).not.toBeNull();
+    expect(screen.getByTestId("list-details-skeleton")).toBeInTheDocument();
   });
 
   it("renders fallback error state when loading fails", async () => {
@@ -314,11 +314,7 @@ describe("ListDetailsView", () => {
 
       await screen.findByText("Minha Lista");
 
-      if (canRemoveMember) {
-        expect(screen.getByTitle("Remover membro")).toBeInTheDocument();
-      } else {
-        expect(screen.queryByTitle("Remover membro")).not.toBeInTheDocument();
-      }
+      expect(!!screen.queryByTitle("Remover membro")).toBe(canRemoveMember);
     },
   );
 
@@ -348,19 +344,15 @@ describe("ListDetailsView", () => {
 
       await screen.findByText("Movie One");
 
-      if (canEdit) {
-        expect(screen.getByTitle("Remover item")).toBeInTheDocument();
-      } else {
-        expect(screen.queryByTitle("Remover item")).not.toBeInTheDocument();
-      }
+      expect(!!screen.queryByTitle("Remover item")).toBe(canEdit);
     },
   );
 
   it("does not load list when id is empty", () => {
-    const { container } = render(<ListDetailsView id="" />);
+    render(<ListDetailsView id="" />);
 
     expect(mocks.getListDetails).not.toHaveBeenCalled();
-    expect(container.querySelector(".space-y-8.animate-in")).not.toBeNull();
+    expect(screen.getByTestId("list-details-skeleton")).toBeInTheDocument();
   });
 
   it("renders list not found state when list payload is null", async () => {
@@ -468,17 +460,18 @@ describe("ListDetailsView", () => {
       await screen.findByText("Movie One");
       await userEvent.click(screen.getByTitle("Remover item"));
 
-      if (shouldCallRemove) {
-        await waitFor(() => {
-          expect(mocks.removeListItem).toHaveBeenCalledWith("item-1");
-        });
-      } else {
-        expect(mocks.removeListItem).not.toHaveBeenCalled();
-      }
+      await waitFor(() => {
+        expect(mocks.removeListItem).toHaveBeenCalledTimes(
+          shouldCallRemove ? 1 : 0,
+        );
+        expect(mocks.removeListItem.mock.calls[0]?.[0]).toBe(
+          shouldCallRemove ? "item-1" : undefined,
+        );
+      });
 
-      if (expectedToastError) {
-        expect(mocks.toastError).toHaveBeenCalledWith("Falha ao remover item");
-      }
+      expect(mocks.toastError).toHaveBeenCalledTimes(
+        expectedToastError ? 1 : 0,
+      );
     },
   );
 
@@ -501,19 +494,18 @@ describe("ListDetailsView", () => {
       await userEvent.type(input, "Nome via teclado");
       await userEvent.keyboard(`{${key}}`);
 
-      if (shouldUpdate) {
-        await waitFor(() => {
-          expect(mocks.updateList).toHaveBeenCalledWith(
-            "list-1",
-            "Nome via teclado",
-          );
-        });
-      } else {
-        expect(mocks.updateList).not.toHaveBeenCalled();
-        expect(
-          screen.queryByDisplayValue("Nome via teclado"),
-        ).not.toBeInTheDocument();
-      }
+      await waitFor(() => {
+        expect(mocks.updateList).toHaveBeenCalledTimes(shouldUpdate ? 1 : 0);
+        expect(mocks.updateList.mock.calls[0]?.[0]).toBe(
+          shouldUpdate ? "list-1" : undefined,
+        );
+        expect(mocks.updateList.mock.calls[0]?.[1]).toBe(
+          shouldUpdate ? "Nome via teclado" : undefined,
+        );
+      });
+      expect(
+        screen.queryByDisplayValue("Nome via teclado"),
+      ).not.toBeInTheDocument();
     },
   );
 
@@ -550,19 +542,15 @@ describe("ListDetailsView", () => {
       await userEvent.type(input, name);
       await userEvent.click(screen.getByRole("button", { name: /Salvar/i }));
 
-      if (expectUpdateCall) {
-        await waitFor(() => {
-          expect(mocks.updateList).toHaveBeenCalled();
-        });
-      } else {
-        expect(mocks.updateList).not.toHaveBeenCalled();
-      }
-
-      if (expectedToastError) {
-        expect(mocks.toastError).toHaveBeenCalledWith(
-          "Erro ao atualizar nome da lista",
+      await waitFor(() => {
+        expect(mocks.updateList).toHaveBeenCalledTimes(
+          expectUpdateCall ? 1 : 0,
         );
-      }
+      });
+
+      expect(mocks.toastError).toHaveBeenCalledTimes(
+        expectedToastError ? 1 : 0,
+      );
     },
   );
 
@@ -599,13 +587,15 @@ describe("ListDetailsView", () => {
         expect(mocks.deleteList).toHaveBeenCalledWith("list-1");
       });
 
-      if (shouldNavigate) {
-        expect(mocks.toastSuccess).toHaveBeenCalledWith(expectedToast);
-        expect(mocks.navigate).toHaveBeenCalledWith({ to: "/lists" });
-      } else {
-        expect(mocks.toastError).toHaveBeenCalledWith(expectedToast);
-        expect(mocks.navigate).not.toHaveBeenCalled();
-      }
+      expect(mocks.toastSuccess).toHaveBeenCalledTimes(shouldNavigate ? 1 : 0);
+      expect(mocks.toastSuccess.mock.calls[0]?.[0]).toBe(
+        shouldNavigate ? expectedToast : undefined,
+      );
+      expect(mocks.toastError).toHaveBeenCalledTimes(shouldNavigate ? 0 : 1);
+      expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
+        shouldNavigate ? undefined : expectedToast,
+      );
+      expect(mocks.navigate).toHaveBeenCalledTimes(shouldNavigate ? 1 : 0);
     },
   );
 

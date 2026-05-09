@@ -129,7 +129,7 @@ function DetailsRouteComponent() {
                 {(details.vote_average || 0).toFixed(1)}
               </span>
               <span>{year}</span>
-              {details.runtime && (
+              {!!details.runtime && (
                 <span className="flex items-center gap-1">
                   <Clock size={16} /> {Math.floor(details.runtime / 60)}h{" "}
                   {details.runtime % 60}m
@@ -189,7 +189,7 @@ function DetailsRouteComponent() {
             </p>
           </section>
 
-          {details.media_type === "tv" && details.next_episode_to_air && (
+          {!!(details.media_type === "tv" && details.next_episode_to_air) && (
             <section className="rounded-xl border border-purple-500/30 bg-gradient-to-r from-purple-900/30 to-blue-900/30 p-6">
               <h2 className="mb-3 flex items-center gap-2 text-xl font-bold">
                 <span className="text-purple-400">📺</span> Próximo Episódio
@@ -236,7 +236,7 @@ function DetailsRouteComponent() {
                     </p>
                   </div>
                 </div>
-                {details.next_episode_to_air.overview && (
+                {!!details.next_episode_to_air.overview && (
                   <p className="text-sm leading-relaxed text-gray-300">
                     {details.next_episode_to_air.overview}
                   </p>
@@ -245,42 +245,44 @@ function DetailsRouteComponent() {
             </section>
           )}
 
-          {details.media_type === "tv" &&
+          {!!(
+            details.media_type === "tv" &&
             !details.next_episode_to_air &&
-            details.last_episode_to_air && (
-              <section className="rounded-xl border border-gray-700 bg-gray-900/50 p-6">
-                <h2 className="mb-3 flex items-center gap-2 text-xl font-bold">
-                  <span className="text-gray-400">📺</span> Último Episódio
-                </h2>
-                <div className="space-y-2">
-                  <div>
-                    <h3 className="font-semibold text-white">
-                      {details.last_episode_to_air.name}
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      Temporada {details.last_episode_to_air.season_number} •
-                      Episódio {details.last_episode_to_air.episode_number}
-                    </p>
-                  </div>
+            details.last_episode_to_air
+          ) && (
+            <section className="rounded-xl border border-gray-700 bg-gray-900/50 p-6">
+              <h2 className="mb-3 flex items-center gap-2 text-xl font-bold">
+                <span className="text-gray-400">📺</span> Último Episódio
+              </h2>
+              <div className="space-y-2">
+                <div>
+                  <h3 className="font-semibold text-white">
+                    {details.last_episode_to_air.name}
+                  </h3>
                   <p className="text-sm text-gray-400">
-                    Exibido em{" "}
-                    {new Date(
-                      details.last_episode_to_air.air_date,
-                    ).toLocaleDateString("pt-BR")}
+                    Temporada {details.last_episode_to_air.season_number} •
+                    Episódio {details.last_episode_to_air.episode_number}
                   </p>
-                  {details.status && (
-                    <p className="mt-2 text-xs text-gray-500">
-                      Status:{" "}
-                      {details.status === "Ended"
-                        ? "Série Finalizada"
-                        : details.status}
-                    </p>
-                  )}
                 </div>
-              </section>
-            )}
+                <p className="text-sm text-gray-400">
+                  Exibido em{" "}
+                  {new Date(
+                    details.last_episode_to_air.air_date,
+                  ).toLocaleDateString("pt-BR")}
+                </p>
+                {!!details.status && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Status:{" "}
+                    {details.status === "Ended"
+                      ? "Série Finalizada"
+                      : details.status}
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
 
-          {details.credits && details.credits.cast.length > 0 && (
+          {!!(details.credits && details.credits.cast.length > 0) && (
             <section>
               <h2 className="mb-3 text-xl font-bold">Elenco</h2>
               <div className="scrollbar-hide flex gap-4 overflow-x-auto pb-4">
@@ -312,7 +314,7 @@ function DetailsRouteComponent() {
             </section>
           )}
 
-          {details.seasons && (
+          {!!details.seasons && (
             <SeasonList tvId={details.id} seasons={details.seasons} />
           )}
         </div>
@@ -375,7 +377,7 @@ function DetailsRouteComponent() {
               </div>
             )}
 
-            {providers?.link && (
+            {!!providers?.link && (
               <a
                 href={providers.link}
                 target="_blank"
@@ -391,7 +393,7 @@ function DetailsRouteComponent() {
             <div className="h-full rounded-xl border border-gray-800 bg-gray-900 p-6">
               <h2 className="mb-4 text-xl font-bold">Informações da Série</h2>
               <div className="space-y-3">
-                {details.number_of_seasons && (
+                {!!details.number_of_seasons && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Temporadas</span>
                     <span className="font-semibold text-white">
@@ -399,7 +401,7 @@ function DetailsRouteComponent() {
                     </span>
                   </div>
                 )}
-                {details.number_of_episodes && (
+                {!!details.number_of_episodes && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Episódios</span>
                     <span className="font-semibold text-white">
@@ -407,18 +409,20 @@ function DetailsRouteComponent() {
                     </span>
                   </div>
                 )}
-                {details.episode_run_time &&
-                  details.episode_run_time.length > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">
-                        Duração por ep.
-                      </span>
-                      <span className="font-semibold text-white">
-                        {details.episode_run_time[0]} min
-                      </span>
-                    </div>
-                  )}
-                {details.status && (
+                {!!(
+                  details.episode_run_time &&
+                  details.episode_run_time.length > 0
+                ) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">
+                      Duração por ep.
+                    </span>
+                    <span className="font-semibold text-white">
+                      {details.episode_run_time[0]} min
+                    </span>
+                  </div>
+                )}
+                {!!details.status && (
                   <div className="flex items-center justify-between border-t border-gray-800 pt-2">
                     <span className="text-sm text-gray-400">Status</span>
                     <span
@@ -446,7 +450,7 @@ function DetailsRouteComponent() {
             <div className="h-full rounded-xl border border-gray-800 bg-gray-900 p-6">
               <h2 className="mb-4 text-xl font-bold">Informações do Filme</h2>
               <div className="space-y-3">
-                {details.runtime && (
+                {!!details.runtime && (
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-400">Duração</span>
                     <span className="font-semibold text-white">
@@ -455,27 +459,31 @@ function DetailsRouteComponent() {
                     </span>
                   </div>
                 )}
-                {"budget" in details &&
+                {!!(
+                  "budget" in details &&
                   details.budget &&
-                  details.budget > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Orçamento</span>
-                      <span className="font-semibold text-white">
-                        ${(details.budget / 1000000).toFixed(1)}M
-                      </span>
-                    </div>
-                  )}
-                {"revenue" in details &&
+                  details.budget > 0
+                ) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Orçamento</span>
+                    <span className="font-semibold text-white">
+                      ${(details.budget / 1000000).toFixed(1)}M
+                    </span>
+                  </div>
+                )}
+                {!!(
+                  "revenue" in details &&
                   details.revenue &&
-                  details.revenue > 0 && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-400">Bilheteria</span>
-                      <span className="font-semibold text-white">
-                        ${(details.revenue / 1000000).toFixed(1)}M
-                      </span>
-                    </div>
-                  )}
-                {details.status && (
+                  details.revenue > 0
+                ) && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Bilheteria</span>
+                    <span className="font-semibold text-white">
+                      ${(details.revenue / 1000000).toFixed(1)}M
+                    </span>
+                  </div>
+                )}
+                {!!details.status && (
                   <div className="flex items-center justify-between border-t border-gray-800 pt-2">
                     <span className="text-sm text-gray-400">Status</span>
                     <span className="rounded bg-gray-800 px-2 py-1 text-sm font-semibold text-gray-300">

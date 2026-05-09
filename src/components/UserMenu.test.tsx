@@ -153,11 +153,11 @@ describe("UserMenu", () => {
       await userEvent.click(screen.getByRole("button", { name: actionLabel }));
 
       await waitFor(() => {
-        if (expectedNavigate) {
-          expect(mocks.navigate).toHaveBeenCalledWith(expectedNavigate);
-        } else if (expectedToast) {
-          expect(mocks.toastError).toHaveBeenCalled();
-        }
+        expect(mocks.navigate).toHaveBeenCalledTimes(expectedNavigate ? 1 : 0);
+        expect(mocks.navigate.mock.calls[0]?.[0]).toEqual(
+          expectedNavigate ? expectedNavigate : undefined,
+        );
+        expect(mocks.toastError).toHaveBeenCalledTimes(expectedToast ? 1 : 0);
       });
     },
   );
