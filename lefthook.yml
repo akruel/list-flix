@@ -1,10 +1,10 @@
 pre-commit:
   commands:
     format:
-      run: npx prettier --check .
+      run: npm run format:check
     lint:
-      run: npx eslint .
+      run: npm run lint
     typecheck:
-      run: npx tsc --noEmit
+      run: npm run typecheck
     knip:
-      run: npx knip
+      run: npm run knip

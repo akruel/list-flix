@@ -4,7 +4,6 @@ import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 import security from "eslint-plugin-security";
-import noSecrets from "eslint-plugin-no-secrets";
 import jsxA11y from "eslint-plugin-jsx-a11y";
 import simpleImportSort from "eslint-plugin-simple-import-sort";
 import prettier from "eslint-config-prettier";
@@ -38,7 +37,6 @@ export default defineConfig([
     ],
     plugins: {
       "simple-import-sort": simpleImportSort,
-      "no-secrets": noSecrets,
       "jsx-a11y": jsxA11y,
     },
     languageOptions: {
