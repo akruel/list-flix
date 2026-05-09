@@ -379,6 +379,32 @@ describe("SeasonList", () => {
     consoleErrorSpy.mockRestore();
   });
 
+  it("clears stale episodes when expanding a new season", async () => {
+    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
+
+    render(<SeasonList tvId={100} seasons={seasons} />);
+
+    await userEvent.click(screen.getByText("Season 1"));
+    expect(await screen.findByText("Episode 1")).toBeInTheDocument();
+
+    mocks.getSeasonDetails.mockRejectedValue(new Error("fetch failed"));
+
+    await userEvent.click(screen.getByText("Season 2"));
+    expect(
+      await screen.findByText("Erro ao carregar episódios. Tente novamente."),
+    ).toBeInTheDocument();
+
+    const seasonToggleButtons = screen.getAllByRole("button", {
+      name: /Marcar como/i,
+    });
+    await userEvent.click(seasonToggleButtons[1]);
+
+    await waitFor(() => {
+      expect(mocks.useStoreValue.markSeasonAsWatched).not.toHaveBeenCalled();
+    });
+    expect(mocks.toastError).toHaveBeenCalled();
+  });
+
   it("shows episode fallbacks for missing air date and overview", async () => {
     mocks.getSeasonDetails.mockResolvedValue({
       episodes: [

@@ -91,6 +91,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
 
     setExpandedSeason(seasonNumber);
     setError(null);
+    setEpisodes([]);
 
     const cached = getCachedSeason(tvId, seasonNumber);
     if (cached) {
