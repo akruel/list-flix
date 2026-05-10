@@ -16,9 +16,9 @@ export function NotificationToggle() {
     unsubscribe,
   } = usePushNotification();
 
-  const isLoggedIn = status === "authenticated" || status === "anonymous";
+  const isLoggedIn = status === "authenticated";
 
-  if (!isSupported || !swReady || !isLoggedIn) return null;
+  if (!isSupported || !isLoggedIn) return null;
 
   const handleClick = async () => {
     if (isSubscribed) {
@@ -44,7 +44,7 @@ export function NotificationToggle() {
     }
   };
 
-  const isBusy = isSubscribing || isUnsubscribing;
+  const isBusy = isSubscribing || isUnsubscribing || !swReady;
 
   return (
     <button

@@ -4,7 +4,7 @@ self.addEventListener("push", function (event) {
     try {
       data = event.data.json();
     } catch (e) {
-      // ignore
+      return;
     }
   }
 

@@ -127,28 +127,26 @@ export function usePushNotification() {
       const endpoint = subJSON.endpoint;
       const keys = subJSON.keys;
       if (!endpoint || !keys?.p256dh || !keys?.auth) {
+        await subscription.unsubscribe();
         throw new Error("Invalid push subscription");
       }
 
-      const { error: deleteError } = await supabase
+      const { error: upsertError } = await supabase
         .from("push_subscriptions")
-        .delete()
-        .eq("user_id", user.id);
+        .upsert(
+          {
+            user_id: user.id,
+            endpoint,
+            p256dh: keys.p256dh,
+            auth: keys.auth,
+          },
+          { onConflict: "user_id" },
+        );
 
-      if (deleteError) {
-        logger.error("Failed to clear old push subscription:", deleteError);
+      if (upsertError) {
+        await subscription.unsubscribe();
+        throw upsertError;
       }
-
-      const { error: insertError } = await supabase
-        .from("push_subscriptions")
-        .insert({
-          user_id: user.id,
-          endpoint,
-          p256dh: keys.p256dh,
-          auth: keys.auth,
-        });
-
-      if (insertError) throw insertError;
 
       setIsSubscribed(true);
     } catch (error) {
