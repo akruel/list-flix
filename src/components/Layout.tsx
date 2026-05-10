@@ -3,6 +3,7 @@ import clsx from "clsx";
 import { CalendarDays, Home, List, Search } from "lucide-react";
 
 import { LoginButton } from "./LoginButton";
+import { NotificationToggle } from "./NotificationToggle";
 
 export function Layout() {
   const location = useLocation();
@@ -49,7 +50,8 @@ export function Layout() {
               );
             })}
           </nav>
-          <div className="flex items-center">
+          <div className="flex items-center gap-2">
+            <NotificationToggle />
             <LoginButton />
           </div>
         </div>

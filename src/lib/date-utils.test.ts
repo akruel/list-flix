@@ -94,8 +94,9 @@ describe("isDateInCurrentWeek", () => {
   });
 
   it("returns true for a date within this week", () => {
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    vi.setSystemTime(1746792000000);
+
+    const dateStr = "2025-05-09";
     expect(isDateInCurrentWeek(dateStr)).toBe(true);
   });
 
@@ -108,8 +109,7 @@ describe("isDateInCurrentWeek", () => {
   });
 
   it("works correctly when current day is Sunday", () => {
-    const sunday = new Date(2025, 4, 11);
-    vi.setSystemTime(sunday);
+    vi.setSystemTime(1746964800000);
 
     expect(isDateInCurrentWeek("2025-05-11")).toBe(true);
     expect(isDateInCurrentWeek("2025-05-10")).toBe(true);

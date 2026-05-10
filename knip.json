@@ -4,6 +4,8 @@
     "tests/**",
     "e2e/**",
     "vitest.stryker.config.ts",
+    "public/sw-push.js",
+    "supabase/functions/**",
     "src/components/ui/alert-dialog.tsx",
     "src/components/ui/card.tsx",
     "src/components/ui/dialog.tsx",
