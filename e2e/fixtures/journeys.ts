@@ -98,6 +98,8 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
       SCENARIO_IDS.LIST_SMART_OPEN_MODAL,
       SCENARIO_IDS.LIST_SMART_SUGGEST_RESULTS,
       SCENARIO_IDS.LIST_SMART_SAVE_SUCCESS,
+      SCENARIO_IDS.LIST_SMART_BACK_BUTTON,
+      SCENARIO_IDS.LIST_SMART_EXAMPLE_CHIPS,
     ],
     touchedPaths: ["/auth", "/lists/", "/lists/$id"],
   },

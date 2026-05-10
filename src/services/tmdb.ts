@@ -10,6 +10,12 @@ import type {
 const ACCESS_TOKEN = import.meta.env.VITE_TMDB_ACCESS_TOKEN;
 const BASE_URL = "https://api.themoviedb.org/3";
 
+const GENRES_CACHE_TTL = 10 * 60 * 1000;
+let genresCache: {
+  data: { id: number; name: string }[];
+  timestamp: number;
+} | null = null;
+
 const tmdbClient = axios.create({
   baseURL: BASE_URL,
   headers: {
@@ -39,13 +45,29 @@ export const tmdb = {
     return person ? person.id : null;
   },
 
-  search: async (query: string): Promise<ContentItem[]> => {
+  searchPeople: async (
+    query: string,
+  ): Promise<Array<{ id: number; name: string }>> => {
+    const response = await tmdbClient.get<SearchResponse>("/search/person", {
+      params: { query },
+    });
+    return response.data.results.slice(0, 3).map((person) => ({
+      id: person.id,
+      name: person.name ?? "Unknown",
+    }));
+  },
+
+  search: async (
+    query: string,
+    mediaType?: "movie" | "tv",
+  ): Promise<ContentItem[]> => {
     const response = await tmdbClient.get<SearchResponse>("/search/multi", {
       params: { query },
     });
-    return response.data.results.filter(
-      (item) => item.media_type === "movie" || item.media_type === "tv",
-    );
+    return response.data.results.filter((item) => {
+      if (mediaType) return item.media_type === mediaType;
+      return item.media_type === "movie" || item.media_type === "tv";
+    });
   },
 
   getDetails: async (
@@ -79,6 +101,10 @@ export const tmdb = {
   },
 
   getGenres: async (): Promise<{ id: number; name: string }[]> => {
+    if (genresCache && Date.now() - genresCache.timestamp < GENRES_CACHE_TTL) {
+      return genresCache.data;
+    }
+
     const [movieGenres, tvGenres] = await Promise.all([
       tmdbClient.get<{ genres: { id: number; name: string }[] }>(
         "/genre/movie/list",
@@ -88,12 +114,12 @@ export const tmdb = {
       ),
     ]);
 
-    // Combine and deduplicate genres
     const allGenres = [...movieGenres.data.genres, ...tvGenres.data.genres];
     const uniqueGenres = Array.from(
       new Map(allGenres.map((item) => [item.id, item])).values(),
     );
 
+    genresCache = { data: uniqueGenres, timestamp: Date.now() };
     return uniqueGenres;
   },
 

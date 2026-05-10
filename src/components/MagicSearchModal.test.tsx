@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   search: vi.fn(),
   discover: vi.fn(),
   searchPerson: vi.fn(),
+  searchPeople: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -25,6 +26,7 @@ vi.mock("../services/tmdb", () => ({
     search: (...args: unknown[]) => mocks.search(...args),
     discover: (...args: unknown[]) => mocks.discover(...args),
     searchPerson: (...args: unknown[]) => mocks.searchPerson(...args),
+    searchPeople: (...args: unknown[]) => mocks.searchPeople(...args),
   },
 }));
 
@@ -83,6 +85,7 @@ describe("MagicSearchModal", () => {
       { id: 2, media_type: "movie", title: "Movie B" },
     ]);
     mocks.searchPerson.mockResolvedValue(123);
+    mocks.searchPeople.mockResolvedValue([{ id: 123, name: "Tom Cruise" }]);
     mocks.getSuggestions.mockResolvedValue({
       strategy: "search",
       query: "Matrix",
@@ -132,7 +135,7 @@ describe("MagicSearchModal", () => {
         suggested_list_name: "Matrix list",
       },
       assertCalls: () => {
-        expect(mocks.search).toHaveBeenCalledWith("Matrix");
+        expect(mocks.search).toHaveBeenCalledWith("Matrix", undefined);
       },
     },
     {
@@ -157,7 +160,7 @@ describe("MagicSearchModal", () => {
         suggested_list_name: "Tom",
       },
       assertCalls: () => {
-        expect(mocks.searchPerson).toHaveBeenCalledWith("Tom Cruise");
+        expect(mocks.searchPeople).toHaveBeenCalledWith("Tom Cruise");
         expect(mocks.discover).toHaveBeenCalledWith(
           expect.objectContaining({ with_cast: 123 }),
         );
@@ -172,7 +175,7 @@ describe("MagicSearchModal", () => {
         suggested_list_name: "Nolan",
       },
       assertCalls: () => {
-        expect(mocks.searchPerson).toHaveBeenCalledWith("Nolan");
+        expect(mocks.searchPeople).toHaveBeenCalledWith("Nolan");
         expect(mocks.discover).toHaveBeenCalledWith(
           expect.objectContaining({ with_crew: 123 }),
         );
@@ -217,7 +220,7 @@ describe("MagicSearchModal", () => {
       role: "cast",
       suggested_list_name: "Unknown",
     });
-    mocks.searchPerson.mockResolvedValue(null);
+    mocks.searchPeople.mockResolvedValue([]);
 
     await openAndTypePrompt();
 

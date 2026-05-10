@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     deleteList: vi.fn(),
   },
   addListItem: vi.fn(),
+  addListItems: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -31,6 +32,7 @@ vi.mock("../store/useStore", () => ({
 vi.mock("../services/listService", () => ({
   listService: {
     addListItem: (...args: unknown[]) => mocks.addListItem(...args),
+    addListItems: (...args: unknown[]) => mocks.addListItems(...args),
   },
 }));
 
@@ -314,15 +316,12 @@ describe("CustomLists", () => {
     await waitFor(() => {
       expect(mocks.storeValue.createList).toHaveBeenCalledWith("Magic List");
     });
-    expect(mocks.addListItem).toHaveBeenNthCalledWith(
-      1,
+    expect(mocks.addListItems).toHaveBeenCalledWith(
       "new-list",
-      expect.objectContaining({ id: 10, media_type: "movie" }),
-    );
-    expect(mocks.addListItem).toHaveBeenNthCalledWith(
-      2,
-      "new-list",
-      expect.objectContaining({ id: 20, media_type: "tv" }),
+      expect.arrayContaining([
+        expect.objectContaining({ id: 10, media_type: "movie" }),
+        expect.objectContaining({ id: 20, media_type: "tv" }),
+      ]),
     );
     expect(mocks.storeValue.fetchLists).toHaveBeenCalled();
   });

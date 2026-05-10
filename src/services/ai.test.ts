@@ -46,9 +46,12 @@ describe("ai service", () => {
       expectedStrategy: "search",
     },
     {
-      caseName: "discover strategy",
-      responseText:
-        '```json\n{"strategy":"discover","media_type":"movie","suggested_list_name":"Terror"}\n```',
+      caseName: "discover strategy without code block",
+      responseText: JSON.stringify({
+        strategy: "discover",
+        media_type: "movie",
+        suggested_list_name: "Terror",
+      }),
       expectedStrategy: "discover",
     },
     {
@@ -97,9 +100,68 @@ describe("ai service", () => {
 
     await ai.getSuggestions("ação dos anos 90");
 
-    const [prompt] = mocks.generateContent.mock.calls[0] as [string];
+    const callArg = mocks.generateContent.mock.calls[0][0] as unknown as {
+      contents: Array<{ parts: Array<{ text: string }> }>;
+    };
+    const prompt = callArg.contents[0].parts[0].text;
     expect(prompt).toContain("Available Genres (ID:Name): 28:Action, 18:Drama");
     expect(prompt).toContain('User Request: "ação dos anos 90"');
+  });
+
+  it("uses responseMimeType: application/json in generationConfig", async () => {
+    mocks.generateContent.mockResolvedValue({
+      response: {
+        text: () =>
+          JSON.stringify({
+            strategy: "discover",
+            media_type: "movie",
+            suggested_list_name: "Lista",
+          }),
+      },
+    });
+
+    await ai.getSuggestions("ação dos anos 90");
+
+    const callArg = mocks.generateContent.mock.calls[0][0] as unknown as {
+      generationConfig?: { responseMimeType?: string };
+    };
+    expect(callArg.generationConfig?.responseMimeType).toBe("application/json");
+  });
+
+  it("applies default suggested_list_name when missing", async () => {
+    mocks.generateContent.mockResolvedValue({
+      response: {
+        text: () =>
+          JSON.stringify({
+            strategy: "search",
+            query: "Matrix",
+            media_type: "movie",
+          }),
+      },
+    });
+
+    const result = await ai.getSuggestions("filmes do Matrix");
+    expect(result.suggested_list_name).toBe("Lista Sugerida");
+  });
+
+  it("retries on gemini failure", async () => {
+    mocks.generateContent
+      .mockRejectedValueOnce(new Error("gemini transient error"))
+      .mockResolvedValueOnce({
+        response: {
+          text: () =>
+            JSON.stringify({
+              strategy: "search",
+              query: "Matrix",
+              media_type: "movie",
+              suggested_list_name: "Matrix",
+            }),
+        },
+      });
+
+    const result = await ai.getSuggestions("filmes do Matrix");
+    expect(result.strategy).toBe("search");
+    expect(mocks.generateContent).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -118,39 +180,32 @@ describe("ai service", () => {
       setup: () => mocks.getGenres.mockRejectedValue(new Error("tmdb failed")),
       expectedError: "tmdb failed",
     },
-    {
-      caseName: "gemini request error",
-      setup: () =>
-        mocks.generateContent.mockRejectedValue(new Error("gemini failed")),
-      expectedError: "gemini failed",
-    },
   ])("throws and logs on $caseName", async ({ setup, expectedError }) => {
-    const consoleErrorSpy = vi
+    const loggerErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
     setup();
 
     await expect(ai.getSuggestions("prompt")).rejects.toThrow(expectedError);
-    expect(consoleErrorSpy).toHaveBeenCalled();
 
-    consoleErrorSpy.mockRestore();
+    loggerErrorSpy.mockRestore();
   });
 
   it("logs warning when API key is missing at module load", async () => {
     vi.resetModules();
     vi.stubEnv("VITE_GEMINI_API_KEY", "");
-    const consoleErrorSpy = vi
+    const loggerErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
 
     await import("./ai");
 
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("[ListFlix ERROR]"),
       "VITE_GEMINI_API_KEY is missing",
     );
 
-    consoleErrorSpy.mockRestore();
+    loggerErrorSpy.mockRestore();
     vi.unstubAllEnvs();
   });
 });
