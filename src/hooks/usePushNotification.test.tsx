@@ -48,15 +48,15 @@ function createQueryBuilder() {
   const eq = vi.fn();
   const deleteFn = vi.fn();
   const maybeSingle = vi.fn();
-  const insert = vi.fn();
+  const upsert = vi.fn();
 
   select.mockReturnThis();
   eq.mockReturnThis();
   deleteFn.mockReturnThis();
   maybeSingle.mockResolvedValue({ data: null, error: null });
-  insert.mockResolvedValue({ error: null });
+  upsert.mockResolvedValue({ error: null });
 
-  return { select, eq, delete: deleteFn, maybeSingle, insert };
+  return { select, eq, delete: deleteFn, maybeSingle, upsert };
 }
 
 function stubBrowserApis(sw: MockServiceWorker) {
@@ -94,6 +94,7 @@ describe("usePushNotification", () => {
         endpoint: "https://push.test/endpoint",
         keys: { p256dh: "key123", auth: "auth456" },
       }),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
     };
 
     reg.pushManager.getSubscription.mockResolvedValue(null);
@@ -286,12 +287,15 @@ describe("usePushNotification", () => {
       applicationServerKey: expect.any(Uint8Array),
     });
 
-    expect(builder.insert).toHaveBeenCalledWith({
-      user_id: "user-1",
-      endpoint: "https://push.test/endpoint",
-      p256dh: "key123",
-      auth: "auth456",
-    });
+    expect(builder.upsert).toHaveBeenCalledWith(
+      {
+        user_id: "user-1",
+        endpoint: "https://push.test/endpoint",
+        p256dh: "key123",
+        auth: "auth456",
+      },
+      { onConflict: "user_id" },
+    );
   });
 
   it("subscribe throws when VAPID key is not configured", async () => {
@@ -401,6 +405,7 @@ describe("usePushNotification", () => {
 
     reg.pushManager.subscribe.mockResolvedValue({
       toJSON: () => ({ endpoint: null, keys: null }),
+      unsubscribe: vi.fn().mockResolvedValue(undefined),
     });
 
     const { result } = renderHook(() => usePushNotification());
@@ -414,13 +419,14 @@ describe("usePushNotification", () => {
     );
   });
 
-  it("subscribe handles delete error gracefully", async () => {
+  it("subscribe unsubscribes browser sub when upsert fails", async () => {
     mocks.useAuth.mockReturnValue({
       user: { id: "user-1" },
       status: "authenticated",
     });
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
+    builder.upsert.mockResolvedValue({ error: new Error("Upsert failed") });
 
     const { result } = renderHook(() => usePushNotification());
 
@@ -431,16 +437,18 @@ describe("usePushNotification", () => {
       expect(result.current.isSubscribed).toBe(false);
     });
 
-    builder.delete.mockReturnValue({
-      eq: vi.fn().mockResolvedValue({ error: new Error("Delete failed") }),
+    const unsubscribeSpy = vi.fn().mockResolvedValue(undefined);
+    reg.pushManager.subscribe.mockResolvedValue({
+      toJSON: () => ({
+        endpoint: "https://push.test/endpoint",
+        keys: { p256dh: "key123", auth: "auth456" },
+      }),
+      unsubscribe: unsubscribeSpy,
     });
 
-    await result.current.subscribe();
-
-    expect(builder.insert).toHaveBeenCalled();
-    await waitFor(() => {
-      expect(result.current.isSubscribed).toBe(true);
-    });
+    await expect(result.current.subscribe()).rejects.toThrow("Upsert failed");
+    expect(unsubscribeSpy).toHaveBeenCalled();
+    expect(result.current.isSubscribed).toBe(false);
   });
 
   it("updates permission state when requesting permission", async () => {
@@ -619,14 +627,14 @@ describe("usePushNotification", () => {
     expect(result.current.isUnsubscribing).toBe(false);
   });
 
-  it("subscribe throws when insert fails", async () => {
+  it("subscribe throws when upsert fails", async () => {
     mocks.useAuth.mockReturnValue({
       user: { id: "user-1" },
       status: "authenticated",
     });
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
-    builder.insert.mockResolvedValue({ error: new Error("Insert failed") });
+    builder.upsert.mockResolvedValue({ error: new Error("Upsert failed") });
 
     const { result } = renderHook(() => usePushNotification());
 
@@ -637,6 +645,6 @@ describe("usePushNotification", () => {
       expect(result.current.isSubscribed).toBe(false);
     });
 
-    await expect(result.current.subscribe()).rejects.toThrow("Insert failed");
+    await expect(result.current.subscribe()).rejects.toThrow("Upsert failed");
   });
 });
