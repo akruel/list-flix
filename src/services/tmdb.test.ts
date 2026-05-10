@@ -168,6 +168,77 @@ describe("tmdb service", () => {
     ]);
   });
 
+  it("searchPeople returns top 3 results with name", async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        results: [
+          { id: 1, name: "Alice" },
+          { id: 2, name: "Bob" },
+          { id: 3, name: "Charlie" },
+          { id: 4, name: "David" },
+        ],
+      },
+    });
+
+    const result = await tmdb.searchPeople("actor");
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual({ id: 1, name: "Alice" });
+    expect(result[1]).toEqual({ id: 2, name: "Bob" });
+    expect(mocks.get).toHaveBeenCalledWith("/search/person", {
+      params: { query: "actor" },
+    });
+  });
+
+  it("searchPeople handles null name", async () => {
+    mocks.get.mockResolvedValue({
+      data: { results: [{ id: 1 }] },
+    });
+
+    const result = await tmdb.searchPeople("actor");
+
+    expect(result[0].name).toBe("Unknown");
+  });
+
+  it("search filters by media type when provided", async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        results: [
+          { id: 1, media_type: "movie" },
+          { id: 2, media_type: "tv" },
+          { id: 3, media_type: "person" },
+        ],
+      },
+    });
+
+    const result = await tmdb.search("matrix", "movie");
+
+    expect(result).toEqual([{ id: 1, media_type: "movie" }]);
+  });
+
+  it("getGenres returns cached data when within TTL", async () => {
+    vi.resetModules();
+    const { tmdb: freshTmdb } = await import("./tmdb");
+
+    mocks.get
+      .mockResolvedValueOnce({
+        data: { genres: [{ id: 1, name: "Action" }] },
+      })
+      .mockResolvedValueOnce({
+        data: { genres: [{ id: 2, name: "Drama" }] },
+      });
+    await freshTmdb.getGenres();
+
+    mocks.get.mockClear();
+    const result = await freshTmdb.getGenres();
+
+    expect(mocks.get).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      { id: 1, name: "Action" },
+      { id: 2, name: "Drama" },
+    ]);
+  });
+
   it.each([
     {
       caseName: "movie discover default",

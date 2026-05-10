@@ -194,18 +194,18 @@ describe("ai service", () => {
   it("logs warning when API key is missing at module load", async () => {
     vi.resetModules();
     vi.stubEnv("VITE_GEMINI_API_KEY", "");
-    const loggerErrorSpy = vi
+    const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
 
     await import("./ai");
 
-    expect(loggerErrorSpy).toHaveBeenCalledWith(
+    expect(consoleErrorSpy).toHaveBeenCalledWith(
       expect.stringContaining("[ListFlix ERROR]"),
       "VITE_GEMINI_API_KEY is missing",
     );
 
-    loggerErrorSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
     vi.unstubAllEnvs();
   });
 });

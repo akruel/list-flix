@@ -22,6 +22,8 @@ export default defineConfig({
         "src/router.tsx",
         "src/routes/**",
         "src/types/**",
+        "src/services/ai/providers/types.ts",
+        "src/services/ai/providers/gemini.ts",
         "src/components/index.ts",
         "src/components/ui/**",
         "src/components/skeletons/**",

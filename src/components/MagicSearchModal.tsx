@@ -120,14 +120,7 @@ export function MagicSearchModal({
   };
 
   const handlePersonChange = async (personId: number) => {
-    const filters = filtersRef.current;
-    if (
-      !filters ||
-      filters.strategy !== "person" ||
-      !filters.role ||
-      !filters.person_name
-    )
-      return;
+    const filters = filtersRef.current as Record<string, unknown>;
 
     setSelectedPersonId(personId);
     setIsLoading(true);
@@ -166,10 +159,6 @@ export function MagicSearchModal({
     }
 
     const selectedItems = results.filter((item) => selectedIds.has(item.id));
-    if (selectedItems.length === 0) {
-      toast.error("Selecione pelo menos um item para salvar.");
-      return;
-    }
 
     setIsLoading(true);
     try {

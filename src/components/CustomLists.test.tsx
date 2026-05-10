@@ -341,6 +341,31 @@ describe("CustomLists", () => {
     });
   });
 
+  it("rollbacks created list when batch insert fails", async () => {
+    mocks.storeValue.createList.mockResolvedValue({
+      id: "new-list",
+      name: "Magic List",
+      owner_id: "owner-1",
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+      role: "owner",
+    });
+    mocks.addListItems.mockRejectedValue(new Error("batch insert failed"));
+
+    render(<CustomLists />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Lista Inteligente/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
+
+    await waitFor(() => {
+      expect(mocks.storeValue.createList).toHaveBeenCalled();
+      expect(mocks.addListItems).toHaveBeenCalled();
+      expect(mocks.storeValue.deleteList).toHaveBeenCalledWith("new-list");
+    });
+  });
+
   it("closes magic modal through onClose callback", async () => {
     render(<CustomLists />);
 
