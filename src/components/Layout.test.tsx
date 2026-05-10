@@ -30,6 +30,10 @@ vi.mock("./LoginButton", () => ({
   LoginButton: () => <div data-testid="login-button" />,
 }));
 
+vi.mock("./NotificationToggle", () => ({
+  NotificationToggle: () => <div data-testid="notification-toggle" />,
+}));
+
 describe("Layout", () => {
   beforeEach(() => {
     vi.clearAllMocks();

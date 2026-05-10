@@ -35,7 +35,7 @@ export function getCountdownText(airDate: string): string {
 function getWeekDateRange(): { start: Date; end: Date } {
   const now = new Date();
   const dayOfWeek = now.getDay();
-  const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const diffToMonday = -((dayOfWeek + 6) % 7);
 
   const start = new Date(now);
   start.setDate(now.getDate() + diffToMonday);

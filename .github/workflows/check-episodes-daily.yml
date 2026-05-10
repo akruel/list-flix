@@ -1,0 +1,26 @@
+name: Check Episodes Daily
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-episodes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Call check-episodes Edge Function
+        run: |
+          curl --silent --show-error --fail-with-body \
+            --max-time 300 \
+            --retry 3 \
+            --retry-all-errors \
+            --retry-delay 10 \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Accept: application/json" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/check-episodes"
