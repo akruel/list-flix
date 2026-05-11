@@ -10,6 +10,13 @@ if (!GROQ_API_KEY) {
 const SYSTEM_INSTRUCTION =
   "You are a movie and TV show expert. Return ONLY valid JSON.";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers":
+    "Content-Type, Authorization, x-client-info, apikey",
+};
+
 function buildPrompt(userRequest: string): string {
   return `
       Você é um especialista em cinema e TV. Seu objetivo é recomendar uma lista de filmes ou séries baseada no pedido do usuário.
@@ -45,6 +52,8 @@ function buildPrompt(userRequest: string): string {
     `;
 }
 
+// NOTE: This schema is mirrored in src/services/ai-schema.ts (frontend uses Zod v4,
+// this edge function uses Zod v3 for Deno). Keep both in sync.
 const AiSuggestionSchema = z.object({
   suggested_list_name: z.string().min(1).default("Lista Sugerida"),
   items: z
@@ -57,6 +66,19 @@ const AiSuggestionSchema = z.object({
     .min(1)
     .max(20),
 });
+
+async function verifyAuth(req: Request): Promise<string | null> {
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader) return null;
+
+  try {
+    const token = authHeader.replace("Bearer ", "");
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.aud === "authenticated" ? payload.sub || null : null;
+  } catch {
+    return null;
+  }
+}
 
 async function callGroq(prompt: string) {
   const fullPrompt = buildPrompt(prompt);
@@ -96,10 +118,22 @@ async function callGroq(prompt: string) {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
+
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+    });
+  }
+
+  const userId = await verifyAuth(req);
+  if (!userId) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }
 
@@ -111,7 +145,10 @@ Deno.serve(async (req) => {
         JSON.stringify({
           error: "Prompt is required and must be a non-empty string",
         }),
-        { status: 400, headers: { "Content-Type": "application/json" } },
+        {
+          status: 400,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -119,7 +156,7 @@ Deno.serve(async (req) => {
     const result = AiSuggestionSchema.parse(raw);
 
     return new Response(JSON.stringify(result), {
-      headers: { "Content-Type": "application/json" },
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("ai-suggestions error:", (error as Error).message);
@@ -130,7 +167,10 @@ Deno.serve(async (req) => {
           error: "Invalid response format",
           details: error.errors,
         }),
-        { status: 502, headers: { "Content-Type": "application/json" } },
+        {
+          status: 502,
+          headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+        },
       );
     }
 
@@ -138,7 +178,10 @@ Deno.serve(async (req) => {
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      {
+        status: 500,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+      },
     );
   }
 });
