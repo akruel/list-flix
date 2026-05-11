@@ -12,5 +12,3 @@ export const AiSuggestionSchema = z.object({
     .min(1)
     .max(20),
 });
-
-// No more unused local type

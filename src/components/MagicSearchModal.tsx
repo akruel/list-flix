@@ -74,8 +74,12 @@ export function MagicSearchModal({
         return results[0];
       });
 
-      const items = (await Promise.all(searchPromises)).filter(
+      const rawItems = (await Promise.all(searchPromises)).filter(
         (item): item is ContentItem => !!item,
+      );
+
+      const items = Array.from(
+        new Map(rawItems.map((item) => [item.id, item])).values(),
       );
 
       setResults(items);
@@ -94,6 +98,7 @@ export function MagicSearchModal({
     setStep("input");
     setResults([]);
     setSuggestedName("");
+    setSelectedIds(new Set());
   };
 
   const handleSave = async () => {
@@ -114,6 +119,13 @@ export function MagicSearchModal({
       toast.error("Erro ao salvar a lista.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, id: number) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggleItem(id);
     }
   };
 
@@ -263,14 +275,10 @@ export function MagicSearchModal({
                         <div
                           key={item.id}
                           onClick={() => toggleItem(item.id)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              toggleItem(item.id);
-                            }
-                          }}
+                          onKeyDown={(e) => handleKeyDown(e, item.id)}
                           role="button"
                           tabIndex={0}
+                          data-testid={`magic-item-button-${item.id}`}
                           className={`relative cursor-pointer rounded-lg transition-opacity ${
                             isSelected
                               ? "opacity-100"

@@ -45,18 +45,6 @@ export const tmdb = {
     return person ? person.id : null;
   },
 
-  searchPeople: async (
-    query: string,
-  ): Promise<Array<{ id: number; name: string }>> => {
-    const response = await tmdbClient.get<SearchResponse>("/search/person", {
-      params: { query },
-    });
-    return response.data.results.slice(0, 3).map((person) => ({
-      id: person.id,
-      name: person.name ?? "Unknown",
-    }));
-  },
-
   search: async (
     query: string,
     mediaType?: "movie" | "tv",

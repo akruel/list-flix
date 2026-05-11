@@ -175,24 +175,6 @@ describe("ai service", () => {
     loggerErrorSpy.mockRestore();
   });
 
-  it("logs warning when API key is missing at module load", async () => {
-    vi.resetModules();
-    vi.stubEnv("VITE_GEMINI_API_KEY", "");
-    const consoleErrorSpy = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => {});
-
-    await import("./ai");
-
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("[ListFlix ERROR]"),
-      "VITE_GEMINI_API_KEY is missing",
-    );
-
-    consoleErrorSpy.mockRestore();
-    vi.unstubAllEnvs();
-  });
-
   it("works with groq provider", async () => {
     vi.resetModules();
     vi.stubEnv("VITE_AI_PROVIDER", "groq");

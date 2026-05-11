@@ -36,7 +36,8 @@ export const groqProvider: AiProvider = {
       { attempts: 2, delay: 1000 },
     );
 
-    const text = result.choices[0]?.message?.content ?? "{}";
+    const text = result.choices[0]?.message?.content;
+    if (!text) throw new Error("Groq returned empty response");
     const raw = JSON.parse(text);
 
     return AiSuggestionSchema.parse(raw) as AiSuggestionResult;

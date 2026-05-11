@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -291,9 +297,30 @@ describe("MagicSearchModal", () => {
     const items = screen.getAllByTestId("magic-item");
     await userEvent.click(items[0]);
 
+    expect(items[0]).toBeInTheDocument();
+    expect(items[1]).toBeInTheDocument();
+    const buttons = screen.getAllByRole("button", {
+      name: /Matrix|Interstellar/i,
+    });
+    expect(buttons[0]).toHaveClass("opacity-60");
+    expect(buttons[1]).toHaveClass("opacity-100");
+  });
+
+  it("handles back button to clear results and selection", async () => {
+    await openAndTypePrompt();
+    await screen.findAllByTestId("magic-item");
+
+    expect(screen.getByTestId("magic-list-results-grid")).toBeInTheDocument();
+
+    const backButton = screen.getByTestId("magic-list-back-button");
+    await userEvent.click(backButton);
+
     expect(
-      screen.getAllByTestId("magic-list-save-button")[0],
-    ).toHaveTextContent("Salvar Lista (1)");
+      screen.queryByTestId("magic-list-results-grid"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByTestId("magic-list-prompt-input")[0],
+    ).toBeInTheDocument();
   });
 
   it("shows loading steps", async () => {
@@ -315,9 +342,7 @@ describe("MagicSearchModal", () => {
     await openAndTypePrompt();
     await screen.findAllByTestId("magic-item");
 
-    const items = screen.getAllByRole("button", {
-      name: /Matrix|Interstellar/i,
-    });
+    const items = screen.getAllByTestId(/magic-item-button-/);
     const item = items[0];
 
     fireEvent.keyDown(item, { key: " " });
@@ -403,5 +428,17 @@ describe("MagicSearchModal", () => {
         "Lista Sugerida",
       );
     });
+  });
+
+  it("fills prompt when clicking example chip", async () => {
+    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
+
+    const chips = screen.getByTestId("magic-list-example-chips");
+    const firstChip = within(chips).getAllByRole("button")[0];
+
+    await userEvent.click(firstChip);
+
+    const input = screen.getAllByTestId("magic-list-prompt-input")[0];
+    expect(input).toHaveValue(firstChip.textContent);
   });
 });
