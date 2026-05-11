@@ -5,6 +5,7 @@ import { AiSuggestionSchema } from "./ai-schema";
 
 interface AiSuggestionItem {
   title: string;
+  year?: number;
   media_type: "movie" | "tv";
 }
 

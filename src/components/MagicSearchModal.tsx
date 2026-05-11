@@ -28,9 +28,11 @@ interface MagicSearchModalProps {
 const EXAMPLE_PROMPTS = [
   "Filmes de suspense para assistir no final de semana",
   "Séries de comédia dos anos 2000",
-  "Filmes de ação com atores famosos",
   "Melhores filmes de ficção científica da última década",
-  "Filmes de terror para assistir em grupo",
+  "Clássicos do cinema dos anos 80",
+  "Filmes premiados no Oscar de 2024",
+  "Séries de fantasia com mundo novo imersivo",
+  "Filmes de animação com histórias profundas",
 ];
 
 export function MagicSearchModal({
@@ -70,8 +72,7 @@ export function MagicSearchModal({
       setLoadingStep("searching");
 
       const searchPromises = suggestion.items.map(async (item) => {
-        const searchResults = await tmdb.search(item.title, item.media_type);
-        return searchResults[0];
+        return tmdb.findBestMatch(item.title, item.media_type, item.year);
       });
 
       const rawItems = (await Promise.all(searchPromises)).filter(
@@ -279,18 +280,18 @@ export function MagicSearchModal({
                           role="button"
                           tabIndex={0}
                           data-testid={`magic-item-button-${item.id}`}
-                          className={`relative cursor-pointer rounded-lg transition-opacity ${
+                          className={`relative cursor-pointer rounded-lg transition-all ${
                             isSelected
                               ? "opacity-100"
                               : "opacity-60 hover:opacity-80"
                           }`}
                         >
                           {isSelected ? (
-                            <div className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary">
+                            <div className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-green-500 shadow-lg">
                               <Check className="h-4 w-4 text-white" />
                             </div>
                           ) : null}
-                          <MovieCard item={item} />
+                          <MovieCard item={item} disableLink />
                         </div>
                       );
                     })}

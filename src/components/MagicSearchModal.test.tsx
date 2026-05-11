@@ -13,7 +13,7 @@ import { MagicSearchModal } from "./MagicSearchModal";
 
 const mocks = vi.hoisted(() => ({
   getSuggestions: vi.fn(),
-  search: vi.fn(),
+  findBestMatch: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -26,7 +26,7 @@ vi.mock("../services/ai", () => ({
 
 vi.mock("../services/tmdb", () => ({
   tmdb: {
-    search: (...args: unknown[]) => mocks.search(...args),
+    findBestMatch: (...args: unknown[]) => mocks.findBestMatch(...args),
   },
 }));
 
@@ -81,9 +81,13 @@ describe("MagicSearchModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     idCounter = 0;
-    mocks.search.mockImplementation(async (query: string) => [
-      { id: ++idCounter, media_type: "movie", title: query },
-    ]);
+    mocks.findBestMatch.mockImplementation(
+      async (title: string, mediaType: string) => ({
+        id: ++idCounter,
+        media_type: mediaType,
+        title: title,
+      }),
+    );
     mocks.getSuggestions.mockResolvedValue({
       suggested_list_name: "Sci-Fi",
       items: [
@@ -121,8 +125,16 @@ describe("MagicSearchModal", () => {
         "matrix e interstellar",
       );
     });
-    expect(mocks.search).toHaveBeenCalledWith("Matrix", "movie");
-    expect(mocks.search).toHaveBeenCalledWith("Interstellar", "movie");
+    expect(mocks.findBestMatch).toHaveBeenCalledWith(
+      "Matrix",
+      "movie",
+      undefined,
+    );
+    expect(mocks.findBestMatch).toHaveBeenCalledWith(
+      "Interstellar",
+      "movie",
+      undefined,
+    );
 
     const items = await screen.findAllByTestId("magic-item");
     expect(items).toHaveLength(2);
@@ -137,9 +149,9 @@ describe("MagicSearchModal", () => {
         { title: "NotFound", media_type: "movie" },
       ],
     });
-    mocks.search.mockImplementation(async (query: string) => {
-      if (query === "NotFound") return [];
-      return [{ id: 1, title: "Found", media_type: "movie" }];
+    mocks.findBestMatch.mockImplementation(async (title: string) => {
+      if (title === "NotFound") return null;
+      return { id: 1, title: "Found", media_type: "movie" };
     });
 
     await openAndTypePrompt();
@@ -261,7 +273,7 @@ describe("MagicSearchModal", () => {
         resolveAi = resolve;
       }),
     );
-    mocks.search.mockReturnValue(new Promise(() => {}));
+    mocks.findBestMatch.mockReturnValue(new Promise(() => {}));
 
     render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
 
@@ -284,7 +296,7 @@ describe("MagicSearchModal", () => {
   });
 
   it("shows no results message when TMDB returns nothing for all items", async () => {
-    mocks.search.mockResolvedValue([]);
+    mocks.findBestMatch.mockResolvedValue(null);
 
     await openAndTypePrompt();
 
@@ -388,7 +400,11 @@ describe("MagicSearchModal", () => {
 
     await openAndTypePrompt("matrix");
     await waitFor(() => {
-      expect(mocks.search).toHaveBeenCalledWith("Matrix", "movie");
+      expect(mocks.findBestMatch).toHaveBeenCalledWith(
+        "Matrix",
+        "movie",
+        undefined,
+      );
     });
   });
 
@@ -422,14 +438,12 @@ describe("MagicSearchModal", () => {
       suggested_list_name: "Lista Sugerida",
       items: [{ title: "Inception", media_type: "movie" }],
     });
-    mocks.search.mockResolvedValue([
-      {
-        id: 1,
-        title: "Inception",
-        media_type: "movie",
-        poster_path: "/path.jpg",
-      },
-    ]);
+    mocks.findBestMatch.mockResolvedValue({
+      id: 1,
+      title: "Inception",
+      media_type: "movie",
+      poster_path: "/path.jpg",
+    });
 
     await openAndTypePrompt("matrix");
     await waitFor(() => {

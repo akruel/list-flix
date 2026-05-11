@@ -19,36 +19,58 @@ const CORS_HEADERS = {
 
 function buildPrompt(userRequest: string): string {
   return `
-      Você é um especialista em cinema e TV. Seu objetivo é recomendar uma lista de filmes ou séries baseada no pedido do usuário.
+Você é um curador de cinema e TV com conhecimento enciclopédico.
 
-      Instruções:
-      1. Analise o pedido do usuário (clima, gênero, ator, época, etc).
-      2. Recomende entre 5 e 12 itens que melhor se encaixam no pedido.
-      3. Forneça um título criativo e curto para a lista em Português.
-      4. Para cada item, forneça o título exato e se é 'movie' ou 'tv'.
+Analise o pedido do usuário e crie uma lista curada de filmes e/ou séries.
 
-      O formato de saída deve ser estritamente JSON:
-      {
-        "suggested_list_name": "Título da Lista",
-        "items": [
-          { "title": "Nome do Filme/Série", "media_type": "movie" },
-          ...
-        ]
-      }
+INSTRUÇÕES:
+1. Interpretação: Considere gênero, época, diretor, ator, nacionalidade, clima, classificação indicativa, ou qualquer combinação.
+2. Quantidade: Recomende entre 6 e 10 itens (idealmente 8), no mínimo 5 e no máximo 12.
+3. Títulos: Use o TÍTULO ORIGINAL (em inglês para filmes internacionais). Essencial para encontrar no catálogo.
+4. Ano: Inclua o ANO DE LANÇAMENTO para cada título — ajuda a buscar o filme correto no TMDB.
+5. Curadoria: Prefira filmes e séries POPULARES e BEM AVALIADOS. Escolha títulos que realmente existem e são conhecidos.
+6. Variedade: Dentro do tema, diversifique anos, países ou subgêneros quando possível.
+7. Título da lista: Criativo, curto e em PORTUGUÊS.
+8. Precisão: Todos os títulos devem ser de obras REAIS. Não invente.
+9. Evite repetir o mesmo título.
+10. Para séries, indique o título da série, não de um episódio específico.
 
-      Exemplo:
-      Usuário: "Filmes de terror psicológico dos anos 90"
-      Saída:
-      {
-        "suggested_list_name": "Terror Psicológico 90s",
-        "items": [
-          { "title": "The Silence of the Lambs", "media_type": "movie" },
-          { "title": "Seven", "media_type": "movie" },
-          { "title": "Jacob's Ladder", "media_type": "movie" }
-        ]
-      }
+FORMATO DE SAÍDA (JSON obrigatório):
+{
+  "suggested_list_name": "Título da Lista em Português",
+  "items": [
+    { "title": "Original English Title", "year": 1999, "media_type": "movie" },
+    { "title": "Original Series Title", "year": 2015, "media_type": "tv" }
+  ]
+}
 
-      Pedido do Usuário: "${userRequest}"
+EXEMPLO 1:
+Usuário: "Filmes de suspense para assistir no final de semana"
+{
+  "suggested_list_name": "Suspense de Final de Semana",
+  "items": [
+    { "title": "Gone Girl", "year": 2014, "media_type": "movie" },
+    { "title": "Prisoners", "year": 2013, "media_type": "movie" },
+    { "title": "Shutter Island", "year": 2010, "media_type": "movie" },
+    { "title": "The Girl with the Dragon Tattoo", "year": 2011, "media_type": "movie" },
+    { "title": "Se7en", "year": 1995, "media_type": "movie" },
+    { "title": "Rear Window", "year": 1954, "media_type": "movie" }
+  ]
+}
+
+EXEMPLO 2:
+Usuário: "Séries de comédia dos anos 2000"
+{
+  "suggested_list_name": "Comédia 2000s",
+  "items": [
+    { "title": "The Office", "year": 2005, "media_type": "tv" },
+    { "title": "Arrested Development", "year": 2003, "media_type": "tv" },
+    { "title": "30 Rock", "year": 2006, "media_type": "tv" },
+    { "title": "Curb Your Enthusiasm", "year": 2000, "media_type": "tv" }
+  ]
+}
+
+PEDIDO DO USUÁRIO: "${userRequest}"
     `;
 }
 
@@ -60,6 +82,7 @@ const AiSuggestionSchema = z.object({
     .array(
       z.object({
         title: z.string().min(1),
+        year: z.number().optional(),
         media_type: z.enum(["movie", "tv"]),
       }),
     )

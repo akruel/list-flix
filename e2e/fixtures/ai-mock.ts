@@ -4,6 +4,7 @@ interface AiSuggestionPayload {
   suggested_list_name?: string;
   items: Array<{
     title: string;
+    year?: number;
     media_type: "movie" | "tv";
   }>;
   [key: string]: unknown;

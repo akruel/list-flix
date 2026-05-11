@@ -58,6 +58,28 @@ export const tmdb = {
     });
   },
 
+  findBestMatch: async (
+    title: string,
+    mediaType: "movie" | "tv",
+    year?: number,
+  ): Promise<ContentItem | null> => {
+    const query = year ? `${title} ${year}` : title;
+    const results = await tmdb.search(query, mediaType);
+
+    if (results.length === 0) return null;
+
+    if (year) {
+      const yearMatch = results.find((r) => {
+        const date =
+          r.media_type === "movie" ? r.release_date : r.first_air_date;
+        return date && new Date(date).getFullYear() === year;
+      });
+      if (yearMatch) return yearMatch;
+    }
+
+    return results[0];
+  },
+
   getDetails: async (
     id: number,
     type: "movie" | "tv",
