@@ -9,6 +9,9 @@ export default defineConfig({
     },
   },
   test: {
+    env: {
+      VITE_AI_PROVIDER: "gemini",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
@@ -24,6 +27,8 @@ export default defineConfig({
         "src/types/**",
         "src/services/ai/providers/types.ts",
         "src/services/ai/providers/gemini.ts",
+        "src/services/ai/providers/groq.ts",
+        "src/services/ai/providers/index.ts",
         "src/components/index.ts",
         "src/components/ui/**",
         "src/components/skeletons/**",

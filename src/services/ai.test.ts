@@ -4,12 +4,22 @@ const mocks = vi.hoisted(() => {
   const generateContent = vi.fn();
   const getGenerativeModel = vi.fn(() => ({ generateContent }));
   const GoogleGenerativeAI = vi.fn(() => ({ getGenerativeModel }));
-  const getGenres = vi.fn();
+
+  const groqCreate = vi.fn();
+  const Groq = vi.fn(() => ({
+    chat: {
+      completions: {
+        create: groqCreate,
+      },
+    },
+  }));
+
   return {
     generateContent,
     getGenerativeModel,
     GoogleGenerativeAI,
-    getGenres,
+    groqCreate,
+    Groq,
   };
 });
 
@@ -17,83 +27,57 @@ vi.mock("@google/generative-ai", () => ({
   GoogleGenerativeAI: mocks.GoogleGenerativeAI,
 }));
 
+vi.mock("groq-sdk", () => ({
+  default: mocks.Groq,
+}));
+
 vi.mock("./tmdb", () => ({
   tmdb: {
-    getGenres: mocks.getGenres,
+    getGenres: vi.fn().mockResolvedValue([]),
   },
 }));
 
 import { ai } from "./ai";
 
+const EXPECTED_MODEL = import.meta.env.VITE_GEMINI_MODEL ?? "gemini-2.0-flash";
+
 describe("ai service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.getGenres.mockResolvedValue([
-      { id: 28, name: "Action" },
-      { id: 18, name: "Drama" },
-    ]);
   });
 
-  const strategyCases = [
-    {
-      caseName: "search strategy",
-      responseText: JSON.stringify({
-        strategy: "search",
-        query: "Harry Potter",
-        media_type: "movie",
-        suggested_list_name: "Saga Harry Potter",
-      }),
-      expectedStrategy: "search",
-    },
-    {
-      caseName: "discover strategy without code block",
-      responseText: JSON.stringify({
-        strategy: "discover",
-        media_type: "movie",
-        suggested_list_name: "Terror",
-      }),
-      expectedStrategy: "discover",
-    },
-    {
-      caseName: "person strategy",
-      responseText: JSON.stringify({
-        strategy: "person",
-        person_name: "Tom Cruise",
-        role: "cast",
-        media_type: "movie",
-        suggested_list_name: "Filmes com Tom Cruise",
-      }),
-      expectedStrategy: "person",
-    },
-  ];
+  it("parses valid recommendation response", async () => {
+    const responseText = JSON.stringify({
+      suggested_list_name: "Terror Psicológico",
+      items: [
+        { title: "The Silence of the Lambs", media_type: "movie" },
+        { title: "Seven", media_type: "movie" },
+      ],
+    });
 
-  it.each(strategyCases)(
-    "parses $caseName response",
-    async ({ responseText, expectedStrategy }) => {
-      mocks.generateContent.mockResolvedValue({
-        response: {
-          text: () => responseText,
-        },
-      });
+    mocks.generateContent.mockResolvedValue({
+      response: {
+        text: () => responseText,
+      },
+    });
 
-      const result = await ai.getSuggestions("filmes para o fim de semana");
+    const result = await ai.getSuggestions("filmes de terror");
 
-      expect(result.strategy).toBe(expectedStrategy);
-      expect(mocks.getGenerativeModel).toHaveBeenCalledWith({
-        model: "gemini-2.0-flash",
-      });
-      expect(mocks.generateContent).toHaveBeenCalledOnce();
-    },
-  );
+    expect(result.suggested_list_name).toBe("Terror Psicológico");
+    expect(result.items).toHaveLength(2);
+    expect(result.items[0].title).toBe("The Silence of the Lambs");
+    expect(mocks.getGenerativeModel).toHaveBeenCalledWith({
+      model: EXPECTED_MODEL,
+    });
+  });
 
-  it("includes genres list and user request in the generated prompt", async () => {
+  it("includes user request in the generated prompt and not the genres", async () => {
     mocks.generateContent.mockResolvedValue({
       response: {
         text: () =>
           JSON.stringify({
-            strategy: "discover",
-            media_type: "movie",
             suggested_list_name: "Lista",
+            items: [{ title: "Item", media_type: "movie" }],
           }),
       },
     });
@@ -104,8 +88,8 @@ describe("ai service", () => {
       contents: Array<{ parts: Array<{ text: string }> }>;
     };
     const prompt = callArg.contents[0].parts[0].text;
-    expect(prompt).toContain("Available Genres (ID:Name): 28:Action, 18:Drama");
-    expect(prompt).toContain('User Request: "ação dos anos 90"');
+    expect(prompt).not.toContain("Available Genres");
+    expect(prompt).toContain('Pedido do Usuário: "ação dos anos 90"');
   });
 
   it("uses responseMimeType: application/json in generationConfig", async () => {
@@ -113,9 +97,8 @@ describe("ai service", () => {
       response: {
         text: () =>
           JSON.stringify({
-            strategy: "discover",
-            media_type: "movie",
             suggested_list_name: "Lista",
+            items: [{ title: "Item", media_type: "movie" }],
           }),
       },
     });
@@ -133,9 +116,7 @@ describe("ai service", () => {
       response: {
         text: () =>
           JSON.stringify({
-            strategy: "search",
-            query: "Matrix",
-            media_type: "movie",
+            items: [{ title: "Matrix", media_type: "movie" }],
           }),
       },
     });
@@ -151,16 +132,14 @@ describe("ai service", () => {
         response: {
           text: () =>
             JSON.stringify({
-              strategy: "search",
-              query: "Matrix",
-              media_type: "movie",
               suggested_list_name: "Matrix",
+              items: [{ title: "Matrix", media_type: "movie" }],
             }),
         },
       });
 
     const result = await ai.getSuggestions("filmes do Matrix");
-    expect(result.strategy).toBe("search");
+    expect(result.items).toHaveLength(1);
     expect(mocks.generateContent).toHaveBeenCalledTimes(2);
   });
 
@@ -176,9 +155,14 @@ describe("ai service", () => {
       expectedError: /JSON/,
     },
     {
-      caseName: "genre loading error",
-      setup: () => mocks.getGenres.mockRejectedValue(new Error("tmdb failed")),
-      expectedError: "tmdb failed",
+      caseName: "missing items array",
+      setup: () =>
+        mocks.generateContent.mockResolvedValue({
+          response: {
+            text: () => JSON.stringify({ suggested_list_name: "Lista" }),
+          },
+        }),
+      expectedError: /items/,
     },
   ])("throws and logs on $caseName", async ({ setup, expectedError }) => {
     const loggerErrorSpy = vi
@@ -206,6 +190,38 @@ describe("ai service", () => {
     );
 
     consoleErrorSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("works with groq provider", async () => {
+    vi.resetModules();
+    vi.stubEnv("VITE_AI_PROVIDER", "groq");
+    vi.stubEnv("VITE_GROQ_API_KEY", "dummy-key");
+
+    const { ai: groqAi } = await import("./ai");
+
+    mocks.groqCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              suggested_list_name: "Groq List",
+              items: [{ title: "Groq Movie", media_type: "movie" }],
+            }),
+          },
+        },
+      ],
+    });
+
+    const result = await groqAi.getSuggestions("prompt");
+
+    expect(result.suggested_list_name).toBe("Groq List");
+    expect(mocks.groqCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.any(String),
+      }),
+    );
+
     vi.unstubAllEnvs();
   });
 });

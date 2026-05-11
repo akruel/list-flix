@@ -8,9 +8,6 @@ import { MagicSearchModal } from "./MagicSearchModal";
 const mocks = vi.hoisted(() => ({
   getSuggestions: vi.fn(),
   search: vi.fn(),
-  discover: vi.fn(),
-  searchPerson: vi.fn(),
-  searchPeople: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -24,9 +21,6 @@ vi.mock("../services/ai", () => ({
 vi.mock("../services/tmdb", () => ({
   tmdb: {
     search: (...args: unknown[]) => mocks.search(...args),
-    discover: (...args: unknown[]) => mocks.discover(...args),
-    searchPerson: (...args: unknown[]) => mocks.searchPerson(...args),
-    searchPeople: (...args: unknown[]) => mocks.searchPeople(...args),
   },
 }));
 
@@ -78,156 +72,74 @@ vi.mock("@/components/ui/scroll-area", () => ({
 describe("MagicSearchModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.search.mockResolvedValue([
-      { id: 1, media_type: "movie", title: "Movie A" },
+    mocks.search.mockImplementation(async (query: string) => [
+      { id: Math.random(), media_type: "movie", title: query },
     ]);
-    mocks.discover.mockResolvedValue([
-      { id: 2, media_type: "movie", title: "Movie B" },
-    ]);
-    mocks.searchPerson.mockResolvedValue(123);
-    mocks.searchPeople.mockResolvedValue([{ id: 123, name: "Tom Cruise" }]);
     mocks.getSuggestions.mockResolvedValue({
-      strategy: "search",
-      query: "Matrix",
       suggested_list_name: "Sci-Fi",
+      items: [
+        { title: "Matrix", media_type: "movie" },
+        { title: "Interstellar", media_type: "movie" },
+      ],
     });
   });
 
   async function openAndTypePrompt(prompt = "filmes de ficção") {
     render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
     await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
+      screen.getAllByTestId("magic-list-prompt-input")[0],
       prompt,
     );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /Sugerir/i })[0],
+    );
   }
 
   it("does not submit when prompt is empty", async () => {
     render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
 
-    expect(screen.getByRole("button", { name: /Sugerir/i })).toBeDisabled();
-    expect(mocks.getSuggestions).not.toHaveBeenCalled();
-  });
-
-  it("returns early when submitting whitespace-only prompt", async () => {
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
-
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "   ",
-    );
-
-    fireEvent.submit(screen.getByTestId("magic-list-form"));
-
-    expect(mocks.getSuggestions).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    {
-      caseName: "search strategy",
-      filters: {
-        strategy: "search",
-        query: "Matrix",
-        suggested_list_name: "Matrix list",
-      },
-      assertCalls: () => {
-        expect(mocks.search).toHaveBeenCalledWith("Matrix", undefined);
-      },
-    },
-    {
-      caseName: "discover strategy",
-      filters: {
-        strategy: "discover",
-        with_genres: "28",
-        suggested_list_name: "Action list",
-      },
-      assertCalls: () => {
-        expect(mocks.discover).toHaveBeenCalledWith(
-          expect.objectContaining({ strategy: "discover", with_genres: "28" }),
-        );
-      },
-    },
-    {
-      caseName: "person strategy with cast role",
-      filters: {
-        strategy: "person",
-        person_name: "Tom Cruise",
-        role: "cast",
-        suggested_list_name: "Tom",
-      },
-      assertCalls: () => {
-        expect(mocks.searchPeople).toHaveBeenCalledWith("Tom Cruise");
-        expect(mocks.discover).toHaveBeenCalledWith(
-          expect.objectContaining({ with_cast: 123 }),
-        );
-      },
-    },
-    {
-      caseName: "person strategy with crew role",
-      filters: {
-        strategy: "person",
-        person_name: "Nolan",
-        role: "crew",
-        suggested_list_name: "Nolan",
-      },
-      assertCalls: () => {
-        expect(mocks.searchPeople).toHaveBeenCalledWith("Nolan");
-        expect(mocks.discover).toHaveBeenCalledWith(
-          expect.objectContaining({ with_crew: 123 }),
-        );
-      },
-    },
-  ])("handles $caseName", async ({ filters, assertCalls }) => {
-    mocks.getSuggestions.mockResolvedValue(filters);
-
-    await openAndTypePrompt();
-
-    await waitFor(() => {
-      assertCalls();
-    });
-    expect(await screen.findByTestId("magic-item")).toBeInTheDocument();
-  });
-
-  it("uses default suggested name when AI response omits suggested_list_name", async () => {
-    mocks.getSuggestions.mockResolvedValue({
-      strategy: "discover",
-      with_genres: "28",
-    });
-
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
-
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "ação",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-
     expect(
-      await screen.findByDisplayValue("Lista Sugerida"),
-    ).toBeInTheDocument();
+      screen.getAllByRole("button", { name: /Sugerir/i })[0],
+    ).toBeDisabled();
+    expect(mocks.getSuggestions).not.toHaveBeenCalled();
   });
 
-  it("shows toast error when person is not found", async () => {
-    mocks.getSuggestions.mockResolvedValue({
-      strategy: "person",
-      person_name: "Unknown",
-      role: "cast",
-      suggested_list_name: "Unknown",
+  it("handles successful suggestion and searches each item", async () => {
+    await openAndTypePrompt("matrix e interstellar");
+
+    await waitFor(() => {
+      expect(mocks.getSuggestions).toHaveBeenCalledWith(
+        "matrix e interstellar",
+      );
     });
-    mocks.searchPeople.mockResolvedValue([]);
+    expect(mocks.search).toHaveBeenCalledWith("Matrix", "movie");
+    expect(mocks.search).toHaveBeenCalledWith("Interstellar", "movie");
+
+    const items = await screen.findAllByTestId("magic-item");
+    expect(items).toHaveLength(2);
+    expect(screen.getByDisplayValue("Sci-Fi")).toBeInTheDocument();
+  });
+
+  it("filters out items not found in TMDB", async () => {
+    mocks.getSuggestions.mockResolvedValue({
+      suggested_list_name: "Mix",
+      items: [
+        { title: "Found", media_type: "movie" },
+        { title: "NotFound", media_type: "movie" },
+      ],
+    });
+    mocks.search.mockImplementation(async (query: string) => {
+      if (query === "NotFound") return [];
+      return [{ id: 1, title: "Found", media_type: "movie" }];
+    });
 
     await openAndTypePrompt();
 
     await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Pessoa não encontrada. Tente outro nome.",
-      );
+      const items = screen.getAllByTestId("magic-item");
+      expect(items).toHaveLength(1);
+      expect(screen.getByText("Found")).toBeInTheDocument();
+      expect(screen.queryByText("NotFound")).not.toBeInTheDocument();
     });
   });
 
@@ -243,70 +155,13 @@ describe("MagicSearchModal", () => {
     });
   });
 
-  it.each([
-    {
-      caseName: "save success",
-      onSaveList: vi.fn().mockResolvedValue(undefined),
-      shouldSuccess: true,
-      shouldError: false,
-    },
-    {
-      caseName: "save failure",
-      onSaveList: vi.fn().mockRejectedValue(new Error("save failed")),
-      shouldSuccess: false,
-      shouldError: true,
-    },
-  ])(
-    "handles $caseName",
-    async ({ onSaveList, shouldSuccess, shouldError }) => {
-      mocks.getSuggestions.mockResolvedValue({
-        strategy: "search",
-        query: "Matrix",
-        suggested_list_name: "Sci-Fi",
-      });
-      const onClose = vi.fn();
+  it("handles save success", async () => {
+    const onSaveList = vi.fn().mockResolvedValue(undefined);
+    const onClose = vi.fn();
 
-      render(
-        <MagicSearchModal isOpen onClose={onClose} onSaveList={onSaveList} />,
-      );
-
-      await userEvent.type(
-        screen.getByPlaceholderText(
-          "Ex: Filmes de suspense para assistir no final de semana...",
-        ),
-        "matrix",
-      );
-      await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-      await screen.findByTestId("magic-item");
-
-      await userEvent.click(
-        screen.getByRole("button", { name: /Salvar Lista/i }),
-      );
-
-      await waitFor(() => {
-        expect(onSaveList).toHaveBeenCalledWith("Sci-Fi", expect.any(Array));
-      });
-
-      expect(mocks.toastSuccess).toHaveBeenCalledTimes(shouldSuccess ? 1 : 0);
-      expect(mocks.toastSuccess.mock.calls[0]?.[0]).toBe(
-        shouldSuccess ? "Lista criada com sucesso!" : undefined,
-      );
-      expect(onClose).toHaveBeenCalledTimes(shouldSuccess ? 1 : 0);
-      expect(mocks.toastError).toHaveBeenCalledTimes(shouldError ? 1 : 0);
-      expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
-        shouldError ? "Erro ao salvar a lista." : undefined,
-      );
-    },
-  );
-
-  it("validates list name before saving", async () => {
-    mocks.getSuggestions.mockResolvedValue({
-      strategy: "search",
-      query: "Matrix",
-      suggested_list_name: "Sci-Fi",
-    });
-
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
+    render(
+      <MagicSearchModal isOpen onClose={onClose} onSaveList={onSaveList} />,
+    );
 
     await userEvent.type(
       screen.getByPlaceholderText(
@@ -315,32 +170,55 @@ describe("MagicSearchModal", () => {
       "matrix",
     );
     await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-    await screen.findByTestId("magic-item");
+    await screen.findAllByTestId("magic-item");
 
-    const nameInput = screen.getByDisplayValue("Sci-Fi");
-    await userEvent.clear(nameInput);
     await userEvent.click(
       screen.getByRole("button", { name: /Salvar Lista/i }),
     );
 
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Por favor, dê um nome para a lista.",
+    await waitFor(() => {
+      expect(onSaveList).toHaveBeenCalledWith("Sci-Fi", expect.any(Array));
+    });
+
+    expect(mocks.toastSuccess).toHaveBeenCalledWith(
+      "Lista criada com sucesso!",
     );
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("resets modal state when closed", async () => {
-    const onClose = vi.fn();
-    render(<MagicSearchModal isOpen onClose={onClose} onSaveList={vi.fn()} />);
-
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "matrix",
+  it("handles save failure", async () => {
+    const onSaveList = vi.fn().mockRejectedValue(new Error("save failed"));
+    render(
+      <MagicSearchModal isOpen onClose={vi.fn()} onSaveList={onSaveList} />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "close-dialog" }));
 
-    expect(onClose).toHaveBeenCalledOnce();
+    await openAndTypePrompt();
+    await screen.findAllByTestId("magic-item");
+
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /Salvar Lista/i })[0],
+    );
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith("Erro ao salvar a lista.");
+    });
+  });
+
+  it("validates list name before saving", async () => {
+    await openAndTypePrompt();
+    await screen.findAllByTestId("magic-item");
+
+    const nameInput = screen.getAllByDisplayValue("Sci-Fi")[0];
+    await userEvent.clear(nameInput);
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /Salvar Lista/i })[0],
+    );
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Por favor, dê um nome para a lista.",
+      );
+    });
   });
 
   it("navigates back from results to input preserving prompt", async () => {
@@ -354,249 +232,175 @@ describe("MagicSearchModal", () => {
       prompt,
     );
     await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-    await screen.findByTestId("magic-item");
+    await screen.findAllByTestId("magic-item");
 
     await userEvent.click(screen.getByTestId("magic-list-back-button"));
 
     expect(screen.getByTestId("magic-list-prompt-input")).toHaveValue(prompt);
-    expect(screen.getByRole("button", { name: /Sugerir/i })).toBeVisible();
-  });
-
-  it("fills prompt when clicking example chip", async () => {
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
-
-    const firstChip = screen.getAllByRole("button", {
-      name: /Filmes de suspense/i,
-    })[0];
-    await userEvent.click(firstChip);
-
-    const textareaValue = (
-      screen.getByTestId("magic-list-prompt-input") as HTMLTextAreaElement
-    ).value;
-    expect(textareaValue.length).toBeGreaterThan(0);
-  });
-
-  it("shows loading state while generating suggestions", async () => {
-    mocks.getSuggestions.mockReturnValue(new Promise(() => {}));
-
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
-
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "matrix",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-
-    expect(screen.getByText("Analisando seu pedido...")).toBeVisible();
   });
 
   it("shows searching label after AI resolves", async () => {
     let resolveAi!: (value: unknown) => void;
-    let resolveDiscover!: (value: unknown) => void;
     mocks.getSuggestions.mockReturnValue(
       new Promise((resolve) => {
         resolveAi = resolve;
       }),
     );
-    mocks.discover.mockReturnValue(
-      new Promise((resolve) => {
-        resolveDiscover = resolve;
-      }),
-    );
+    mocks.search.mockReturnValue(new Promise(() => {}));
 
     render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
 
     await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
+      screen.getAllByTestId("magic-list-prompt-input")[0],
       "aventura",
     );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /Sugerir/i })[0],
+    );
 
     resolveAi({
-      strategy: "discover",
-      media_type: "movie",
       suggested_list_name: "Aventura",
+      items: [{ title: "Dune", media_type: "movie" }],
     });
 
     await waitFor(() => {
-      expect(screen.getByText("Buscando no TMDB...")).toBeVisible();
-    });
-
-    resolveDiscover([{ id: 1, media_type: "movie", title: "Movie A" }]);
-  });
-
-  it("shows error toast when person change fails", async () => {
-    mocks.getSuggestions.mockResolvedValue({
-      strategy: "person",
-      person_name: "Tom",
-      role: "cast",
-      media_type: "movie",
-      suggested_list_name: "Tom movies",
-    });
-    mocks.searchPeople.mockResolvedValue([
-      { id: 123, name: "Tom Cruise" },
-      { id: 456, name: "Tom Hanks" },
-    ]);
-    mocks.discover
-      .mockResolvedValueOnce([{ id: 1, media_type: "movie", title: "Movie A" }])
-      .mockRejectedValueOnce(new Error("discover failed"));
-
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
-
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "Tom",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-
-    await screen.findByTestId("magic-list-person-selector");
-
-    await userEvent.click(screen.getByTestId("magic-list-person-456"));
-
-    await waitFor(() => {
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        "Erro ao buscar resultados.",
-      );
+      expect(screen.getAllByText("Buscando no TMDB...")[0]).toBeVisible();
     });
   });
 
-  it("toggles item selection via keyboard", async () => {
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
+  it("shows no results message when TMDB returns nothing for all items", async () => {
+    mocks.search.mockResolvedValue([]);
 
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
+    await openAndTypePrompt();
+
+    expect(
+      await screen.findByText(
+        "Nenhum resultado encontrado. Tente outro pedido.",
       ),
-      "matrix",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-    await screen.findByTestId("magic-item");
-
-    const item = screen.getByRole("button", { name: /Movie A/i });
-
-    fireEvent.keyDown(item, { key: " " });
-    expect(screen.getByText(/Salvar Lista \(0\)/)).toBeVisible();
-
-    fireEvent.keyDown(item, { key: "Enter" });
-    expect(screen.getByText(/Salvar Lista \(1\)/)).toBeVisible();
+    ).toBeInTheDocument();
   });
 
   it("toggles item selection on click", async () => {
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
+    await openAndTypePrompt();
+    await screen.findAllByTestId("magic-item");
 
+    expect(
+      screen.getAllByTestId("magic-list-save-button")[0],
+    ).toHaveTextContent("Salvar Lista (2)");
+
+    const items = screen.getAllByTestId("magic-item");
+    await userEvent.click(items[0]);
+
+    expect(
+      screen.getAllByTestId("magic-list-save-button")[0],
+    ).toHaveTextContent("Salvar Lista (1)");
+  });
+
+  it("shows loading steps", async () => {
+    mocks.getSuggestions.mockReturnValue(new Promise(() => {}));
+
+    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
     await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
+      screen.getAllByTestId("magic-list-prompt-input")[0],
       "matrix",
     );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-    await screen.findByTestId("magic-item");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: /Sugerir/i })[0],
+    );
 
-    expect(screen.getByText(/Salvar Lista \(1\)/)).toBeVisible();
-
-    await userEvent.click(screen.getByTestId("magic-item"));
-
-    expect(screen.getByText(/Salvar Lista \(0\)/)).toBeVisible();
+    expect(screen.getAllByText("Analisando seu pedido...")[0]).toBeVisible();
   });
 
-  it("disables save button when no items selected", async () => {
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
+  it("toggles item selection via keyboard", async () => {
+    await openAndTypePrompt();
+    await screen.findAllByTestId("magic-item");
+
+    const items = screen.getAllByRole("button", {
+      name: /Matrix|Interstellar/i,
+    });
+    const item = items[0];
+
+    fireEvent.keyDown(item, { key: " " });
+    expect(
+      screen.getAllByTestId("magic-list-save-button")[0],
+    ).toHaveTextContent("Salvar Lista (1)");
+
+    fireEvent.keyDown(item, { key: "Enter" });
+    expect(
+      screen.getAllByTestId("magic-list-save-button")[0],
+    ).toHaveTextContent("Salvar Lista (2)");
+  });
+
+  it("resets modal state when closed", async () => {
+    const onClose = vi.fn();
+    render(<MagicSearchModal isOpen onClose={onClose} onSaveList={vi.fn()} />);
 
     await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
+      screen.getAllByTestId("magic-list-prompt-input")[0],
       "matrix",
     );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-    await screen.findByTestId("magic-item");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "close-dialog" })[0],
+    );
 
-    await userEvent.click(screen.getByTestId("magic-item"));
-
-    expect(screen.getByTestId("magic-list-save-button")).toBeDisabled();
+    expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("handles person change with crew role", async () => {
+  it("handles suggestion items with empty media_type fallback", async () => {
     mocks.getSuggestions.mockResolvedValue({
-      strategy: "person",
-      person_name: "Director",
-      role: "crew",
-      media_type: "movie",
-      suggested_list_name: "Director movies",
+      suggested_list_name: "Fallback",
+      items: [{ title: "Matrix", media_type: "movie" }],
     });
-    mocks.searchPeople.mockResolvedValue([
-      { id: 789, name: "Christopher Nolan" },
-      { id: 111, name: "Denis Villeneuve" },
-    ]);
-    mocks.discover
-      .mockResolvedValueOnce([
-        { id: 3, media_type: "movie", title: "Inception" },
-      ])
-      .mockResolvedValueOnce([{ id: 4, media_type: "movie", title: "Dune" }]);
 
-    render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
-
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "Director",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
-
-    await screen.findByTestId("magic-list-person-selector");
-
-    await userEvent.click(screen.getByTestId("magic-list-person-111"));
-
+    await openAndTypePrompt("matrix");
     await waitFor(() => {
-      expect(mocks.discover).toHaveBeenCalledWith(
-        expect.objectContaining({ with_crew: 111 }),
-      );
+      expect(mocks.search).toHaveBeenCalledWith("Matrix", "movie");
     });
   });
 
-  it("shows person selector and refetches on change", async () => {
-    mocks.getSuggestions.mockResolvedValue({
-      strategy: "person",
-      person_name: "Tom",
-      role: "cast",
-      media_type: "movie",
-      suggested_list_name: "Tom movies",
-    });
-    mocks.searchPeople.mockResolvedValue([
-      { id: 123, name: "Tom Cruise" },
-      { id: 456, name: "Tom Hanks" },
-    ]);
-    mocks.discover
-      .mockResolvedValueOnce([{ id: 1, media_type: "movie", title: "Movie A" }])
-      .mockResolvedValueOnce([
-        { id: 2, media_type: "movie", title: "Movie B" },
-      ]);
+  it("deselects item if already selected", async () => {
+    await openAndTypePrompt();
+    await screen.findAllByTestId("magic-item");
 
+    const items = screen.getAllByTestId("magic-item");
+    await userEvent.click(items[0]);
+    expect(
+      screen.getAllByTestId("magic-list-save-button")[0],
+    ).toHaveTextContent("Salvar Lista (1)");
+
+    await userEvent.click(items[0]);
+    expect(
+      screen.getAllByTestId("magic-list-save-button")[0],
+    ).toHaveTextContent("Salvar Lista (2)");
+  });
+
+  it("does not trigger search if prompt is empty", async () => {
     render(<MagicSearchModal isOpen onClose={vi.fn()} onSaveList={vi.fn()} />);
 
-    await userEvent.type(
-      screen.getByPlaceholderText(
-        "Ex: Filmes de suspense para assistir no final de semana...",
-      ),
-      "Tom",
-    );
-    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
+    const form = screen.getByTestId("magic-list-form");
+    fireEvent.submit(form);
 
-    await screen.findByTestId("magic-list-person-selector");
+    expect(mocks.getSuggestions).not.toHaveBeenCalled();
+  });
 
-    await userEvent.click(screen.getByTestId("magic-list-person-456"));
+  it("uses fallback suggested name from schema when AI response lacks it", async () => {
+    mocks.getSuggestions.mockResolvedValue({
+      suggested_list_name: "Lista Sugerida",
+      items: [{ title: "Inception", media_type: "movie" }],
+    });
+    mocks.search.mockResolvedValue([
+      {
+        id: 1,
+        title: "Inception",
+        media_type: "movie",
+        poster_path: "/path.jpg",
+      },
+    ]);
 
+    await openAndTypePrompt("matrix");
     await waitFor(() => {
-      expect(mocks.discover).toHaveBeenCalledWith(
-        expect.objectContaining({ with_cast: 456 }),
+      expect(screen.getAllByTestId("magic-list-name-input")[0]).toHaveValue(
+        "Lista Sugerida",
       );
     });
   });

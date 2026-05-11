@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, Loader2, Save, Sparkles } from "lucide-react";
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -41,18 +41,12 @@ export function MagicSearchModal({
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState<ContentItem[]>([]);
-  const [suggestedName, setSuggestedName] = useState("");
-  const [step, setStep] = useState<"input" | "results">("input");
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [step, setStep] = useState<"input" | "results">("input");
+  const [suggestedName, setSuggestedName] = useState("");
   const [loadingStep, setLoadingStep] = useState<
-    "genres" | "analyzing" | "searching" | null
+    "analyzing" | "searching" | null
   >(null);
-  const [personCandidates, setPersonCandidates] = useState<
-    Array<{ id: number; name: string }>
-  >([]);
-  const [selectedPersonId, setSelectedPersonId] = useState<number | null>(null);
-
-  const filtersRef = useRef<Record<string, unknown> | null>(null);
 
   const toggleItem = (id: number) => {
     setSelectedIds((prev) => {
@@ -68,44 +62,21 @@ export function MagicSearchModal({
     if (!prompt.trim()) return;
 
     setIsLoading(true);
-    setPersonCandidates([]);
-    setSelectedPersonId(null);
     try {
       setLoadingStep("analyzing");
-      const filters = await ai.getSuggestions(prompt);
-      filtersRef.current = filters;
+      const suggestion = await ai.getSuggestions(prompt);
 
-      setSuggestedName(filters.suggested_list_name || "Lista Sugerida");
+      setSuggestedName(suggestion.suggested_list_name);
       setLoadingStep("searching");
 
-      let items: ContentItem[] = [];
+      const searchPromises = suggestion.items.map(async (item) => {
+        const results = await tmdb.search(item.title, item.media_type);
+        return results[0];
+      });
 
-      if (filters.strategy === "search" && filters.query) {
-        items = await tmdb.search(filters.query, filters.media_type);
-      } else if (
-        filters.strategy === "person" &&
-        filters.person_name &&
-        filters.role
-      ) {
-        const people = await tmdb.searchPeople(filters.person_name);
-        if (people.length > 0) {
-          setPersonCandidates(people);
-          const defaultPerson = people[0];
-          setSelectedPersonId(defaultPerson.id);
-
-          const discoverFilters = {
-            ...filters,
-            ...(filters.role === "cast"
-              ? { with_cast: defaultPerson.id }
-              : { with_crew: defaultPerson.id }),
-          };
-          items = await tmdb.discover(discoverFilters);
-        } else {
-          toast.error("Pessoa não encontrada. Tente outro nome.");
-        }
-      } else {
-        items = await tmdb.discover(filters);
-      }
+      const items = (await Promise.all(searchPromises)).filter(
+        (item): item is ContentItem => !!item,
+      );
 
       setResults(items);
       setSelectedIds(new Set(items.map((item) => item.id)));
@@ -119,36 +90,9 @@ export function MagicSearchModal({
     }
   };
 
-  const handlePersonChange = async (personId: number) => {
-    const filters = filtersRef.current as Record<string, unknown>;
-
-    setSelectedPersonId(personId);
-    setIsLoading(true);
-    try {
-      setLoadingStep("searching");
-      const discoverFilters = {
-        ...filters,
-        ...(filters.role === "cast"
-          ? { with_cast: personId }
-          : { with_crew: personId }),
-      };
-      const items = await tmdb.discover(discoverFilters);
-      setResults(items);
-      setSelectedIds(new Set(items.map((item) => item.id)));
-    } catch (error) {
-      logger.error(error);
-      toast.error("Erro ao buscar resultados.");
-    } finally {
-      setIsLoading(false);
-      setLoadingStep(null);
-    }
-  };
-
   const handleBack = () => {
     setStep("input");
     setResults([]);
-    setPersonCandidates([]);
-    setSelectedPersonId(null);
     setSuggestedName("");
   };
 
@@ -180,9 +124,6 @@ export function MagicSearchModal({
     setStep("input");
     setSelectedIds(new Set());
     setLoadingStep(null);
-    setPersonCandidates([]);
-    setSelectedPersonId(null);
-    filtersRef.current = null;
     onClose();
   };
 
@@ -293,33 +234,6 @@ export function MagicSearchModal({
                       className="border-gray-700 bg-gray-800"
                     />
                   </div>
-
-                  {personCandidates.length > 1 && (
-                    <div className="w-full space-y-2 md:w-auto">
-                      <span className="text-sm text-gray-400">Pessoa</span>
-                      <div
-                        className="flex gap-2"
-                        data-testid="magic-list-person-selector"
-                      >
-                        {personCandidates.map((person) => (
-                          <button
-                            key={person.id}
-                            type="button"
-                            disabled={isLoading}
-                            onClick={() => handlePersonChange(person.id)}
-                            data-testid={`magic-list-person-${person.id}`}
-                            className={`rounded-md border px-3 py-1 text-sm transition-colors ${
-                              selectedPersonId === person.id
-                                ? "border-primary bg-primary/20 text-primary"
-                                : "border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-500"
-                            }`}
-                          >
-                            {person.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
 
                   <Button
                     data-testid="magic-list-save-button"
