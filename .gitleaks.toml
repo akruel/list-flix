@@ -1,0 +1,10 @@
+[allowlist]
+description = "VAPID public key in test file (designed to be public)"
+
+paths = [
+  '''src/hooks/usePushNotification\.test\.tsx''',
+]
+
+fingerprints = [
+  "dc52300c9c664a080b64430779accca458cd74f5:src/hooks/usePushNotification.test.tsx:generic-api-key:11",
+]
