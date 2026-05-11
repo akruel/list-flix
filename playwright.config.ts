@@ -28,7 +28,7 @@ export default defineConfig({
       VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? "",
       VITE_TMDB_ACCESS_TOKEN:
         process.env.VITE_TMDB_ACCESS_TOKEN ?? "test-token",
-      VITE_GEMINI_API_KEY: process.env.VITE_GEMINI_API_KEY ?? "test-gemini-key",
+      VITE_GROQ_API_KEY: process.env.VITE_GROQ_API_KEY ?? "test-groq-key",
     },
   },
   projects: [
