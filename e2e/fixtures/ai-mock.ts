@@ -18,33 +18,6 @@ export async function mockAiSuggestions(
   page: Page,
   payload: AiSuggestionPayload = DEFAULT_AI_SUGGESTION,
 ): Promise<void> {
-  // Mock Gemini
-  await page.route(
-    "https://generativelanguage.googleapis.com/**",
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify(payload),
-                  },
-                ],
-                role: "model",
-              },
-              finishReason: "STOP",
-              index: 0,
-            },
-          ],
-        }),
-      });
-    },
-  );
-
   // Mock Groq
   await page.route(
     "https://api.groq.com/openai/v1/chat/completions",
