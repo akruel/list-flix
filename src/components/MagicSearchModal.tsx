@@ -190,7 +190,7 @@ export function MagicSearchModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent
         data-testid="magic-list-modal"
-        className="flex max-h-[90vh] max-w-4xl flex-col gap-0 border-gray-800 bg-gray-900 p-0"
+        className="flex h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden border-gray-800 bg-gray-900 p-0"
       >
         <DialogHeader className="border-b border-gray-800 p-6">
           <div className="flex items-center gap-2">
@@ -212,7 +212,7 @@ export function MagicSearchModal({
           </div>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-hidden">
           {step === "input" ? (
             <div className="flex h-full flex-col items-center justify-center px-6 py-8">
               <p className="mb-6 max-w-md text-center text-gray-400">
@@ -274,7 +274,7 @@ export function MagicSearchModal({
               </form>
             </div>
           ) : (
-            <div className="flex h-full flex-col">
+            <div className="flex h-full min-h-0 flex-1 flex-col">
               <div className="border-b border-gray-800 bg-gray-900/50 p-6">
                 <div className="flex flex-col items-end gap-4 md:flex-row">
                   <div className="w-full flex-1 space-y-2">
@@ -337,47 +337,49 @@ export function MagicSearchModal({
                 </div>
               </div>
 
-              <ScrollArea className="flex-1 p-6">
-                <div
-                  data-testid="magic-list-results-grid"
-                  className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
-                >
-                  {results.map((item) => {
-                    const isSelected = selectedIds.has(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        onClick={() => toggleItem(item.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            toggleItem(item.id);
-                          }
-                        }}
-                        role="button"
-                        tabIndex={0}
-                        className={`relative cursor-pointer rounded-lg transition-opacity ${
-                          isSelected
-                            ? "opacity-100"
-                            : "opacity-60 hover:opacity-80"
-                        }`}
-                      >
-                        {isSelected ? (
-                          <div className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary">
-                            <Check className="h-4 w-4 text-white" />
-                          </div>
-                        ) : null}
-                        <MovieCard item={item} />
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {results.length === 0 ? (
-                  <div className="py-12 text-center text-gray-500">
-                    Nenhum resultado encontrado. Tente outro pedido.
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="p-6">
+                  <div
+                    data-testid="magic-list-results-grid"
+                    className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4"
+                  >
+                    {results.map((item) => {
+                      const isSelected = selectedIds.has(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => toggleItem(item.id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              toggleItem(item.id);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
+                          className={`relative cursor-pointer rounded-lg transition-opacity ${
+                            isSelected
+                              ? "opacity-100"
+                              : "opacity-60 hover:opacity-80"
+                          }`}
+                        >
+                          {isSelected ? (
+                            <div className="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-primary">
+                              <Check className="h-4 w-4 text-white" />
+                            </div>
+                          ) : null}
+                          <MovieCard item={item} />
+                        </div>
+                      );
+                    })}
                   </div>
-                ) : null}
+
+                  {results.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">
+                      Nenhum resultado encontrado. Tente outro pedido.
+                    </div>
+                  ) : null}
+                </div>
               </ScrollArea>
             </div>
           )}
