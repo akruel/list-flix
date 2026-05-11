@@ -70,8 +70,8 @@ export function MagicSearchModal({
       setLoadingStep("searching");
 
       const searchPromises = suggestion.items.map(async (item) => {
-        const results = await tmdb.search(item.title, item.media_type);
-        return results[0];
+        const searchResults = await tmdb.search(item.title, item.media_type);
+        return searchResults[0];
       });
 
       const rawItems = (await Promise.all(searchPromises)).filter(

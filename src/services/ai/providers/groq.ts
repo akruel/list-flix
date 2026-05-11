@@ -8,7 +8,7 @@ import { withRetry } from "./retry";
 import type { AiProvider, AiSuggestionResult } from "./types";
 
 const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const MODEL = import.meta.env.VITE_GROQ_MODEL ?? "llama-3.3-70b-versatile";
+const MODEL = import.meta.env.VITE_GROQ_MODEL || "llama-3.3-70b-versatile";
 
 if (!API_KEY) {
   logger.error("VITE_GROQ_API_KEY is missing");

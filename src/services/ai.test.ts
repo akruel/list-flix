@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => {
-  const generateContent = vi.fn();
-  const getGenerativeModel = vi.fn(() => ({ generateContent }));
-  const GoogleGenerativeAI = vi.fn(() => ({ getGenerativeModel }));
-
   const groqCreate = vi.fn();
   const Groq = vi.fn(() => ({
     chat: {
@@ -15,17 +11,10 @@ const mocks = vi.hoisted(() => {
   }));
 
   return {
-    generateContent,
-    getGenerativeModel,
-    GoogleGenerativeAI,
     groqCreate,
     Groq,
   };
 });
-
-vi.mock("@google/generative-ai", () => ({
-  GoogleGenerativeAI: mocks.GoogleGenerativeAI,
-}));
 
 vi.mock("groq-sdk", () => ({
   default: mocks.Groq,
@@ -39,26 +28,26 @@ vi.mock("./tmdb", () => ({
 
 import { ai } from "./ai";
 
-const EXPECTED_MODEL = import.meta.env.VITE_GEMINI_MODEL ?? "gemini-2.0-flash";
-
 describe("ai service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it("parses valid recommendation response", async () => {
-    const responseText = JSON.stringify({
-      suggested_list_name: "Terror Psicológico",
-      items: [
-        { title: "The Silence of the Lambs", media_type: "movie" },
-        { title: "Seven", media_type: "movie" },
+    mocks.groqCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              suggested_list_name: "Terror Psicológico",
+              items: [
+                { title: "The Silence of the Lambs", media_type: "movie" },
+                { title: "Seven", media_type: "movie" },
+              ],
+            }),
+          },
+        },
       ],
-    });
-
-    mocks.generateContent.mockResolvedValue({
-      response: {
-        text: () => responseText,
-      },
     });
 
     const result = await ai.getSuggestions("filmes de terror");
@@ -66,101 +55,80 @@ describe("ai service", () => {
     expect(result.suggested_list_name).toBe("Terror Psicológico");
     expect(result.items).toHaveLength(2);
     expect(result.items[0].title).toBe("The Silence of the Lambs");
-    expect(mocks.getGenerativeModel).toHaveBeenCalledWith({
-      model: EXPECTED_MODEL,
-    });
+    expect(mocks.groqCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        model: expect.any(String),
+      }),
+    );
   });
 
-  it("includes user request in the generated prompt and not the genres", async () => {
-    mocks.generateContent.mockResolvedValue({
-      response: {
-        text: () =>
-          JSON.stringify({
-            suggested_list_name: "Lista",
-            items: [{ title: "Item", media_type: "movie" }],
-          }),
-      },
+  it("includes user request in the generated prompt", async () => {
+    mocks.groqCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              suggested_list_name: "Lista",
+              items: [{ title: "Item", media_type: "movie" }],
+            }),
+          },
+        },
+      ],
     });
 
     await ai.getSuggestions("ação dos anos 90");
 
-    const callArg = mocks.generateContent.mock.calls[0][0] as unknown as {
-      contents: Array<{ parts: Array<{ text: string }> }>;
+    const callArg = mocks.groqCreate.mock.calls[0][0] as unknown as {
+      messages: Array<{ role: string; content: string }>;
     };
-    const prompt = callArg.contents[0].parts[0].text;
+    const prompt = callArg.messages[1].content;
     expect(prompt).not.toContain("Available Genres");
     expect(prompt).toContain('Pedido do Usuário: "ação dos anos 90"');
   });
 
-  it("uses responseMimeType: application/json in generationConfig", async () => {
-    mocks.generateContent.mockResolvedValue({
-      response: {
-        text: () =>
-          JSON.stringify({
-            suggested_list_name: "Lista",
-            items: [{ title: "Item", media_type: "movie" }],
-          }),
-      },
-    });
-
-    await ai.getSuggestions("ação dos anos 90");
-
-    const callArg = mocks.generateContent.mock.calls[0][0] as unknown as {
-      generationConfig?: { responseMimeType?: string };
-    };
-    expect(callArg.generationConfig?.responseMimeType).toBe("application/json");
-  });
-
   it("applies default suggested_list_name when missing", async () => {
-    mocks.generateContent.mockResolvedValue({
-      response: {
-        text: () =>
-          JSON.stringify({
-            items: [{ title: "Matrix", media_type: "movie" }],
-          }),
-      },
+    mocks.groqCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              items: [{ title: "Matrix", media_type: "movie" }],
+            }),
+          },
+        },
+      ],
     });
 
     const result = await ai.getSuggestions("filmes do Matrix");
     expect(result.suggested_list_name).toBe("Lista Sugerida");
   });
 
-  it("retries on gemini failure", async () => {
-    mocks.generateContent
-      .mockRejectedValueOnce(new Error("gemini transient error"))
-      .mockResolvedValueOnce({
-        response: {
-          text: () =>
-            JSON.stringify({
-              suggested_list_name: "Matrix",
-              items: [{ title: "Matrix", media_type: "movie" }],
-            }),
-        },
-      });
-
-    const result = await ai.getSuggestions("filmes do Matrix");
-    expect(result.items).toHaveLength(1);
-    expect(mocks.generateContent).toHaveBeenCalledTimes(2);
-  });
-
   it.each([
     {
       caseName: "invalid json response",
       setup: () =>
-        mocks.generateContent.mockResolvedValue({
-          response: {
-            text: () => "{not valid json}",
-          },
+        mocks.groqCreate.mockResolvedValue({
+          choices: [
+            {
+              message: {
+                content: "{not valid json}",
+              },
+            },
+          ],
         }),
       expectedError: /JSON/,
     },
     {
       caseName: "missing items array",
       setup: () =>
-        mocks.generateContent.mockResolvedValue({
-          response: {
-            text: () => JSON.stringify({ suggested_list_name: "Lista" }),
-          },
+        mocks.groqCreate.mockResolvedValue({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({ suggested_list_name: "Lista" }),
+              },
+            },
+          ],
         }),
       expectedError: /items/,
     },
@@ -175,33 +143,124 @@ describe("ai service", () => {
     loggerErrorSpy.mockRestore();
   });
 
-  it("works with groq provider", async () => {
-    vi.resetModules();
-    vi.stubEnv("VITE_AI_PROVIDER", "groq");
-    vi.stubEnv("VITE_GROQ_API_KEY", "dummy-key");
+  it("retries on groq failure", async () => {
+    mocks.groqCreate
+      .mockRejectedValueOnce(new Error("groq transient error"))
+      .mockResolvedValueOnce({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                suggested_list_name: "Matrix",
+                items: [{ title: "Matrix", media_type: "movie" }],
+              }),
+            },
+          },
+        ],
+      });
 
-    const { ai: groqAi } = await import("./ai");
+    const result = await ai.getSuggestions("filmes do Matrix");
+    expect(result.items).toHaveLength(1);
+    expect(mocks.groqCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it("throws when groq returns empty response content", async () => {
+    mocks.groqCreate.mockResolvedValue({
+      choices: [{ message: { content: null } }],
+    });
+
+    await expect(ai.getSuggestions("prompt")).rejects.toThrow(
+      "Groq returned empty response",
+    );
+  });
+
+  it("logs error when groq API key is missing", async () => {
+    vi.stubEnv("VITE_GROQ_API_KEY", "");
+    vi.stubEnv("VITE_GROQ_MODEL", "test-model");
+    vi.resetModules();
+
+    const loggerErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const { groqProvider } = await import("./ai/providers/groq");
 
     mocks.groqCreate.mockResolvedValue({
       choices: [
         {
           message: {
             content: JSON.stringify({
-              suggested_list_name: "Groq List",
-              items: [{ title: "Groq Movie", media_type: "movie" }],
+              suggested_list_name: "Lista",
+              items: [{ title: "Item", media_type: "movie" }],
             }),
           },
         },
       ],
     });
 
-    const result = await groqAi.getSuggestions("prompt");
+    await groqProvider.getSuggestions("test");
 
-    expect(result.suggested_list_name).toBe("Groq List");
+    expect(loggerErrorSpy).toHaveBeenCalledWith(
+      "[ListFlix ERROR]",
+      expect.stringContaining("VITE_GROQ_API_KEY is missing"),
+    );
+
+    loggerErrorSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it("uses default groq model when VITE_GROQ_MODEL is not set", async () => {
+    vi.stubEnv("VITE_GROQ_MODEL", "");
+    vi.resetModules();
+
+    const { groqProvider } = await import("./ai/providers/groq");
+
+    mocks.groqCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              suggested_list_name: "Lista",
+              items: [{ title: "Item", media_type: "movie" }],
+            }),
+          },
+        },
+      ],
+    });
+
+    await groqProvider.getSuggestions("test");
+
     expect(mocks.groqCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: expect.any(String),
-      }),
+      expect.objectContaining({ model: "llama-3.3-70b-versatile" }),
+    );
+
+    vi.unstubAllEnvs();
+  });
+
+  it("uses configured groq model when VITE_GROQ_MODEL is set", async () => {
+    vi.stubEnv("VITE_GROQ_MODEL", "custom-model");
+    vi.stubEnv("VITE_GROQ_API_KEY", "dummy-key");
+    vi.resetModules();
+
+    const { groqProvider } = await import("./ai/providers/groq");
+
+    mocks.groqCreate.mockResolvedValue({
+      choices: [
+        {
+          message: {
+            content: JSON.stringify({
+              suggested_list_name: "Lista",
+              items: [{ title: "Item", media_type: "movie" }],
+            }),
+          },
+        },
+      ],
+    });
+
+    await groqProvider.getSuggestions("test");
+
+    expect(mocks.groqCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ model: "custom-model" }),
     );
 
     vi.unstubAllEnvs();

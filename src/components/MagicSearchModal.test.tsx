@@ -198,11 +198,17 @@ describe("MagicSearchModal", () => {
       <MagicSearchModal isOpen onClose={vi.fn()} onSaveList={onSaveList} />,
     );
 
-    await openAndTypePrompt();
+    await userEvent.type(
+      screen.getByPlaceholderText(
+        "Ex: Filmes de suspense para assistir no final de semana...",
+      ),
+      "matrix",
+    );
+    await userEvent.click(screen.getByRole("button", { name: /Sugerir/i }));
     await screen.findAllByTestId("magic-item");
 
     await userEvent.click(
-      screen.getAllByRole("button", { name: /Salvar Lista/i })[0],
+      screen.getByRole("button", { name: /Salvar Lista/i }),
     );
 
     await waitFor(() => {

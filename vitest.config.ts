@@ -10,7 +10,9 @@ export default defineConfig({
   },
   test: {
     env: {
-      VITE_AI_PROVIDER: "gemini",
+      VITE_AI_PROVIDER: "groq",
+      VITE_GROQ_API_KEY: "test-key",
+      VITE_GROQ_MODEL: "",
     },
     coverage: {
       provider: "v8",
@@ -26,9 +28,6 @@ export default defineConfig({
         "src/routes/**",
         "src/types/**",
         "src/services/ai/providers/types.ts",
-        "src/services/ai/providers/gemini.ts",
-        "src/services/ai/providers/groq.ts",
-        "src/services/ai/providers/index.ts",
         "src/components/index.ts",
         "src/components/ui/**",
         "src/components/skeletons/**",
