@@ -9,11 +9,6 @@ export default defineConfig({
     },
   },
   test: {
-    env: {
-      VITE_AI_PROVIDER: "groq",
-      VITE_GROQ_API_KEY: "test-key",
-      VITE_GROQ_MODEL: "",
-    },
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov"],
@@ -27,7 +22,6 @@ export default defineConfig({
         "src/router.tsx",
         "src/routes/**",
         "src/types/**",
-        "src/services/ai/providers/types.ts",
         "src/components/index.ts",
         "src/components/ui/**",
         "src/components/skeletons/**",

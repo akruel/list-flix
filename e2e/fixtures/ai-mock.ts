@@ -18,28 +18,14 @@ export async function mockAiSuggestions(
   page: Page,
   payload: AiSuggestionPayload = DEFAULT_AI_SUGGESTION,
 ): Promise<void> {
-  // Mock Groq
-  await page.route(
-    "https://api.groq.com/openai/v1/chat/completions",
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          choices: [
-            {
-              message: {
-                role: "assistant",
-                content: JSON.stringify(payload),
-              },
-              finish_reason: "stop",
-              index: 0,
-            },
-          ],
-        }),
-      });
-    },
-  );
+  // Mock Supabase Edge Function
+  await page.route("**/functions/v1/ai-suggestions", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(payload),
+    });
+  });
 }
 
 export async function installClipboardStub(page: Page): Promise<void> {

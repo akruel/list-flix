@@ -76,10 +76,13 @@ vi.mock("@/components/ui/scroll-area", () => ({
 }));
 
 describe("MagicSearchModal", () => {
+  let idCounter = 0;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    idCounter = 0;
     mocks.search.mockImplementation(async (query: string) => [
-      { id: Math.random(), media_type: "movie", title: query },
+      { id: ++idCounter, media_type: "movie", title: query },
     ]);
     mocks.getSuggestions.mockResolvedValue({
       suggested_list_name: "Sci-Fi",
