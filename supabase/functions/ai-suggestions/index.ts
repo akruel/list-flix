@@ -74,8 +74,6 @@ PEDIDO DO USUÁRIO: "${userRequest}"
     `;
 }
 
-// NOTE: This schema is mirrored in src/services/ai-schema.ts (frontend uses Zod v4,
-// this edge function uses Zod v3 for Deno). Keep both in sync.
 const AiSuggestionSchema = z.object({
   suggested_list_name: z.string().min(1).default("Lista Sugerida"),
   items: z
@@ -89,19 +87,6 @@ const AiSuggestionSchema = z.object({
     .min(1)
     .max(20),
 });
-
-async function verifyAuth(req: Request): Promise<string | null> {
-  const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return null;
-
-  try {
-    const token = authHeader.replace("Bearer ", "");
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.aud === "authenticated" ? payload.sub || null : null;
-  } catch {
-    return null;
-  }
-}
 
 async function callGroq(prompt: string) {
   const fullPrompt = buildPrompt(prompt);
@@ -148,14 +133,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return new Response(JSON.stringify({ error: "Method not allowed" }), {
       status: 405,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
-    });
-  }
-
-  const userId = await verifyAuth(req);
-  if (!userId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
     });
   }

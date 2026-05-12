@@ -73,7 +73,9 @@ export function CustomLists() {
       fetchLists();
     } catch (error) {
       if (newList) {
-        deleteList(newList.id).catch(() => {});
+        deleteList(newList.id).catch((e) =>
+          logger.error("Rollback failed:", e),
+        );
       }
       logger.error("Error saving magic list:", error);
       throw error;

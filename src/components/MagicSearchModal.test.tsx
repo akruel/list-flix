@@ -408,7 +408,7 @@ describe("MagicSearchModal", () => {
     });
   });
 
-  it("deselects item if already selected", async () => {
+  it("clicking selected item increments count instead of toggling", async () => {
     await openAndTypePrompt();
     await screen.findAllByTestId("magic-item");
 

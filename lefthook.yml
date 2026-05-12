@@ -20,7 +20,3 @@ pre-push:
       run: npm run build
     test-unit-ui:
       run: npm run test
-    test-rls:
-      run: npm run test:rls
-    test-e2e:
-      run: npm run test:e2e

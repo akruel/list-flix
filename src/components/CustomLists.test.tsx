@@ -366,6 +366,40 @@ describe("CustomLists", () => {
     });
   });
 
+  it("logs error when rollback deletion also fails", async () => {
+    const logger = (await import("@/lib/logger")).logger;
+    const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    mocks.storeValue.createList.mockResolvedValue({
+      id: "new-list",
+      name: "Magic List",
+      owner_id: "owner-1",
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+      role: "owner",
+    });
+    mocks.addListItems.mockRejectedValue(new Error("batch insert failed"));
+    mocks.storeValue.deleteList.mockRejectedValue(
+      new Error("rollback delete failed"),
+    );
+
+    render(<CustomLists />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Lista Inteligente/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
+
+    await waitFor(() => {
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Rollback failed:",
+        expect.any(Error),
+      );
+    });
+
+    loggerSpy.mockRestore();
+  });
+
   it("closes magic modal through onClose callback", async () => {
     render(<CustomLists />);
 
