@@ -36,3 +36,4 @@ test-results
 # AI
 .agents/
 .opencode/
+skills-*.json
