@@ -53,37 +53,37 @@ export function usePushNotification() {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
+  const isAuth = status === "authenticated" || status === "anonymous";
+
   useEffect(() => {
     getActiveRegistration().then((reg) => setSwReady(!!reg));
   }, []);
 
-  const checkSubscriptionStatus = useCallback(async () => {
-    if (!user || !swReady) {
-      setIsSubscribed(false);
-      return;
-    }
+  useEffect(() => {
+    if (!isAuth || !user || !swReady) return;
 
-    const { data, error } = await supabase
+    let cancelled = false;
+
+    supabase
       .from("push_subscriptions")
       .select("id")
       .eq("user_id", user.id)
-      .maybeSingle();
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          logger.error("Failed to check push subscription:", error);
+          return;
+        }
+        setIsSubscribed(!!data);
+      });
 
-    if (error) {
-      logger.error("Failed to check push subscription:", error);
-      return;
-    }
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuth, user, swReady]);
 
-    setIsSubscribed(!!data);
-  }, [user, swReady]);
-
-  useEffect(() => {
-    if (status === "authenticated" || status === "anonymous") {
-      checkSubscriptionStatus();
-    } else {
-      setIsSubscribed(false);
-    }
-  }, [status, swReady, checkSubscriptionStatus]);
+  const effectiveIsSubscribed = !isAuth ? false : isSubscribed;
 
   const subscribe = useCallback(async () => {
     if (!user || !swReady) return;
@@ -191,7 +191,7 @@ export function usePushNotification() {
     isSupported,
     swReady,
     permission,
-    isSubscribed,
+    isSubscribed: effectiveIsSubscribed,
     isSubscribing,
     isUnsubscribing,
     subscribe,

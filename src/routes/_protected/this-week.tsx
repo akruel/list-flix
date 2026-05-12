@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronRight, Clock, Tv } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -32,13 +32,14 @@ function ThisWeekComponent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const tvShows = myList.filter((item) => item.media_type === "tv");
+  const tvShows = useMemo(
+    () => myList.filter((item) => item.media_type === "tv"),
+    [myList],
+  );
+  const effectiveLoading = tvShows.length === 0 ? false : loading;
 
-    if (tvShows.length === 0) {
-      setLoading(false);
-      return;
-    }
+  useEffect(() => {
+    if (tvShows.length === 0) return;
 
     let cancelled = false;
 
@@ -96,7 +97,7 @@ function ThisWeekComponent() {
     return () => {
       cancelled = true;
     };
-  }, [myList]);
+  }, [tvShows]);
 
   const groupedEpisodes = episodes.reduce<Record<string, WeekEpisode[]>>(
     (acc, ep) => {
@@ -117,7 +118,7 @@ function ThisWeekComponent() {
         <h1 className="text-2xl font-bold">Esta Semana</h1>
       </div>
 
-      {loading ? (
+      {effectiveLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="space-y-2">
@@ -128,7 +129,7 @@ function ThisWeekComponent() {
         </div>
       ) : null}
 
-      {!loading && error ? (
+      {!effectiveLoading && error ? (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <p className="text-muted-foreground">{error}</p>
           <Button variant="outline" onClick={() => window.location.reload()}>
@@ -137,7 +138,7 @@ function ThisWeekComponent() {
         </div>
       ) : null}
 
-      {!loading &&
+      {!effectiveLoading &&
         !error &&
         myList.filter((i) => i.media_type === "tv").length === 0 && (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
@@ -151,7 +152,7 @@ function ThisWeekComponent() {
           </div>
         )}
 
-      {!loading &&
+      {!effectiveLoading &&
         !error &&
         sortedDays.length === 0 &&
         myList.filter((i) => i.media_type === "tv").length > 0 && (
@@ -163,7 +164,7 @@ function ThisWeekComponent() {
           </div>
         )}
 
-      {!loading && !error && sortedDays.length > 0 && (
+      {!effectiveLoading && !error && sortedDays.length > 0 && (
         <div className="space-y-6">
           {sortedDays.map((dayKey) => (
             <section key={dayKey}>

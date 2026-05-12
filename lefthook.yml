@@ -1,13 +1,13 @@
 pre-commit:
   commands:
     format:
-      run: npm run format:check
+      run: pnpm run format:check
     lint:
-      run: npm run lint
+      run: pnpm run lint
     typecheck:
-      run: npm run typecheck
+      run: pnpm run typecheck
     knip:
-      run: npm run knip
+      run: pnpm run knip
 
 commit-msg:
   commands:
@@ -17,6 +17,6 @@ commit-msg:
 pre-push:
   commands:
     build:
-      run: npm run build
+      run: pnpm run build
     test-unit-ui:
-      run: npm run test
+      run: pnpm run test

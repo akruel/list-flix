@@ -5,20 +5,20 @@ Aplicação React + Vite + Supabase para descoberta de filmes/séries e listas c
 ## Pré-requisitos
 
 - Node.js 22+
-- npm 10+
+- pnpm 11+
 - Docker (para Supabase local em testes de RLS e E2E)
 - Supabase CLI
 
 ## Instalação
 
 ```bash
-npm ci
+pnpm install --frozen-lockfile
 ```
 
 ## Desenvolvimento
 
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## Testes
@@ -26,27 +26,27 @@ npm run dev
 ### Unit + UI (rápido, sem Docker)
 
 ```bash
-npm test
+pnpm test
 # ou
-npm run test:unit-ui
+pnpm run test:unit-ui
 ```
 
 ### RLS / migrations (Supabase local real)
 
 ```bash
-npm run test:rls
+pnpm run test:rls
 ```
 
 ### E2E (Playwright + Supabase local real)
 
 ```bash
-npm run test:e2e
+pnpm run test:e2e
 ```
 
 ## Observações de execução
 
 - `npm test` não depende de Docker.
-- `npm run test:rls` e `npm run test:e2e` exigem Docker ativo.
+- `pnpm run test:rls` e `pnpm run test:e2e` exigem Docker ativo.
 - Os wrappers de teste sobem/reaproveitam o stack local do Supabase automaticamente.
 
 ## Troubleshooting
@@ -56,7 +56,7 @@ npm run test:e2e
 Se aparecer erro de daemon do Docker:
 
 1. Inicie o Docker Desktop.
-2. Rode novamente `npm run test:rls` ou `npm run test:e2e`.
+2. Rode novamente `pnpm run test:rls` ou `pnpm run test:e2e`.
 
 ### Stack local do Supabase em estado inconsistente
 
