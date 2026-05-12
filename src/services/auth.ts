@@ -24,15 +24,6 @@ const mapProvider = (
   return "unknown";
 };
 
-const normalizePathname = (path: string): string => {
-  const [pathname] = path.split("?");
-  return pathname;
-};
-
-const isInvitePath = (path: string): boolean => {
-  return /^\/lists\/[^/]+\/join$/.test(normalizePathname(path));
-};
-
 export const authService = {
   MIGRATION_OLD_USER_ID_KEY,
   AUTH_POST_LOGIN_TARGET_KEY,
@@ -183,23 +174,13 @@ export const authService = {
   },
 
   savePostLoginTarget(path: string) {
-    if (isInvitePath(path)) {
-      localStorage.setItem(AUTH_POST_LOGIN_TARGET_KEY, path);
-    }
+    localStorage.setItem(AUTH_POST_LOGIN_TARGET_KEY, path);
   },
 
   consumePostLoginTarget() {
     const target = localStorage.getItem(AUTH_POST_LOGIN_TARGET_KEY);
     localStorage.removeItem(AUTH_POST_LOGIN_TARGET_KEY);
-
-    if (!target) return null;
-    return isInvitePath(target) ? target : null;
-  },
-
-  getPostLoginTarget() {
-    const target = localStorage.getItem(AUTH_POST_LOGIN_TARGET_KEY);
-    if (!target) return null;
-    return isInvitePath(target) ? target : null;
+    return target;
   },
 
   clearMigrationOldUserId() {

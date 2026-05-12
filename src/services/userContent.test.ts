@@ -46,6 +46,26 @@ function thenableEqChain<T>(result: T) {
   return chain;
 }
 
+function makeUserListRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "uuid-1",
+    user_id: "user-1",
+    tmdb_id: 10,
+    media_type: "movie",
+    title: "Movie",
+    name: null,
+    poster_path: null,
+    backdrop_path: null,
+    vote_average: null,
+    release_date: null,
+    first_air_date: null,
+    overview: null,
+    created_at: "2026-01-01T00:00:00Z",
+    user_list_tags: [],
+    ...overrides,
+  };
+}
+
 describe("userContentService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -72,17 +92,24 @@ describe("userContentService", () => {
       select: vi
         .fn()
         .mockResolvedValue(
-          table === "watchlists"
+          table === "user_list"
             ? { data: [{ tmdb_id: 10 }] }
             : table === "watched_movies"
               ? { data: [{ tmdb_id: 20 }] }
               : { data: [{ tmdb_episode_id: 1001 }] },
         ),
       insert: vi.fn().mockImplementation((payload: unknown[]) => {
-        if (Object.hasOwn(inserts, table)) {
-          inserts[table] = payload;
-        } else {
-          inserts[table as keyof typeof inserts] = payload as never;
+        inserts[table] = payload;
+        if (table === "user_list") {
+          return {
+            select: vi.fn().mockResolvedValue({
+              data: payload.map((p) => ({
+                id: `new-uuid-${(p as Record<string, unknown>).tmdb_id}`,
+                tmdb_id: (p as Record<string, unknown>).tmdb_id,
+              })),
+              error: null,
+            }),
+          };
         }
         return Promise.resolve({ error: null });
       }),
@@ -102,29 +129,134 @@ describe("userContentService", () => {
       },
     );
 
-    expect(inserts.watchlists).toHaveLength(1);
+    expect(inserts.user_list).toHaveLength(1);
     expect(inserts.watched_movies).toHaveLength(1);
     expect(inserts.watched_episodes).toHaveLength(1);
+  });
+
+  it("syncLocalData inserts tags for new items", async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const userListTagInserts: { user_list_id: string; tag: string }[] = [];
+
+    mockedSupabase.from.mockImplementation((table: string) => {
+      if (table === "user_list_tags") {
+        return {
+          insert: vi.fn().mockImplementation((payload: unknown[]) => {
+            userListTagInserts.push(
+              ...(payload as { user_list_id: string; tag: string }[]),
+            );
+            return Promise.resolve({ error: null });
+          }),
+        };
+      }
+      return {
+        select: vi
+          .fn()
+          .mockResolvedValue(
+            table === "user_list" ? { data: [{ tmdb_id: 10 }] } : { data: [] },
+          ),
+        insert: vi.fn().mockImplementation((payload: unknown[]) => {
+          inserts[table] = payload;
+          if (table === "user_list") {
+            return {
+              select: vi.fn().mockResolvedValue({
+                data: payload.map((p) => ({
+                  id: `new-uuid-${(p as Record<string, unknown>).tmdb_id}`,
+                  tmdb_id: (p as Record<string, unknown>).tmdb_id,
+                })),
+                error: null,
+              }),
+            };
+          }
+          return Promise.resolve({ error: null });
+        }),
+      };
+    });
+
+    await userContentService.syncLocalData(
+      [
+        { id: 10, media_type: "movie", title: "Existing" },
+        { id: 11, media_type: "tv", name: "New item" },
+      ],
+      [],
+      {},
+      { 11: ["noite_de_pipoca"] },
+    );
+
+    expect(inserts.user_list).toHaveLength(1);
+    expect(inserts.user_list[0]).toMatchObject({ tmdb_id: 11 });
+    expect(userListTagInserts).toHaveLength(1);
+    expect(userListTagInserts[0]).toEqual({
+      user_list_id: "new-uuid-11",
+      tag: "noite_de_pipoca",
+    });
+  });
+
+  it("syncLocalData logs when tag insertion fails", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    mockedSupabase.from.mockImplementation((table: string) => {
+      if (table === "user_list_tags") {
+        return {
+          insert: vi
+            .fn()
+            .mockResolvedValue({ error: new Error("tag insert failed") }),
+        };
+      }
+      return {
+        select: vi.fn().mockResolvedValue({ data: [] }),
+        insert: vi.fn().mockImplementation(() => ({
+          select: vi.fn().mockResolvedValue({
+            data: [{ id: "new-uuid-1", tmdb_id: 1 }],
+            error: null,
+          }),
+        })),
+      };
+    });
+
+    await userContentService.syncLocalData(
+      [{ id: 1, media_type: "movie", title: "A" }],
+      [],
+      {},
+      { 1: ["noite_de_pipoca"] },
+    );
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 
   it("syncLocalData logs when insert operations return errors", async () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
+    let callCount = 0;
     mockedSupabase.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue({ data: [] }),
-      insert: vi.fn().mockResolvedValue({
-        error: table === "watchlists" ? new Error("insert failed") : null,
+      insert: vi.fn().mockImplementation(() => {
+        if (table === "user_list") {
+          return {
+            select: vi.fn().mockResolvedValue({
+              data: null,
+              error: new Error("list insert failed"),
+            }),
+          };
+        }
+        callCount++;
+        return Promise.resolve({
+          error: callCount === 1 ? new Error("watch insert failed") : null,
+        });
       }),
     }));
 
     await userContentService.syncLocalData(
       [{ id: 1, media_type: "movie", title: "A" }],
-      [1],
+      [1, 2],
       {},
     );
 
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     consoleErrorSpy.mockRestore();
   });
 
@@ -135,7 +267,7 @@ describe("userContentService", () => {
     mockedSupabase.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue({
         data: [],
-        error: table === "watchlists" ? new Error("load failed") : null,
+        error: table === "user_list" ? new Error("load failed") : null,
       }),
     }));
 
@@ -150,19 +282,42 @@ describe("userContentService", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("getUserContent maps rows without self-heal when metadata exists", async () => {
+  it("getUserContent handles null tags gracefully", async () => {
     mockedSupabase.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue(
-        table === "watchlists"
+        table === "user_list"
           ? {
               data: [
                 {
+                  id: "uuid-1",
+                  user_id: "user-1",
                   tmdb_id: 10,
                   media_type: "movie",
                   title: "Movie",
                   poster_path: "/x.jpg",
+                  created_at: "2026-01-01T00:00:00Z",
                 },
               ],
+              error: null,
+            }
+          : table === "watched_movies"
+            ? { data: [], error: null }
+            : { data: [], error: null },
+      ),
+    }));
+
+    const result = await userContentService.getUserContent();
+
+    expect(result.watchlist).toHaveLength(1);
+    expect(result.watchlist[0]?.tags).toEqual([]);
+  });
+
+  it("getUserContent maps rows without self-heal when metadata exists", async () => {
+    mockedSupabase.from.mockImplementation((table: string) => ({
+      select: vi.fn().mockResolvedValue(
+        table === "user_list"
+          ? {
+              data: [makeUserListRow()],
               error: null,
             }
           : table === "watched_movies"
@@ -205,15 +360,9 @@ describe("userContentService", () => {
   it("getUserContent handles null watched and cache rows without crashing", async () => {
     mockedSupabase.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue(
-        table === "watchlists"
+        table === "user_list"
           ? {
-              data: [
-                {
-                  tmdb_id: 10,
-                  media_type: "movie",
-                  title: "Movie",
-                },
-              ],
+              data: [makeUserListRow()],
               error: null,
             }
           : {
@@ -253,11 +402,16 @@ describe("userContentService", () => {
         .mockImplementation(() => {});
 
       mockedSupabase.from.mockImplementation((table: string) => {
-        if (table === "watchlists") {
+        if (table === "user_list") {
           return {
             select: vi.fn().mockResolvedValue({
               data: [
-                { tmdb_id: 55, media_type: "movie", title: null, name: null },
+                makeUserListRow({
+                  tmdb_id: 55,
+                  title: null,
+                  name: null,
+                  user_list_tags: null,
+                }),
               ],
               error: null,
             }),
@@ -295,7 +449,7 @@ describe("userContentService", () => {
       }
       const logMatcher = expect.stringContaining("[ListFlix INFO]");
       expect(consoleLogSpy.mock.calls).toEqual(
-        getDetailsError ? [] : [[logMatcher, "Self-healed 1 watchlist items"]],
+        getDetailsError ? [] : [[logMatcher, "Self-healed 1 user list items"]],
       );
 
       consoleErrorSpy.mockRestore();
@@ -303,52 +457,160 @@ describe("userContentService", () => {
     },
   );
 
-  it.each([
-    {
-      caseName: "addToWatchlist",
-      run: () =>
-        userContentService.addToWatchlist({ id: 1, media_type: "movie" }),
-    },
-    {
-      caseName: "removeFromWatchlist",
-      run: () => userContentService.removeFromWatchlist(1),
-    },
-    {
-      caseName: "saveSeriesMetadata",
-      run: () =>
-        userContentService.saveSeriesMetadata(10, {
-          total_episodes: 8,
-          number_of_seasons: 1,
-        }),
-    },
-  ])("runs query for $caseName", async ({ run }) => {
+  it("runs query for addToList", async () => {
     mockedSupabase.from.mockReturnValue({
-      insert: vi.fn().mockResolvedValue({ error: null }),
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "new-uuid", tmdb_id: 1, media_type: "movie" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const result = await userContentService.addToList({
+      id: 1,
+      media_type: "movie",
+    });
+
+    expect(result).toEqual({ id: "new-uuid", tmdb_id: 1, media_type: "movie" });
+    expect(mockedSupabase.from).toHaveBeenCalledWith("user_list");
+  });
+
+  it("addToList with tags inserts into user_list_tags", async () => {
+    mockedSupabase.from.mockImplementation((table: string) => {
+      if (table === "user_list") {
+        return {
+          insert: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: { id: "item-uuid", tmdb_id: 1, media_type: "movie" },
+                error: null,
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "user_list_tags") {
+        return {
+          insert: vi.fn().mockResolvedValue({ error: null }),
+        };
+      }
+      return { insert: vi.fn() };
+    });
+
+    const result = await userContentService.addToList(
+      { id: 1, media_type: "movie" },
+      ["noite_de_pipoca"],
+    );
+
+    expect(result).toEqual({
+      id: "item-uuid",
+      tmdb_id: 1,
+      media_type: "movie",
+    });
+  });
+
+  it("addToList with empty tags array does not insert tags", async () => {
+    mockedSupabase.from.mockReturnValue({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { id: "item-uuid", tmdb_id: 1, media_type: "movie" },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const result = await userContentService.addToList(
+      { id: 1, media_type: "movie" },
+      [],
+    );
+
+    expect(result).toEqual({
+      id: "item-uuid",
+      tmdb_id: 1,
+      media_type: "movie",
+    });
+  });
+
+  it("addToList with tags logs tag insert error", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockedSupabase.from.mockImplementation((table: string) => {
+      if (table === "user_list_tags") {
+        return {
+          insert: vi
+            .fn()
+            .mockResolvedValue({ error: new Error("tag insert failed") }),
+        };
+      }
+      return {
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: { id: "item-uuid", tmdb_id: 1, media_type: "movie" },
+              error: null,
+            }),
+          }),
+        }),
+      };
+    });
+
+    await userContentService.addToList({ id: 1, media_type: "movie" }, [
+      "noite_de_pipoca",
+    ]);
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("runs query for removeFromList", async () => {
+    mockedSupabase.from.mockReturnValue({
       delete: vi.fn().mockReturnValue({
         match: vi.fn().mockResolvedValue({ error: null }),
-        eq: vi.fn().mockResolvedValue({ error: null }),
       }),
+    });
+
+    await expect(userContentService.removeFromList(1)).resolves.toBeUndefined();
+    expect(mockedSupabase.from).toHaveBeenCalledWith("user_list");
+  });
+
+  it("runs query for saveSeriesMetadata", async () => {
+    mockedSupabase.from.mockReturnValue({
       upsert: vi.fn().mockResolvedValue({ error: null }),
     });
 
-    await expect(run()).resolves.toBeUndefined();
-    expect(mockedSupabase.from).toHaveBeenCalled();
+    await expect(
+      userContentService.saveSeriesMetadata(10, {
+        total_episodes: 8,
+        number_of_seasons: 1,
+      }),
+    ).resolves.toBeUndefined();
+    expect(mockedSupabase.from).toHaveBeenCalledWith("series_cache");
   });
 
   it.each([
     {
-      caseName: "addToWatchlist logs insert error",
-      run: () =>
-        userContentService.addToWatchlist({ id: 1, media_type: "movie" }),
+      caseName: "addToList logs insert error",
+      run: () => userContentService.addToList({ id: 1, media_type: "movie" }),
       mockFrom: () => ({
-        insert: vi
-          .fn()
-          .mockResolvedValue({ error: new Error("insert failed") }),
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({
+              data: null,
+              error: new Error("insert failed"),
+            }),
+          }),
+        }),
       }),
     },
     {
-      caseName: "removeFromWatchlist logs delete error",
-      run: () => userContentService.removeFromWatchlist(1),
+      caseName: "removeFromList logs delete error",
+      run: () => userContentService.removeFromList(1),
       mockFrom: () => ({
         delete: vi.fn().mockReturnValue({
           match: vi
@@ -532,5 +794,57 @@ describe("userContentService", () => {
     }));
 
     await expect(userContentService.hasData("user-1")).resolves.toBe(expected);
+  });
+
+  it("addTagToListItem inserts tag into user_list_tags", async () => {
+    mockedSupabase.from.mockReturnValue({
+      insert: vi.fn().mockResolvedValue({ error: null }),
+    });
+
+    await userContentService.addTagToListItem("item-1", "noite_de_pipoca");
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("user_list_tags");
+  });
+
+  it("addTagToListItem logs error when insert fails", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockedSupabase.from.mockReturnValue({
+      insert: vi.fn().mockResolvedValue({ error: new Error("insert failed") }),
+    });
+
+    await userContentService.addTagToListItem("item-1", "noite_de_pipoca");
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("removeTagFromListItem deletes tag from user_list_tags", async () => {
+    mockedSupabase.from.mockReturnValue({
+      delete: vi.fn().mockReturnValue({
+        match: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+
+    await userContentService.removeTagFromListItem("item-1", "noite_de_pipoca");
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("user_list_tags");
+  });
+
+  it("removeTagFromListItem logs error when delete fails", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockedSupabase.from.mockReturnValue({
+      delete: vi.fn().mockReturnValue({
+        match: vi.fn().mockResolvedValue({ error: new Error("delete failed") }),
+      }),
+    });
+
+    await userContentService.removeTagFromListItem("item-1", "noite_de_pipoca");
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
   });
 });

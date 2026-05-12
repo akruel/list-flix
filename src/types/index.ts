@@ -1,3 +1,29 @@
+export type UserListTagType = "noite_de_pipoca" | "fim_de_semana";
+
+export interface UserListTag {
+  id: string;
+  user_list_id: string;
+  tag: UserListTagType;
+  created_at: string;
+}
+
+export interface UserListItem {
+  id: string;
+  user_id: string;
+  tmdb_id: number;
+  media_type: "movie" | "tv";
+  title?: string;
+  name?: string;
+  poster_path?: string;
+  backdrop_path?: string;
+  vote_average?: number;
+  release_date?: string;
+  first_air_date?: string;
+  overview?: string;
+  created_at: string;
+  tags?: UserListTag[];
+}
+
 // Types for watched episodes metadata
 export interface WatchedEpisodeMetadata {
   season_number: number;
@@ -21,34 +47,6 @@ export interface ContentItem {
   vote_average?: number;
   release_date?: string;
   first_air_date?: string;
-}
-
-export interface List {
-  id: string;
-  name: string;
-  owner_id: string;
-  created_at: string;
-  updated_at: string;
-  role?: "owner" | "editor" | "viewer"; // Computed from list_members
-}
-
-export interface ListMember {
-  list_id: string;
-  user_id: string;
-  role: "owner" | "editor" | "viewer";
-  member_name?: string;
-  created_at: string;
-}
-
-export interface ListItem {
-  id: string;
-  list_id: string;
-  content_id: number;
-  content_type: "movie" | "tv";
-  added_by: string;
-  created_at: string;
-  // Joined fields
-  content?: ContentItem;
 }
 
 export interface Provider {

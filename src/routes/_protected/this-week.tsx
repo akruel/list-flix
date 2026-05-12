@@ -48,7 +48,7 @@ function ThisWeekComponent() {
 
       try {
         const results = await Promise.allSettled(
-          tvShows.map((show) => tmdb.getDetails(show.id, "tv")),
+          tvShows.map((show) => tmdb.getDetails(show.tmdb_id, "tv")),
         );
 
         if (cancelled) return;

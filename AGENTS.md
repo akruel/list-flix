@@ -35,6 +35,8 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 - After DB changes: always create migration via `npm run db:migration:new`, verify old functions aren't broken
 - Run lint + typecheck after every implementation
 - Tests: `.test.ts` (unit), `.test.tsx` (ui), `tests/rls/` (RLS), `e2e/` (Playwright)
+- **NEVER use `--no-verify` or skip any git hooks.** All hooks must pass before commit/push.
+- Coverage threshold is 100% per file. New code must include tests to meet this.
 
 ## Testing Notes
 

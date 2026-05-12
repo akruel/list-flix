@@ -1,5 +1,5 @@
-import { Check, Globe, Loader2, Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Check, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -8,13 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { logger } from "@/lib/logger";
 
-import { listService } from "../services/listService";
 import { useStore } from "../store/useStore";
-import type { ContentItem } from "../types";
-import { ListSelectionModalSkeleton } from "./skeletons";
+import type { ContentItem, UserListTagType } from "../types";
+import { TagSelector } from "./TagSelector";
 
 interface ListSelectionModalProps {
   isOpen: boolean;
@@ -27,164 +24,105 @@ export function ListSelectionModal({
   onClose,
   content,
 }: ListSelectionModalProps) {
-  const { lists, fetchLists, addToList, removeFromList, isInList } = useStore();
-  const [loading, setLoading] = useState(false);
-  const [membership, setMembership] = useState<Record<string, string>>({}); // listId -> itemId
-  const [toggling, setToggling] = useState<Record<string, boolean>>({}); // listId -> boolean
+  const { myList, isInList, addToListWithTags, removeFromList } = useStore();
+  const [selectedTags, setSelectedTags] = useState<UserListTagType[]>([]);
 
-  useEffect(() => {
-    if (isOpen) {
-      const loadData = async () => {
-        setLoading(true);
-        try {
-          await fetchLists();
-          const memberMap = await listService.getListsContainingContent(
-            content.id,
-            content.media_type,
-          );
-          setMembership(memberMap);
-        } catch (error) {
-          logger.error("Error loading lists:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+  const inList = isInList(content.id);
+  const existingItem = myList.find((i) => i.tmdb_id === content.id);
+  const existingTags =
+    existingItem?.tags?.map((t) => t.tag as UserListTagType) || [];
 
-      loadData();
-    }
-  }, [isOpen, content.id, content.media_type, fetchLists]);
-
-  const handleToggleDefaultList = () => {
-    if (isInList(content.id)) {
-      removeFromList(content.id);
-    } else {
-      addToList(content);
-    }
+  const handleToggleTag = (tag: UserListTagType) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+    );
   };
 
-  const handleToggleCustomList = async (listId: string) => {
-    setToggling((prev) => ({ ...prev, [listId]: true }));
-    try {
-      const itemId = Object.hasOwn(membership, listId)
-        ? membership[listId]
-        : undefined;
-      if (itemId) {
-        // Remove
-        await listService.removeListItem(itemId);
-        setMembership((prev) => {
-          const next = Object.fromEntries(
-            Object.entries(prev).filter(([key]) => key !== listId),
-          );
-          return next;
-        });
-      } else {
-        // Add
-        await listService.addListItem(listId, content);
-        // We need to fetch the new item ID or just reload.
-        // Reloading is safer to get the correct ID for future removal.
-        const memberMap = await listService.getListsContainingContent(
-          content.id,
-          content.media_type,
-        );
-        setMembership(memberMap);
-      }
-    } catch (error) {
-      logger.error("Error toggling list:", error);
-    } finally {
-      setToggling((prev) => ({ ...prev, [listId]: false }));
-    }
+  const handleAdd = () => {
+    addToListWithTags(content, selectedTags);
+    onClose();
+  };
+
+  const handleRemove = () => {
+    removeFromList(content.id);
+    onClose();
+  };
+
+  const handleClose = () => {
+    setSelectedTags([]);
+    onClose();
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="border-gray-800 bg-gray-900 sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-white">Salvar em...</DialogTitle>
+          <DialogTitle className="text-white">
+            {inList ? "Minha Lista" : "Adicionar à Minha Lista"}
+          </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh] pr-4">
-          {loading ? (
-            <ListSelectionModalSkeleton />
-          ) : (
-            <div className="space-y-1">
-              {/* Default List */}
-              <Button
-                data-testid="list-selection-default"
-                variant="ghost"
-                onClick={handleToggleDefaultList}
-                className="h-auto w-full justify-between px-3 py-3 hover:bg-gray-800"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-purple-600/20 p-2 text-purple-400">
-                    <Lock size={18} />
+        <div className="space-y-6 py-4">
+          {inList ? (
+            <>
+              <div className="flex items-center gap-3 rounded-lg bg-purple-600/10 p-3">
+                <Check size={20} className="text-purple-500" />
+                <span className="text-sm text-purple-400">
+                  Este item está na sua lista
+                </span>
+              </div>
+
+              {existingTags.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-400">Tags atuais:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {existingTags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-md bg-purple-600/20 px-2.5 py-1 text-xs text-purple-400"
+                      >
+                        {tag === "noite_de_pipoca"
+                          ? "Noite de Pipoca"
+                          : "Fim de Semana"}
+                      </span>
+                    ))}
                   </div>
-                  <span className="font-medium text-white">Minha Lista</span>
-                </div>
-                {isInList(content.id) && (
-                  <Check size={20} className="text-purple-500" />
-                )}
-              </Button>
-
-              <div className="mx-3 my-2 h-px bg-gray-800" />
-
-              {/* Custom Lists */}
-              {lists
-                .filter(
-                  (list) => list.role === "owner" || list.role === "editor",
-                )
-                .map((list) => {
-                  const isMember = !!membership[list.id];
-                  const isToggling = toggling[list.id];
-
-                  return (
-                    <Button
-                      key={list.id}
-                      variant="ghost"
-                      onClick={() => handleToggleCustomList(list.id)}
-                      disabled={isToggling}
-                      className="h-auto w-full justify-between px-3 py-3 hover:bg-gray-800"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-lg bg-blue-600/20 p-2 text-blue-400">
-                          <Globe size={18} />
-                        </div>
-                        <div className="text-left">
-                          <span className="block font-medium text-white">
-                            {list.name}
-                          </span>
-                          <span className="text-xs capitalize text-gray-500">
-                            {list.role === "owner" ? "Dono" : list.role}
-                          </span>
-                        </div>
-                      </div>
-                      {isToggling ? (
-                        <Loader2
-                          size={20}
-                          className="animate-spin text-gray-500"
-                        />
-                      ) : (
-                        isMember && (
-                          <Check size={20} className="text-blue-500" />
-                        )
-                      )}
-                    </Button>
-                  );
-                })}
-
-              {lists.length === 0 && (
-                <div className="py-8 text-center text-sm text-gray-500">
-                  Nenhuma lista personalizada encontrada.
                 </div>
               )}
-            </div>
+
+              <Button
+                data-testid="list-selection-remove"
+                onClick={handleRemove}
+                variant="outline"
+                className="w-full border-red-800 text-red-400 hover:bg-red-900/20 hover:text-red-300"
+              >
+                <Trash2 size={16} className="mr-2" />
+                Remover da Lista
+              </Button>
+            </>
+          ) : (
+            <>
+              <TagSelector
+                selectedTags={selectedTags}
+                onToggle={handleToggleTag}
+              />
+
+              <Button
+                data-testid="list-selection-add"
+                onClick={handleAdd}
+                className="w-full bg-purple-600 text-white hover:bg-purple-700"
+              >
+                <Plus size={16} className="mr-2" />
+                Adicionar à Lista
+              </Button>
+            </>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="border-t border-gray-800 pt-4">
           <Button
-            data-testid="list-selection-done"
-            onClick={onClose}
-            className="w-full bg-purple-600 text-white hover:bg-purple-700"
+            onClick={handleClose}
+            className="w-full bg-gray-800 text-white hover:bg-gray-700"
           >
             Concluído
           </Button>

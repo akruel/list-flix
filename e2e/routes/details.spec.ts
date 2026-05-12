@@ -18,11 +18,11 @@ async function openMovieDetails(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-async function addCurrentDetailsToDefaultList(page: Page): Promise<void> {
+async function addCurrentDetailsToUserList(page: Page): Promise<void> {
   await page.getByTestId("details-add-button").click();
-  await expect(page.getByTestId("list-selection-default")).toBeVisible();
-  await page.getByTestId("list-selection-default").click();
-  await page.getByTestId("list-selection-done").click();
+  await expect(page.getByTestId("list-selection-add")).toBeVisible();
+  await page.getByTestId("list-selection-add").click();
+  await expect(page.getByTestId("list-selection-add")).not.toBeVisible();
 }
 
 test(`[${SCENARIO_IDS.DETAILS_VALID_RENDER}] renders valid details route`, async ({
@@ -32,12 +32,12 @@ test(`[${SCENARIO_IDS.DETAILS_VALID_RENDER}] renders valid details route`, async
   await openMovieDetails(page);
 });
 
-test(`[${SCENARIO_IDS.DETAILS_ADD_TO_DEFAULT_LIST}] adds content from details into default watchlist`, async ({
+test(`[${SCENARIO_IDS.DETAILS_ADD_TO_LIST}] adds content from details into user list`, async ({
   page,
 }) => {
   await continueAsGuest(page);
   await openMovieDetails(page);
-  await addCurrentDetailsToDefaultList(page);
+  await addCurrentDetailsToUserList(page);
 
   await page.goto("/lists");
   await expect(page).toHaveURL(/\/lists\/?$/);
@@ -52,7 +52,7 @@ test(`[${SCENARIO_IDS.DETAILS_MARK_WATCHED_FILTERS}] marks content as watched an
 }) => {
   await continueAsGuest(page);
   await openMovieDetails(page);
-  await addCurrentDetailsToDefaultList(page);
+  await addCurrentDetailsToUserList(page);
 
   await page.getByTestId("details-toggle-watched-button").click();
   await expect(page.getByTestId("details-toggle-watched-button")).toContainText(

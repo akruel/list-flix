@@ -4,6 +4,8 @@ import type {
   ContentItem,
   Episode,
   SeriesMetadata,
+  UserListItem,
+  UserListTagType,
   WatchedEpisodeMetadata,
 } from "../types";
 import { tmdb } from "./tmdb";
@@ -18,24 +20,24 @@ export const userContentService = {
       number,
       Record<number, WatchedEpisodeMetadata>
     > = {},
+    localTags: Record<number, UserListTagType[]> = {},
   ) {
     const {
       data: { user },
     } = await supabase.auth.getUser();
     if (!user) return;
 
-    // 1. Get existing data to avoid duplicates
     const [
-      { data: watchlistData },
+      { data: userListData },
       { data: watchedMoviesData },
       { data: watchedEpisodesData },
     ] = await Promise.all([
-      supabase.from("watchlists").select("tmdb_id"),
+      supabase.from("user_list").select("tmdb_id"),
       supabase.from("watched_movies").select("tmdb_id"),
       supabase.from("watched_episodes").select("tmdb_episode_id"),
     ]);
 
-    const existingWatchlist = new Set(watchlistData?.map((i) => i.tmdb_id));
+    const existingList = new Set(userListData?.map((i) => i.tmdb_id));
     const existingWatchedMovies = new Set(
       watchedMoviesData?.map((i) => i.tmdb_id),
     );
@@ -43,14 +45,13 @@ export const userContentService = {
       watchedEpisodesData?.map((i) => i.tmdb_episode_id),
     );
 
-    const watchlistUpdates = [];
+    const listUpdates = [];
     const watchedMoviesUpdates = [];
     const watchedEpisodesUpdates = [];
 
-    // 2. Prepare watchlist inserts
     for (const item of localList) {
-      if (!existingWatchlist.has(item.id)) {
-        watchlistUpdates.push({
+      if (!existingList.has(item.id)) {
+        listUpdates.push({
           user_id: user.id,
           tmdb_id: item.id,
           media_type: item.media_type,
@@ -66,7 +67,6 @@ export const userContentService = {
       }
     }
 
-    // 3. Prepare watched movies inserts
     for (const id of localWatchedIds) {
       if (!existingWatchedMovies.has(id)) {
         watchedMoviesUpdates.push({
@@ -76,7 +76,6 @@ export const userContentService = {
       }
     }
 
-    // 4. Prepare watched episodes inserts
     for (const [showId, episodesMap] of Object.entries(localWatchedEpisodes)) {
       for (const [episodeId, metadata] of Object.entries(episodesMap)) {
         if (!existingWatchedEpisodes.has(Number(episodeId))) {
@@ -91,11 +90,34 @@ export const userContentService = {
       }
     }
 
-    // Execute updates in parallel
-    const promises = [];
-    if (watchlistUpdates.length > 0) {
-      promises.push(supabase.from("watchlists").insert(watchlistUpdates));
+    if (listUpdates.length > 0) {
+      const { data: insertedItems, error } = await supabase
+        .from("user_list")
+        .insert(listUpdates)
+        .select("id, tmdb_id");
+
+      if (error) {
+        logger.error("Error syncing list data:", error);
+      } else if (insertedItems) {
+        const tagInserts: { user_list_id: string; tag: UserListTagType }[] = [];
+        for (const item of insertedItems) {
+          const tags = localTags[item.tmdb_id];
+          if (tags) {
+            for (const tag of tags) {
+              tagInserts.push({ user_list_id: item.id, tag });
+            }
+          }
+        }
+        if (tagInserts.length > 0) {
+          const { error: tagError } = await supabase
+            .from("user_list_tags")
+            .insert(tagInserts);
+          if (tagError) logger.error("Error syncing tags:", tagError);
+        }
+      }
     }
+
+    const promises = [];
     if (watchedMoviesUpdates.length > 0) {
       promises.push(
         supabase.from("watched_movies").insert(watchedMoviesUpdates),
@@ -117,25 +139,25 @@ export const userContentService = {
 
   async getUserContent() {
     const [
-      { data: watchlistData, error: watchlistError },
+      { data: userListData, error: userListError },
       { data: watchedMoviesData, error: watchedMoviesError },
       { data: watchedEpisodesData, error: watchedEpisodesError },
       { data: seriesCacheData, error: seriesCacheError },
     ] = await Promise.all([
-      supabase.from("watchlists").select("*"),
+      supabase.from("user_list").select("*, user_list_tags(*)"),
       supabase.from("watched_movies").select("*"),
       supabase.from("watched_episodes").select("*"),
       supabase.from("series_cache").select("*"),
     ]);
 
     if (
-      watchlistError ||
+      userListError ||
       watchedMoviesError ||
       watchedEpisodesError ||
       seriesCacheError
     ) {
       logger.error("Error fetching user content:", {
-        watchlistError,
+        userListError,
         watchedMoviesError,
         watchedEpisodesError,
         seriesCacheError,
@@ -148,19 +170,19 @@ export const userContentService = {
       };
     }
 
-    // Transform Watchlist and Self-Heal
-    const watchlist: ContentItem[] = [];
+    const watchlist: UserListItem[] = [];
 
-    if (watchlistData) {
+    if (userListData) {
       const updates = [];
 
-      for (const i of watchlistData) {
-        // Check if metadata is missing (using title/name as proxy)
+      for (const i of userListData) {
         const hasMetadata = i.title || i.name;
 
         if (hasMetadata) {
           watchlist.push({
-            id: i.tmdb_id,
+            id: i.id,
+            user_id: i.user_id,
+            tmdb_id: i.tmdb_id,
             media_type: i.media_type as "movie" | "tv",
             title: i.title,
             name: i.name,
@@ -170,18 +192,20 @@ export const userContentService = {
             release_date: i.release_date,
             first_air_date: i.first_air_date,
             overview: i.overview,
+            created_at: i.created_at,
+            tags: i.user_list_tags || [],
           });
         } else {
-          // Self-healing: Fetch from TMDB
           try {
             const details = await tmdb.getDetails(
               i.tmdb_id,
               i.media_type as "movie" | "tv",
             );
 
-            // Add to result immediately
             watchlist.push({
-              id: details.id,
+              id: i.id,
+              user_id: i.user_id,
+              tmdb_id: details.id,
               media_type: details.media_type,
               title: details.title,
               name: details.name,
@@ -191,12 +215,13 @@ export const userContentService = {
               release_date: details.release_date,
               first_air_date: details.first_air_date,
               overview: details.overview,
+              created_at: i.created_at,
+              tags: i.user_list_tags || [],
             });
 
-            // Queue update to DB
             updates.push(
               supabase
-                .from("watchlists")
+                .from("user_list")
                 .update({
                   title: details.title,
                   name: details.name,
@@ -207,27 +232,27 @@ export const userContentService = {
                   first_air_date: details.first_air_date,
                   overview: details.overview,
                 })
-                .eq("tmdb_id", i.tmdb_id)
-                .eq("user_id", (await supabase.auth.getUser()).data.user?.id),
+                .eq("id", i.id),
             );
           } catch (err) {
             logger.error(`Failed to self-heal item ${i.tmdb_id}:`, err);
-            // Push placeholder if fetch fails, to avoid crashing UI
             watchlist.push({
-              id: i.tmdb_id,
+              id: i.id,
+              user_id: i.user_id,
+              tmdb_id: i.tmdb_id,
               media_type: i.media_type as "movie" | "tv",
               title: "Error loading",
               name: "Error loading",
-              poster_path: undefined,
+              created_at: i.created_at,
+              tags: i.user_list_tags || [],
             });
           }
         }
       }
 
-      // Execute updates in background
       if (updates.length > 0) {
         Promise.all(updates).then(() =>
-          logger.info(`Self-healed ${updates.length} watchlist items`),
+          logger.info(`Self-healed ${updates.length} user list items`),
         );
       }
     }
@@ -260,30 +285,72 @@ export const userContentService = {
     return { watchlist, watchedIds, watchedEpisodes, seriesMetadata };
   },
 
-  async addToWatchlist(item: ContentItem) {
-    const { error } = await supabase.from("watchlists").insert({
-      tmdb_id: item.id,
-      media_type: item.media_type,
-      title: item.title,
-      name: item.name,
-      poster_path: item.poster_path,
-      backdrop_path: item.backdrop_path,
-      vote_average: item.vote_average,
-      release_date: item.release_date,
-      first_air_date: item.first_air_date,
-      overview: item.overview,
-    });
+  async addToList(
+    item: ContentItem,
+    tags?: UserListTagType[],
+  ): Promise<UserListItem | null> {
+    const { data, error } = await supabase
+      .from("user_list")
+      .insert({
+        tmdb_id: item.id,
+        media_type: item.media_type,
+        title: item.title,
+        name: item.name,
+        poster_path: item.poster_path,
+        backdrop_path: item.backdrop_path,
+        vote_average: item.vote_average,
+        release_date: item.release_date,
+        first_air_date: item.first_air_date,
+        overview: item.overview,
+      })
+      .select()
+      .single();
 
-    if (error) logger.error("Error adding to watchlist:", error);
+    if (error) {
+      logger.error("Error adding to list:", error);
+      return null;
+    }
+
+    if (tags && tags.length > 0) {
+      const tagRows = tags.map((tag) => ({
+        user_list_id: data.id,
+        tag,
+      }));
+
+      const { error: tagError } = await supabase
+        .from("user_list_tags")
+        .insert(tagRows);
+
+      if (tagError) logger.error("Error adding tags:", tagError);
+    }
+
+    return data as UserListItem;
   },
 
-  async removeFromWatchlist(contentId: number) {
+  async removeFromList(contentId: number) {
     const { error } = await supabase
-      .from("watchlists")
+      .from("user_list")
       .delete()
       .match({ tmdb_id: contentId });
 
-    if (error) logger.error("Error removing from watchlist:", error);
+    if (error) logger.error("Error removing from list:", error);
+  },
+
+  async addTagToListItem(itemId: string, tag: UserListTagType) {
+    const { error } = await supabase
+      .from("user_list_tags")
+      .insert({ user_list_id: itemId, tag });
+
+    if (error) logger.error("Error adding tag to item:", error);
+  },
+
+  async removeTagFromListItem(itemId: string, tag: UserListTagType) {
+    const { error } = await supabase
+      .from("user_list_tags")
+      .delete()
+      .match({ user_list_id: itemId, tag });
+
+    if (error) logger.error("Error removing tag from item:", error);
   },
 
   async markAsWatched(
@@ -340,7 +407,6 @@ export const userContentService = {
     seasonNumber: number,
     episodes: Episode[],
   ) {
-    // Prepare payload for RPC
     const payload = episodes.map((ep) => ({
       tmdb_id: ep.id,
       tmdb_show_id: seriesId,
@@ -366,12 +432,12 @@ export const userContentService = {
 
   async hasData(userId: string): Promise<boolean> {
     const [
-      { count: watchlistCount },
+      { count: listCount },
       { count: watchedMoviesCount },
       { count: watchedEpisodesCount },
     ] = await Promise.all([
       supabase
-        .from("watchlists")
+        .from("user_list")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId),
       supabase
@@ -385,7 +451,7 @@ export const userContentService = {
     ]);
 
     return (
-      (watchlistCount || 0) > 0 ||
+      (listCount || 0) > 0 ||
       (watchedMoviesCount || 0) > 0 ||
       (watchedEpisodesCount || 0) > 0
     );

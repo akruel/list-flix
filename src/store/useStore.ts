@@ -1,23 +1,26 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { listService } from "../services/listService";
 import { userContentService } from "../services/userContent";
 import type {
   ContentItem,
   Episode,
-  List,
   SeasonDetails,
   SeriesMetadata,
+  UserListItem,
+  UserListTagType,
   WatchedEpisodeMetadata,
 } from "../types";
 
 interface ListStore {
-  myList: ContentItem[];
+  myList: UserListItem[];
   watchedIds: number[];
-  watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>>; // showId -> { episodeId -> metadata }
-  seriesMetadata: Record<number, SeriesMetadata>; // showId -> metadata
+  watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>>;
+  seriesMetadata: Record<number, SeriesMetadata>;
+  activeTags: UserListTagType[];
+
   addToList: (item: ContentItem) => void;
+  addToListWithTags: (item: ContentItem, tags: UserListTagType[]) => void;
   removeFromList: (id: number) => void;
   isInList: (id: number) => boolean;
   markAsWatched: (id: number) => void;
@@ -54,14 +57,29 @@ interface ListStore {
     data: SeasonDetails,
   ) => void;
 
-  syncWithSupabase: () => Promise<void>;
+  setActiveTags: (tags: UserListTagType[]) => void;
+  toggleTag: (tag: UserListTagType) => void;
 
-  // Shared Lists
-  lists: List[];
-  fetchLists: () => Promise<void>;
-  createList: (name: string) => Promise<List>;
-  deleteList: (id: string) => Promise<void>;
-  updateList: (id: string, name: string) => Promise<void>;
+  syncWithSupabase: () => Promise<void>;
+}
+
+function itemToUserListItem(item: ContentItem): UserListItem {
+  return {
+    id: `temp_${item.id}`,
+    user_id: "",
+    tmdb_id: item.id,
+    media_type: item.media_type,
+    title: item.title,
+    name: item.name,
+    poster_path: item.poster_path,
+    backdrop_path: item.backdrop_path,
+    vote_average: item.vote_average,
+    release_date: item.release_date,
+    first_air_date: item.first_air_date,
+    overview: item.overview,
+    created_at: new Date().toISOString(),
+    tags: [],
+  };
 }
 
 export const useStore = create<ListStore>()(
@@ -72,35 +90,53 @@ export const useStore = create<ListStore>()(
       watchedEpisodes: {},
       seriesMetadata: {},
       seasonCache: {},
-      lists: [],
+      activeTags: [],
 
       addToList: (item) => {
         set((state) => {
-          if (state.myList.some((i) => i.id === item.id)) return state;
-          // Optimistic update
-          userContentService.addToWatchlist(item);
-          return { myList: [...state.myList, item] };
+          if (state.myList.some((i) => i.tmdb_id === item.id)) return state;
+          userContentService.addToList(item);
+          return { myList: [...state.myList, itemToUserListItem(item)] };
+        });
+      },
+
+      addToListWithTags: (item, tags) => {
+        set((state) => {
+          if (state.myList.some((i) => i.tmdb_id === item.id)) return state;
+          userContentService.addToList(item, tags);
+          return {
+            myList: [
+              ...state.myList,
+              {
+                ...itemToUserListItem(item),
+                tags: tags.map((t) => ({
+                  id: "",
+                  user_list_id: "",
+                  tag: t,
+                  created_at: "",
+                })),
+              },
+            ],
+          };
         });
       },
 
       removeFromList: (id) => {
         set((state) => {
-          // Optimistic update
-          userContentService.removeFromWatchlist(id);
+          userContentService.removeFromList(id);
           return {
-            myList: state.myList.filter((i) => i.id !== id),
+            myList: state.myList.filter((i) => i.tmdb_id !== id),
           };
         });
       },
 
-      isInList: (id) => get().myList.some((i) => i.id === id),
+      isInList: (id) => get().myList.some((i) => i.tmdb_id === id),
 
       markAsWatched: (id) => {
         set((state) => {
           if (state.watchedIds.includes(id)) return state;
 
-          // Try to find item metadata from myList if available
-          const item = state.myList.find((i) => i.id === id);
+          const item = state.myList.find((i) => i.tmdb_id === id);
           userContentService.markAsWatched(
             id,
             item?.media_type || "movie",
@@ -228,7 +264,6 @@ export const useStore = create<ListStore>()(
             ? state.watchedEpisodes[showId]
             : {};
 
-          // Remove all episodes that belong to this season
           const remaining = Object.fromEntries(
             Object.entries(currentShowEpisodes).filter(
               ([, meta]) => meta.season_number !== seasonNumber,
@@ -259,7 +294,6 @@ export const useStore = create<ListStore>()(
 
       getSeriesProgress: (showId) => {
         const showEpisodes = get().watchedEpisodes[showId] || {};
-        // Filter out specials (season 0)
         const watchedCount = Object.values(showEpisodes).filter(
           (metadata) => metadata.season_number !== 0,
         ).length;
@@ -273,7 +307,6 @@ export const useStore = create<ListStore>()(
             [showId]: metadata,
           },
         }));
-        // Persist to Supabase
         userContentService.saveSeriesMetadata(showId, metadata);
       },
 
@@ -293,45 +326,55 @@ export const useStore = create<ListStore>()(
         }));
       },
 
+      setActiveTags: (tags) => {
+        set({ activeTags: tags });
+      },
+
+      toggleTag: (tag) => {
+        set((state) => {
+          const isActive = state.activeTags.includes(tag);
+          return {
+            activeTags: isActive
+              ? state.activeTags.filter((t) => t !== tag)
+              : [...state.activeTags, tag],
+          };
+        });
+      },
+
       syncWithSupabase: async () => {
         const state = get();
-        // 1. Upload local data to Supabase (migration)
+
+        const localItems: ContentItem[] = state.myList.map((item) => ({
+          id: item.tmdb_id,
+          media_type: item.media_type,
+          title: item.title,
+          name: item.name,
+          poster_path: item.poster_path,
+          backdrop_path: item.backdrop_path,
+          vote_average: item.vote_average,
+          release_date: item.release_date,
+          first_air_date: item.first_air_date,
+          overview: item.overview,
+        }));
+
+        const localTags: Record<number, UserListTagType[]> = {};
+        for (const item of state.myList) {
+          if (item.tags && item.tags.length > 0) {
+            localTags[item.tmdb_id] = item.tags.map((t) => t.tag);
+          }
+        }
+
         await userContentService.syncLocalData(
-          state.myList,
+          localItems,
           state.watchedIds,
           state.watchedEpisodes,
+          localTags,
         );
 
-        // 2. Fetch latest data from Supabase (source of truth)
         const { watchlist, watchedIds, watchedEpisodes, seriesMetadata } =
           await userContentService.getUserContent();
 
         set({ myList: watchlist, watchedIds, watchedEpisodes, seriesMetadata });
-      },
-
-      fetchLists: async () => {
-        const lists = await listService.getLists();
-        set({ lists });
-      },
-
-      createList: async (name) => {
-        const newList = await listService.createList(name);
-        get().fetchLists();
-        return newList;
-      },
-
-      deleteList: async (id) => {
-        await listService.deleteList(id);
-        set((state) => ({
-          lists: state.lists.filter((l) => l.id !== id),
-        }));
-      },
-
-      updateList: async (id, name) => {
-        await listService.updateList(id, name);
-        set((state) => ({
-          lists: state.lists.map((l) => (l.id === id ? { ...l, name } : l)),
-        }));
       },
     }),
     {

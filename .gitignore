@@ -37,3 +37,6 @@ test-results
 .agents/
 .opencode/
 skills-*.json
+
+# Plans
+.plans/

@@ -89,16 +89,16 @@ Deno.serve(async () => {
     console.log(`Checking for episodes airing on ${today}`);
 
     const { data: shows, error: showsError } = await supabase
-      .from("watchlists")
+      .from("user_list")
       .select("tmdb_id")
       .eq("media_type", "tv");
 
     if (showsError) {
-      throw new Error(`Failed to query watchlists: ${showsError.message}`);
+      throw new Error(`Failed to query user_list: ${showsError.message}`);
     }
 
     if (!shows || shows.length === 0) {
-      console.log("No TV shows found in watchlists");
+      console.log("No TV shows found in user lists");
       return new Response(JSON.stringify({ notified: 0 }), {
         headers: { "Content-Type": "application/json" },
       });
@@ -150,13 +150,13 @@ Deno.serve(async () => {
 
     const showIds = airingToday.map((s) => s.showId);
     const { data: watchlistUsers, error: usersError } = await supabase
-      .from("watchlists")
+      .from("user_list")
       .select("user_id, tmdb_id")
       .in("tmdb_id", showIds)
       .eq("media_type", "tv");
 
     if (usersError) {
-      throw new Error(`Failed to query watchlist users: ${usersError.message}`);
+      throw new Error(`Failed to query user_list users: ${usersError.message}`);
     }
 
     const showUserMap = new Map<number, Set<string>>();

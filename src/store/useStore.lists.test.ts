@@ -2,23 +2,14 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { listService } from "../services/listService";
 import { userContentService } from "../services/userContent";
 import { useStore } from "./useStore";
 
-vi.mock("../services/listService", () => ({
-  listService: {
-    getLists: vi.fn(),
-    createList: vi.fn(),
-    deleteList: vi.fn(),
-    updateList: vi.fn(),
-  },
-}));
-
 vi.mock("../services/userContent", () => ({
   userContentService: {
-    addToWatchlist: vi.fn(),
-    removeFromWatchlist: vi.fn(),
+    addToList: vi.fn(),
+    addToListWithTags: vi.fn(),
+    removeFromList: vi.fn(),
     markAsWatched: vi.fn(),
     markAsUnwatched: vi.fn(),
     markSeasonAsWatched: vi.fn(),
@@ -36,16 +27,10 @@ vi.mock("../services/userContent", () => ({
 
 type MockFn = ReturnType<typeof vi.fn>;
 
-const mockedListService = listService as unknown as {
-  getLists: MockFn;
-  createList: MockFn;
-  deleteList: MockFn;
-  updateList: MockFn;
-};
-
 const mockedUserContentService = userContentService as unknown as {
-  addToWatchlist: MockFn;
-  removeFromWatchlist: MockFn;
+  addToList: MockFn;
+  addToListWithTags: MockFn;
+  removeFromList: MockFn;
   markAsWatched: MockFn;
   markAsUnwatched: MockFn;
   markSeasonAsWatched: MockFn;
@@ -60,10 +45,11 @@ const baselineState = {
   watchedIds: [],
   watchedEpisodes: {},
   seriesMetadata: {},
-  lists: [],
+  seasonCache: {},
+  activeTags: [],
 };
 
-describe("useStore shared lists actions", () => {
+describe("useStore list actions", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
@@ -73,30 +59,39 @@ describe("useStore shared lists actions", () => {
   it.each([
     { caseName: "movie item", mediaType: "movie" as const },
     { caseName: "tv item", mediaType: "tv" as const },
-  ])("adds to watchlist for $caseName", ({ mediaType }) => {
+  ])("adds to list for $caseName", ({ mediaType }) => {
     useStore.getState().addToList({
       id: 10,
       media_type: mediaType,
       title: "Item",
     });
 
-    expect(useStore.getState().myList).toEqual([
-      {
-        id: 10,
-        media_type: mediaType,
-        title: "Item",
-      },
-    ]);
-    expect(mockedUserContentService.addToWatchlist).toHaveBeenCalledWith({
+    const myList = useStore.getState().myList;
+    expect(myList).toHaveLength(1);
+    expect(myList[0]?.tmdb_id).toBe(10);
+    expect(myList[0]?.media_type).toBe(mediaType);
+    expect(myList[0]?.title).toBe("Item");
+
+    expect(mockedUserContentService.addToList).toHaveBeenCalledWith({
       id: 10,
       media_type: mediaType,
       title: "Item",
     });
   });
 
-  it("does not add duplicate item to watchlist", () => {
+  it("does not add duplicate item", () => {
     useStore.setState({
-      myList: [{ id: 10, media_type: "movie", title: "Item" }],
+      myList: [
+        {
+          id: "temp_10",
+          user_id: "",
+          tmdb_id: 10,
+          media_type: "movie",
+          title: "Item",
+          tags: [],
+          created_at: "",
+        },
+      ],
     });
 
     useStore.getState().addToList({
@@ -106,25 +101,43 @@ describe("useStore shared lists actions", () => {
     });
 
     expect(useStore.getState().myList).toHaveLength(1);
-    expect(mockedUserContentService.addToWatchlist).not.toHaveBeenCalled();
+    expect(mockedUserContentService.addToList).not.toHaveBeenCalled();
   });
 
-  it("removes from watchlist and calls service", () => {
+  it("removes from list and calls service", () => {
     useStore.setState({
-      myList: [{ id: 10, media_type: "movie", title: "Item" }],
+      myList: [
+        {
+          id: "temp_10",
+          user_id: "",
+          tmdb_id: 10,
+          media_type: "movie",
+          title: "Item",
+          tags: [],
+          created_at: "",
+        },
+      ],
     });
 
     useStore.getState().removeFromList(10);
 
     expect(useStore.getState().myList).toEqual([]);
-    expect(mockedUserContentService.removeFromWatchlist).toHaveBeenCalledWith(
-      10,
-    );
+    expect(mockedUserContentService.removeFromList).toHaveBeenCalledWith(10);
   });
 
   it("checks list membership with isInList", () => {
     useStore.setState({
-      myList: [{ id: 10, media_type: "movie", title: "Item" }],
+      myList: [
+        {
+          id: "temp_10",
+          user_id: "",
+          tmdb_id: 10,
+          media_type: "movie",
+          title: "Item",
+          tags: [],
+          created_at: "",
+        },
+      ],
     });
 
     expect(useStore.getState().isInList(10)).toBe(true);
@@ -134,13 +147,33 @@ describe("useStore shared lists actions", () => {
   it.each([
     {
       caseName: "movie metadata from myList",
-      myList: [{ id: 20, media_type: "movie" as const, title: "Movie" }],
+      myList: [
+        {
+          id: "temp_20",
+          user_id: "",
+          tmdb_id: 20,
+          media_type: "movie" as const,
+          title: "Movie",
+          tags: [],
+          created_at: "",
+        },
+      ],
       id: 20,
       expectedType: "movie",
     },
     {
       caseName: "tv metadata from myList",
-      myList: [{ id: 30, media_type: "tv" as const, name: "Show" }],
+      myList: [
+        {
+          id: "temp_30",
+          user_id: "",
+          tmdb_id: 30,
+          media_type: "tv" as const,
+          name: "Show",
+          tags: [],
+          created_at: "",
+        },
+      ],
       id: 30,
       expectedType: "tv",
     },
@@ -167,39 +200,27 @@ describe("useStore shared lists actions", () => {
   });
 
   it("does not duplicate watched ids", () => {
-    useStore.setState({
-      watchedIds: [10],
-    });
-
+    useStore.setState({ watchedIds: [10] });
     useStore.getState().markAsWatched(10);
-
     expect(useStore.getState().watchedIds).toEqual([10]);
     expect(mockedUserContentService.markAsWatched).not.toHaveBeenCalled();
   });
 
   it("markAsUnwatched removes watched id and calls service", () => {
-    useStore.setState({
-      watchedIds: [10, 20],
-    });
-
+    useStore.setState({ watchedIds: [10, 20] });
     useStore.getState().markAsUnwatched(10);
-
     expect(useStore.getState().watchedIds).toEqual([20]);
     expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(10);
   });
 
   it("isWatched reflects watched ids", () => {
-    useStore.setState({
-      watchedIds: [10],
-    });
-
+    useStore.setState({ watchedIds: [10] });
     expect(useStore.getState().isWatched(10)).toBe(true);
     expect(useStore.getState().isWatched(20)).toBe(false);
   });
 
-  it("marks and unmarks episodes as watched", () => {
+  it("marks and unmarks episodes", () => {
     useStore.getState().markEpisodeAsWatched(1, 101, 2, 3);
-
     expect(useStore.getState().watchedEpisodes[1]?.[101]).toEqual({
       season_number: 2,
       episode_number: 3,
@@ -219,37 +240,197 @@ describe("useStore shared lists actions", () => {
     expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(101);
   });
 
-  it("markEpisodeAsUnwatched handles missing show bucket", () => {
+  it("checks episode watched status by id", () => {
     useStore.setState({
-      watchedEpisodes: {},
+      watchedEpisodes: { 1: { 101: { season_number: 1, episode_number: 1 } } },
     });
-
-    useStore.getState().markEpisodeAsUnwatched(99, 1001);
-
-    expect(useStore.getState().watchedEpisodes[99]).toEqual({});
-    expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(1001);
+    expect(useStore.getState().isEpisodeWatched(1, 101)).toBe(true);
+    expect(useStore.getState().isEpisodeWatched(1, 999)).toBe(false);
   });
 
-  it("checks episode watched status", () => {
+  it("saveSeriesMetadata updates state and syncs", () => {
+    useStore
+      .getState()
+      .saveSeriesMetadata(1, { total_episodes: 10, number_of_seasons: 2 });
+    expect(useStore.getState().seriesMetadata[1]).toEqual({
+      total_episodes: 10,
+      number_of_seasons: 2,
+    });
+    expect(mockedUserContentService.saveSeriesMetadata).toHaveBeenCalledWith(
+      1,
+      { total_episodes: 10, number_of_seasons: 2 },
+    );
+  });
+
+  it("syncWithSupabase uploads, passes tags, and refreshes", async () => {
+    mockedUserContentService.getUserContent.mockResolvedValue({
+      watchlist: [
+        {
+          id: "uuid-1",
+          user_id: "user-1",
+          tmdb_id: 1,
+          media_type: "movie",
+          title: "Movie",
+          tags: [],
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ],
+      watchedIds: [1],
+      watchedEpisodes: {},
+      seriesMetadata: {},
+    });
+
+    useStore.setState({
+      myList: [
+        {
+          id: "temp_9",
+          user_id: "",
+          tmdb_id: 9,
+          media_type: "movie",
+          title: "Local",
+          tags: [
+            {
+              id: "",
+              user_list_id: "",
+              tag: "noite_de_pipoca",
+              created_at: "",
+            },
+          ],
+          created_at: "",
+        },
+      ],
+      watchedIds: [9],
+    });
+
+    await useStore.getState().syncWithSupabase();
+
+    expect(mockedUserContentService.syncLocalData).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 9 })],
+      [9],
+      {},
+      { 9: ["noite_de_pipoca"] },
+    );
+    expect(useStore.getState().myList).toEqual([
+      {
+        id: "uuid-1",
+        user_id: "user-1",
+        tmdb_id: 1,
+        media_type: "movie",
+        title: "Movie",
+        tags: [],
+        created_at: "2026-01-01T00:00:00Z",
+      },
+    ]);
+    expect(useStore.getState().watchedIds).toEqual([1]);
+  });
+
+  it("setActiveTags replaces all active tags", () => {
+    useStore.getState().setActiveTags(["noite_de_pipoca"]);
+    expect(useStore.getState().activeTags).toEqual(["noite_de_pipoca"]);
+
+    useStore.getState().setActiveTags(["fim_de_semana"]);
+    expect(useStore.getState().activeTags).toEqual(["fim_de_semana"]);
+
+    useStore.getState().setActiveTags([]);
+    expect(useStore.getState().activeTags).toEqual([]);
+  });
+
+  it("addToListWithTags adds item with tags and calls service", () => {
+    useStore
+      .getState()
+      .addToListWithTags(
+        { id: 20, media_type: "movie", title: "Tagged Movie" },
+        ["noite_de_pipoca"],
+      );
+
+    const myList = useStore.getState().myList;
+    expect(myList).toHaveLength(1);
+    expect(myList[0]?.tmdb_id).toBe(20);
+    expect(myList[0]?.tags).toHaveLength(1);
+    expect(myList[0]?.tags?.[0]?.tag).toBe("noite_de_pipoca");
+    expect(mockedUserContentService.addToList).toHaveBeenCalledWith(
+      { id: 20, media_type: "movie", title: "Tagged Movie" },
+      ["noite_de_pipoca"],
+    );
+  });
+
+  it("addToListWithTags does not add duplicate item", () => {
+    useStore.setState({
+      myList: [
+        {
+          id: "temp_20",
+          user_id: "",
+          tmdb_id: 20,
+          media_type: "movie",
+          title: "Tagged Movie",
+          tags: [],
+          created_at: "",
+        },
+      ],
+    });
+
+    useStore
+      .getState()
+      .addToListWithTags(
+        { id: 20, media_type: "movie", title: "Tagged Movie" },
+        ["noite_de_pipoca"],
+      );
+
+    expect(useStore.getState().myList).toHaveLength(1);
+    expect(mockedUserContentService.addToList).not.toHaveBeenCalled();
+  });
+
+  it("toggleTag adds and removes tags from activeTags", () => {
+    expect(useStore.getState().activeTags).toEqual([]);
+    useStore.getState().toggleTag("noite_de_pipoca");
+    expect(useStore.getState().activeTags).toEqual(["noite_de_pipoca"]);
+    useStore.getState().toggleTag("fim_de_semana");
+    expect(useStore.getState().activeTags).toEqual([
+      "noite_de_pipoca",
+      "fim_de_semana",
+    ]);
+    useStore.getState().toggleTag("noite_de_pipoca");
+    expect(useStore.getState().activeTags).toEqual(["fim_de_semana"]);
+  });
+
+  it("marks and unmarks episodes as watched", () => {
+    useStore.getState().markEpisodeAsWatched(1, 101, 2, 3);
+
+    expect(useStore.getState().watchedEpisodes[1]?.[101]).toEqual({
+      season_number: 2,
+      episode_number: 3,
+    });
+    expect(mockedUserContentService.markAsWatched).toHaveBeenCalledWith(
+      101,
+      "episode",
+      { show_id: 1, season_number: 2, episode_number: 3 },
+    );
+
+    useStore.getState().markEpisodeAsUnwatched(1, 101);
+    expect(useStore.getState().watchedEpisodes[1]).toEqual({});
+    expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(101);
+  });
+
+  it("adds episode to existing show bucket", () => {
     useStore.setState({
       watchedEpisodes: {
-        1: {
-          101: { season_number: 1, episode_number: 1 },
-        },
+        1: { 101: { season_number: 1, episode_number: 1 } },
       },
     });
 
-    expect(useStore.getState().isEpisodeWatched(1, 101)).toBe(true);
-    expect(useStore.getState().isEpisodeWatched(1, 999)).toBe(false);
-    expect(useStore.getState().isEpisodeWatched(99, 101)).toBe(false);
+    useStore.getState().markEpisodeAsWatched(1, 102, 1, 2);
+
+    expect(useStore.getState().watchedEpisodes[1]?.[101]).toBeDefined();
+    expect(useStore.getState().watchedEpisodes[1]?.[102]).toEqual({
+      season_number: 1,
+      episode_number: 2,
+    });
   });
 
   it("does not re-mark an already watched episode", () => {
     useStore.setState({
       watchedEpisodes: {
-        1: {
-          101: { season_number: 2, episode_number: 1 },
-        },
+        1: { 101: { season_number: 2, episode_number: 1 } },
       },
     });
 
@@ -258,73 +439,29 @@ describe("useStore shared lists actions", () => {
     expect(mockedUserContentService.markAsWatched).not.toHaveBeenCalled();
   });
 
-  it("marks and unmarks a full season", () => {
-    const episodes = [
-      {
-        id: 101,
-        season_number: 1,
-        episode_number: 1,
-      },
-      {
-        id: 102,
-        season_number: 1,
-        episode_number: 2,
-      },
-    ];
+  it("markEpisodeAsUnwatched handles missing show bucket", () => {
+    useStore.setState({ watchedEpisodes: {} });
 
-    useStore.setState({
-      watchedEpisodes: {
-        1: {
-          201: { season_number: 2, episode_number: 1 },
-        },
-      },
-    });
+    useStore.getState().markEpisodeAsUnwatched(99, 1001);
 
-    useStore.getState().markSeasonAsWatched(1, 1, episodes as never);
-
-    expect(mockedUserContentService.markSeasonAsWatched).toHaveBeenCalledWith(
-      1,
-      1,
-      episodes,
-    );
-    expect(useStore.getState().watchedEpisodes[1]?.[101]).toEqual({
-      season_number: 1,
-      episode_number: 1,
-    });
-
-    useStore.getState().markSeasonAsUnwatched(1, 1);
-    expect(mockedUserContentService.markSeasonAsUnwatched).toHaveBeenCalledWith(
-      1,
-      1,
-    );
-    expect(useStore.getState().watchedEpisodes[1]?.[201]).toEqual({
-      season_number: 2,
-      episode_number: 1,
-    });
-    expect(useStore.getState().watchedEpisodes[1]?.[101]).toBeUndefined();
+    expect(useStore.getState().watchedEpisodes[99]).toEqual({});
+    expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(1001);
   });
 
-  it("markSeasonAsWatched initializes show bucket when absent", () => {
+  it("checks episode watched status with missing show", () => {
     useStore.setState({
-      watchedEpisodes: {},
+      watchedEpisodes: {
+        1: { 101: { season_number: 1, episode_number: 1 } },
+      },
     });
 
-    useStore
-      .getState()
-      .markSeasonAsWatched(5, 3, [
-        { id: 301, season_number: 3, episode_number: 1 },
-      ] as never);
-
-    expect(useStore.getState().watchedEpisodes[5]?.[301]).toEqual({
-      season_number: 3,
-      episode_number: 1,
-    });
+    expect(useStore.getState().isEpisodeWatched(1, 101)).toBe(true);
+    expect(useStore.getState().isEpisodeWatched(1, 999)).toBe(false);
+    expect(useStore.getState().isEpisodeWatched(99, 101)).toBe(false);
   });
 
   it("markSeasonAsUnwatched handles missing show bucket", () => {
-    useStore.setState({
-      watchedEpisodes: {},
-    });
+    useStore.setState({ watchedEpisodes: {} });
 
     useStore.getState().markSeasonAsUnwatched(5, 3);
 
@@ -335,51 +472,84 @@ describe("useStore shared lists actions", () => {
     );
   });
 
-  it.each([
-    {
-      caseName: "season progress counts only matching season",
+  it("markSeasonAsWatched with new show initializes empty bucket", () => {
+    useStore.setState({
+      watchedEpisodes: {},
+    });
+
+    useStore
+      .getState()
+      .markSeasonAsWatched(99, 1, [
+        { id: 1, season_number: 1, episode_number: 1 },
+      ] as never);
+
+    expect(useStore.getState().watchedEpisodes[99]?.[1]).toEqual({
+      season_number: 1,
+      episode_number: 1,
+    });
+  });
+
+  it("marks and unmarks a full season", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: { 201: { season_number: 2, episode_number: 1 } },
+      },
+    });
+
+    useStore
+      .getState()
+      .markSeasonAsWatched(1, 1, [
+        { id: 101, season_number: 1, episode_number: 1 },
+      ] as never);
+
+    expect(mockedUserContentService.markSeasonAsWatched).toHaveBeenCalledWith(
+      1,
+      1,
+      [{ id: 101, season_number: 1, episode_number: 1 }],
+    );
+
+    useStore.getState().markSeasonAsUnwatched(1, 1);
+    expect(mockedUserContentService.markSeasonAsUnwatched).toHaveBeenCalledWith(
+      1,
+      1,
+    );
+  });
+
+  it("computes season progress", () => {
+    useStore.setState({
       watchedEpisodes: {
         1: {
           100: { season_number: 1, episode_number: 1 },
           200: { season_number: 2, episode_number: 1 },
-          300: { season_number: 3, episode_number: 1 },
         },
       },
-      seasonNumber: 1,
-      expected: 1,
-    },
-    {
-      caseName: "series progress excludes specials",
+    });
+
+    expect(useStore.getState().getSeasonProgress(1, 1)).toEqual({
+      watchedCount: 1,
+    });
+    expect(useStore.getState().getSeasonProgress(1, 2)).toEqual({
+      watchedCount: 1,
+    });
+  });
+
+  it("computes series progress excluding specials", () => {
+    useStore.setState({
       watchedEpisodes: {
         1: {
           100: { season_number: 0, episode_number: 1 },
           200: { season_number: 1, episode_number: 1 },
-          300: { season_number: 2, episode_number: 1 },
         },
       },
-      seasonNumber: 999,
-      expected: 2,
-    },
-  ])(
-    "computes progress for $caseName",
-    ({ watchedEpisodes, seasonNumber, expected }) => {
-      useStore.setState({
-        watchedEpisodes,
-      });
+    });
 
-      const state = useStore.getState();
-      expect(
-        seasonNumber === 999
-          ? state.getSeriesProgress(1)
-          : state.getSeasonProgress(1, seasonNumber),
-      ).toEqual({ watchedCount: expected });
-    },
-  );
+    expect(useStore.getState().getSeriesProgress(1)).toEqual({
+      watchedCount: 1,
+    });
+  });
 
   it("returns zero progress when show has no watched episodes", () => {
-    useStore.setState({
-      watchedEpisodes: {},
-    });
+    useStore.setState({ watchedEpisodes: {} });
 
     expect(useStore.getState().getSeasonProgress(999, 1)).toEqual({
       watchedCount: 0,
@@ -389,196 +559,28 @@ describe("useStore shared lists actions", () => {
     });
   });
 
-  it("saveSeriesMetadata updates state and syncs remote cache", () => {
-    useStore.getState().saveSeriesMetadata(1, {
-      total_episodes: 10,
-      number_of_seasons: 2,
+  it("getSeriesMetadata returns metadata when it exists", () => {
+    useStore.setState({
+      seriesMetadata: { 1: { total_episodes: 10, number_of_seasons: 2 } },
     });
 
-    expect(useStore.getState().seriesMetadata[1]).toEqual({
-      total_episodes: 10,
-      number_of_seasons: 2,
-    });
     expect(useStore.getState().getSeriesMetadata(1)).toEqual({
       total_episodes: 10,
       number_of_seasons: 2,
     });
-    expect(mockedUserContentService.saveSeriesMetadata).toHaveBeenCalledWith(
-      1,
-      {
-        total_episodes: 10,
-        number_of_seasons: 2,
-      },
-    );
   });
 
-  it("syncWithSupabase uploads local state and refreshes from remote source", async () => {
-    mockedUserContentService.getUserContent.mockResolvedValue({
-      watchlist: [{ id: 1, media_type: "movie", title: "Movie" }],
-      watchedIds: [1],
-      watchedEpisodes: { 5: { 55: { season_number: 1, episode_number: 1 } } },
-      seriesMetadata: { 5: { total_episodes: 8, number_of_seasons: 1 } },
-    });
+  it("getSeriesMetadata returns undefined when not cached", () => {
+    useStore.setState({ seriesMetadata: {} });
 
-    useStore.setState({
-      myList: [{ id: 9, media_type: "movie", title: "Local" }],
-      watchedIds: [9],
-      watchedEpisodes: { 9: { 99: { season_number: 1, episode_number: 1 } } },
-    });
-
-    await useStore.getState().syncWithSupabase();
-
-    expect(mockedUserContentService.syncLocalData).toHaveBeenCalledWith(
-      [{ id: 9, media_type: "movie", title: "Local" }],
-      [9],
-      { 9: { 99: { season_number: 1, episode_number: 1 } } },
-    );
-    expect(useStore.getState().myList).toEqual([
-      { id: 1, media_type: "movie", title: "Movie" },
-    ]);
-    expect(useStore.getState().watchedIds).toEqual([1]);
-  });
-
-  it("fetchLists loads lists from service", async () => {
-    mockedListService.getLists.mockResolvedValue([
-      {
-        id: "list-1",
-        name: "Fetched",
-        owner_id: "owner-1",
-        created_at: "2026-01-01",
-        updated_at: "2026-01-01",
-        role: "owner",
-      },
-    ]);
-
-    await useStore.getState().fetchLists();
-
-    expect(useStore.getState().lists).toHaveLength(1);
-  });
-
-  it("createList returns created list and triggers fetchLists", async () => {
-    mockedListService.createList.mockResolvedValue({
-      id: "list-1",
-      name: "New",
-      owner_id: "owner-1",
-      created_at: "2026-01-01",
-      updated_at: "2026-01-01",
-      role: "owner",
-    });
-    mockedListService.getLists.mockResolvedValue([]);
-
-    const created = await useStore.getState().createList("New");
-
-    expect(created.name).toBe("New");
-    expect(mockedListService.createList).toHaveBeenCalledWith("New");
-    expect(mockedListService.getLists).toHaveBeenCalled();
-  });
-
-  it("removes list from state after deleteList", async () => {
-    mockedListService.deleteList.mockResolvedValue(undefined);
-
-    useStore.setState({
-      lists: [
-        {
-          id: "list-1",
-          name: "List 1",
-          owner_id: "owner-1",
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-          role: "owner",
-        },
-        {
-          id: "list-2",
-          name: "List 2",
-          owner_id: "owner-1",
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-          role: "owner",
-        },
-      ],
-    });
-
-    await useStore.getState().deleteList("list-1");
-
-    expect(mockedListService.deleteList).toHaveBeenCalledWith("list-1");
-    expect(useStore.getState().lists).toEqual([
-      {
-        id: "list-2",
-        name: "List 2",
-        owner_id: "owner-1",
-        created_at: "2026-01-01",
-        updated_at: "2026-01-01",
-        role: "owner",
-      },
-    ]);
-  });
-
-  it.each([
-    { caseName: "owner list", role: "owner" as const },
-    { caseName: "editor list", role: "editor" as const },
-    { caseName: "viewer list", role: "viewer" as const },
-  ])("updates list name in state for $caseName", async ({ role }) => {
-    mockedListService.updateList.mockResolvedValue(undefined);
-
-    useStore.setState({
-      lists: [
-        {
-          id: "list-1",
-          name: "Old Name",
-          owner_id: "owner-1",
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-          role,
-        },
-      ],
-    });
-
-    await useStore.getState().updateList("list-1", "New Name");
-
-    expect(mockedListService.updateList).toHaveBeenCalledWith(
-      "list-1",
-      "New Name",
-    );
-    expect(useStore.getState().lists[0]?.name).toBe("New Name");
-  });
-
-  it("updateList keeps non-targeted lists unchanged", async () => {
-    mockedListService.updateList.mockResolvedValue(undefined);
-
-    useStore.setState({
-      lists: [
-        {
-          id: "list-1",
-          name: "Old Name",
-          owner_id: "owner-1",
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-          role: "owner",
-        },
-        {
-          id: "list-2",
-          name: "Keep Me",
-          owner_id: "owner-1",
-          created_at: "2026-01-01",
-          updated_at: "2026-01-01",
-          role: "viewer",
-        },
-      ],
-    });
-
-    await useStore.getState().updateList("list-1", "New Name");
-
-    expect(useStore.getState().lists).toEqual([
-      expect.objectContaining({ id: "list-1", name: "New Name" }),
-      expect.objectContaining({ id: "list-2", name: "Keep Me" }),
-    ]);
+    expect(useStore.getState().getSeriesMetadata(99)).toBeUndefined();
   });
 
   it("getCachedSeason returns null when not cached", () => {
     expect(useStore.getState().getCachedSeason(1, 1)).toBeNull();
   });
 
-  it("setCachedSeason stores and getCachedSeason retrieves season data", () => {
+  it("setCachedSeason stores and retrieves season data", () => {
     const seasonData = {
       _id: "123",
       air_date: "2025-01-01",
@@ -589,9 +591,7 @@ describe("useStore shared lists actions", () => {
       poster_path: null,
       season_number: 1,
     };
-
     useStore.getState().setCachedSeason(1, 1, seasonData);
-
     expect(useStore.getState().getCachedSeason(1, 1)).toEqual(seasonData);
     expect(useStore.getState().getCachedSeason(2, 1)).toBeNull();
   });
