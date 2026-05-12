@@ -76,7 +76,7 @@
     "eslint-plugin-security": "^4.0.0",
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "eslint-plugin-testing-library": "^7.16.2",
-    "globals": "^16.5.0",
+    "globals": "^17.6.0",
     "jsdom": "^26.1.0",
     "knip": "^6.12.1",
     "lefthook": "^2.1.6",
