@@ -38,8 +38,10 @@ function ProtectedLayoutRouteComponent() {
 
   useEffect(() => {
     if (status === "none") {
-      setShowMigrationModal(false);
-      setIsSessionProcessing(false);
+      queueMicrotask(() => {
+        setShowMigrationModal(false);
+        setIsSessionProcessing(false);
+      });
       lastHandledUserIdRef.current = null;
     }
   }, [status]);

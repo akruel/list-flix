@@ -3,19 +3,19 @@
 ## Commands
 
 ```bash
-npm run dev          # Start dev server
-npm run build        # Build (tsc -b && vite build)
-npm run format       # Prettier
-npm run lint         # ESLint
-npm run lint:fix     # ESLint fix
-npm run typecheck    # tsc --noEmit
-npm run knip         # Find unused deps, exports, files
-npm test             # Unit + UI tests (no Docker)
-npm run test:unit-ui # Same as above
-npm run test:rls     # RLS tests (requires Docker + Supabase CLI)
-npm run test:e2e     # E2E tests (requires Docker + Supabase CLI)
-npm run db:migration:new <name>  # Create migration
-npm run db:push      # Push to DB
+pnpm run dev          # Start dev server
+pnpm run build        # Build (tsc -b && vite build)
+pnpm run format       # Prettier
+pnpm run lint         # ESLint
+pnpm run lint:fix     # ESLint fix
+pnpm run typecheck    # tsc --noEmit
+pnpm run knip         # Find unused deps, exports, files
+pnpm test             # Unit + UI tests (no Docker)
+pnpm run test:unit-ui # Same as above
+pnpm run test:rls     # RLS tests (requires Docker + Supabase CLI)
+pnpm run test:e2e     # E2E tests (requires Docker + Supabase CLI)
+pnpm run db:migration:new <name>  # Create migration
+pnpm run db:push      # Push to DB
 ```
 
 ## Test Order
@@ -32,13 +32,13 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 ## Key Conventions
 
 - Mobile-first layout
-- After DB changes: always create migration via `npm run db:migration:new`, verify old functions aren't broken
+- After DB changes: always create migration via `pnpm run db:migration:new`, verify old functions aren't broken
 - Run lint + typecheck after every implementation
 - Tests: `.test.ts` (unit), `.test.tsx` (ui), `tests/rls/` (RLS), `e2e/` (Playwright)
 
 ## Testing Notes
 
-- `npm test` is fast, no Docker required
+- `pnpm test` is fast, no Docker required
 - RLS and E2E require Docker running + Supabase CLI installed
 - E2E tests clean DB automatically before each run
 - CI uses Supabase CLI v2.58.5
