@@ -134,6 +134,20 @@ export const listService = {
     if (error) throw error;
   },
 
+  async addListItems(listId: string, items: ContentItem[]): Promise<void> {
+    if (items.length === 0) return;
+
+    const rows = items.map((item) => ({
+      list_id: listId,
+      content_id: item.id,
+      content_type: item.media_type,
+    }));
+
+    const { error } = await supabase.from("list_items").insert(rows);
+
+    if (error) throw error;
+  },
+
   async removeListItem(itemId: string): Promise<void> {
     const { error } = await supabase
       .from("list_items")

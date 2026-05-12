@@ -79,4 +79,4 @@ When creating pull requests, use bullet points for the description body:
 
 ## Existing Agent Rules
 
-See `.agent/rules/code-style-guide.md` for additional context (triggered always).
+No additional agent rules configured.

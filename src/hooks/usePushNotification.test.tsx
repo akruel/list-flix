@@ -26,6 +26,7 @@ interface MockPushSubscription {
     endpoint: string | null;
     keys: { p256dh: string; auth: string } | null;
   };
+  unsubscribe?: ReturnType<typeof vi.fn>;
 }
 
 interface MockServiceWorker {

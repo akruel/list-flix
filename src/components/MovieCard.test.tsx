@@ -212,4 +212,35 @@ describe("MovieCard", () => {
 
     expect(screen.getByText("0.0")).toBeInTheDocument();
   });
+
+  it("renders without link when disableLink is true", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        disableLink
+      />,
+    );
+
+    expect(screen.getByText("Movie One")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  it("hides 'Ver Detalhes' overlay when disableLink is true", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        disableLink
+      />,
+    );
+
+    expect(screen.queryByText("Ver Detalhes")).not.toBeInTheDocument();
+  });
 });

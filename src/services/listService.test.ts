@@ -746,6 +746,16 @@ describe("listService", () => {
       table: "lists",
       method: "delete",
     },
+    {
+      caseName: "add list items (batch)",
+      run: () =>
+        listService.addListItems("list-1", [
+          { id: 100, media_type: "movie", title: "Movie" },
+          { id: 200, media_type: "tv", name: "Show" },
+        ]),
+      table: "list_items",
+      method: "insert",
+    },
   ])("runs query for $caseName", async ({ run, table, method }) => {
     const builder = createThenableBuilder({
       data: null,
@@ -762,6 +772,16 @@ describe("listService", () => {
 
     expect(mockedSupabase.from).toHaveBeenCalledWith(table);
     expect(chain[method as keyof typeof chain]).toHaveBeenCalled();
+  });
+
+  it("addListItems returns early when items is empty", async () => {
+    const builder = createThenableBuilder({ data: null, error: null });
+    const chain = { insert: vi.fn().mockReturnValue(builder) };
+    mockedSupabase.from.mockReturnValue(chain);
+
+    await listService.addListItems("list-1", []);
+
+    expect(chain.insert).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -790,6 +810,16 @@ describe("listService", () => {
       table: "list_members",
       method: "delete",
       expectedMessage: "remove member failed",
+    },
+    {
+      caseName: "add list items (batch) error",
+      run: () =>
+        listService.addListItems("list-1", [
+          { id: 100, media_type: "movie", title: "Movie" },
+        ]),
+      table: "list_items",
+      method: "insert",
+      expectedMessage: "batch insert failed",
     },
     {
       caseName: "delete list error",

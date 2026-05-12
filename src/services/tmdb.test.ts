@@ -168,6 +168,141 @@ describe("tmdb service", () => {
     ]);
   });
 
+  it("search filters by media type when provided", async () => {
+    mocks.get.mockResolvedValue({
+      data: {
+        results: [
+          { id: 1, media_type: "movie" },
+          { id: 2, media_type: "tv" },
+          { id: 3, media_type: "person" },
+        ],
+      },
+    });
+
+    const result = await tmdb.search("matrix", "movie");
+
+    expect(result).toEqual([{ id: 1, media_type: "movie" }]);
+  });
+
+  describe("findBestMatch", () => {
+    it("returns first result when no year provided", async () => {
+      mocks.get.mockResolvedValue({
+        data: {
+          results: [
+            { id: 1, title: "Matrix", media_type: "movie" },
+            { id: 2, title: "Matrix Reloaded", media_type: "movie" },
+          ],
+        },
+      });
+
+      const result = await tmdb.findBestMatch("Matrix", "movie");
+      expect(result).toEqual({ id: 1, title: "Matrix", media_type: "movie" });
+    });
+
+    it("appends year to search query when provided", async () => {
+      mocks.get.mockResolvedValue({
+        data: { results: [{ id: 1, title: "Matrix", media_type: "movie" }] },
+      });
+
+      await tmdb.findBestMatch("Matrix", "movie", 1999);
+      expect(mocks.get).toHaveBeenCalledWith("/search/multi", {
+        params: { query: "Matrix 1999" },
+      });
+    });
+
+    it("returns matching result by year from results", async () => {
+      mocks.get.mockResolvedValue({
+        data: {
+          results: [
+            {
+              id: 2,
+              title: "The Matrix",
+              media_type: "movie",
+              release_date: "2003-05-15",
+            },
+            {
+              id: 1,
+              title: "The Matrix",
+              media_type: "movie",
+              release_date: "1999-03-31",
+            },
+          ],
+        },
+      });
+
+      const result = await tmdb.findBestMatch("The Matrix", "movie", 1999);
+      expect(result?.id).toBe(1);
+    });
+
+    it("returns first result when year provided but no match found", async () => {
+      mocks.get.mockResolvedValue({
+        data: {
+          results: [
+            {
+              id: 2,
+              title: "The Matrix",
+              media_type: "movie",
+              release_date: "2003-05-15",
+            },
+          ],
+        },
+      });
+
+      const result = await tmdb.findBestMatch("The Matrix", "movie", 1999);
+      expect(result?.id).toBe(2);
+    });
+
+    it("returns null when search returns empty results", async () => {
+      mocks.get.mockResolvedValue({
+        data: { results: [] },
+      });
+
+      const result = await tmdb.findBestMatch("Unknown Movie", "movie");
+      expect(result).toBeNull();
+    });
+
+    it("matches TV series by first_air_date year", async () => {
+      mocks.get.mockResolvedValue({
+        data: {
+          results: [
+            {
+              id: 3,
+              name: "The Office",
+              media_type: "tv",
+              first_air_date: "2005-03-24",
+            },
+          ],
+        },
+      });
+
+      const result = await tmdb.findBestMatch("The Office", "tv", 2005);
+      expect(result?.id).toBe(3);
+    });
+  });
+
+  it("getGenres returns cached data when within TTL", async () => {
+    vi.resetModules();
+    const { tmdb: freshTmdb } = await import("./tmdb");
+
+    mocks.get
+      .mockResolvedValueOnce({
+        data: { genres: [{ id: 1, name: "Action" }] },
+      })
+      .mockResolvedValueOnce({
+        data: { genres: [{ id: 2, name: "Drama" }] },
+      });
+    await freshTmdb.getGenres();
+
+    mocks.get.mockClear();
+    const result = await freshTmdb.getGenres();
+
+    expect(mocks.get).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      { id: 1, name: "Action" },
+      { id: 2, name: "Drama" },
+    ]);
+  });
+
   it.each([
     {
       caseName: "movie discover default",

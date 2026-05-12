@@ -64,22 +64,21 @@ export function CustomLists() {
   };
 
   const handleSaveMagicList = async (name: string, items: ContentItem[]) => {
+    let newList: Awaited<ReturnType<typeof createList>> | null = null;
     try {
-      // 1. Create the list
-      const newList = await createList(name);
+      newList = await createList(name);
 
-      // 2. Add items to the list
-      // We do this sequentially to avoid overwhelming the server/rate limits,
-      // but parallel could be faster. Given it's a POC, sequential is safer.
-      for (const item of items) {
-        await listService.addListItem(newList.id, item);
-      }
+      await listService.addListItems(newList.id, items);
 
-      // 3. Refresh lists
       fetchLists();
     } catch (error) {
+      if (newList) {
+        deleteList(newList.id).catch((e) =>
+          logger.error("Rollback failed:", e),
+        );
+      }
       logger.error("Error saving magic list:", error);
-      throw error; // Propagate to modal to show error toast
+      throw error;
     }
   };
 

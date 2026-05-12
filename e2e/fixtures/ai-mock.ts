@@ -1,51 +1,32 @@
 import type { Page } from "@playwright/test";
 
 interface AiSuggestionPayload {
-  strategy: "search" | "discover" | "person";
-  query?: string;
-  person_name?: string;
-  role?: "cast" | "crew";
-  media_type?: "movie" | "tv";
   suggested_list_name?: string;
+  items: Array<{
+    title: string;
+    year?: number;
+    media_type: "movie" | "tv";
+  }>;
   [key: string]: unknown;
 }
 
 const DEFAULT_AI_SUGGESTION: AiSuggestionPayload = {
-  strategy: "search",
-  query: "Mock Movie 101",
-  media_type: "movie",
   suggested_list_name: "Lista Inteligente E2E",
+  items: [{ title: "Mock Movie 101", media_type: "movie" }],
 };
 
 export async function mockAiSuggestions(
   page: Page,
   payload: AiSuggestionPayload = DEFAULT_AI_SUGGESTION,
 ): Promise<void> {
-  await page.route(
-    "https://generativelanguage.googleapis.com/**",
-    async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          candidates: [
-            {
-              content: {
-                parts: [
-                  {
-                    text: JSON.stringify(payload),
-                  },
-                ],
-                role: "model",
-              },
-              finishReason: "STOP",
-              index: 0,
-            },
-          ],
-        }),
-      });
-    },
-  );
+  // Mock Supabase Edge Function
+  await page.route("**/functions/v1/ai-suggestions", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(payload),
+    });
+  });
 }
 
 export async function installClipboardStub(page: Page): Promise<void> {

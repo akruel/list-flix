@@ -140,6 +140,18 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     expectation: "render",
   },
   {
+    routePath: "/lists/",
+    routeFile: "src/routes/_protected/lists/index.tsx",
+    scenarioId: SCENARIO_IDS.LIST_SMART_BACK_BUTTON,
+    expectation: "render",
+  },
+  {
+    routePath: "/lists/",
+    routeFile: "src/routes/_protected/lists/index.tsx",
+    scenarioId: SCENARIO_IDS.LIST_SMART_EXAMPLE_CHIPS,
+    expectation: "render",
+  },
+  {
     routePath: "/lists/$id",
     routeFile: "src/routes/_protected/lists/$id.tsx",
     scenarioId: SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK,

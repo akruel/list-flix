@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     deleteList: vi.fn(),
   },
   addListItem: vi.fn(),
+  addListItems: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -31,6 +32,7 @@ vi.mock("../store/useStore", () => ({
 vi.mock("../services/listService", () => ({
   listService: {
     addListItem: (...args: unknown[]) => mocks.addListItem(...args),
+    addListItems: (...args: unknown[]) => mocks.addListItems(...args),
   },
 }));
 
@@ -314,15 +316,12 @@ describe("CustomLists", () => {
     await waitFor(() => {
       expect(mocks.storeValue.createList).toHaveBeenCalledWith("Magic List");
     });
-    expect(mocks.addListItem).toHaveBeenNthCalledWith(
-      1,
+    expect(mocks.addListItems).toHaveBeenCalledWith(
       "new-list",
-      expect.objectContaining({ id: 10, media_type: "movie" }),
-    );
-    expect(mocks.addListItem).toHaveBeenNthCalledWith(
-      2,
-      "new-list",
-      expect.objectContaining({ id: 20, media_type: "tv" }),
+      expect.arrayContaining([
+        expect.objectContaining({ id: 10, media_type: "movie" }),
+        expect.objectContaining({ id: 20, media_type: "tv" }),
+      ]),
     );
     expect(mocks.storeValue.fetchLists).toHaveBeenCalled();
   });
@@ -340,6 +339,65 @@ describe("CustomLists", () => {
     await waitFor(() => {
       expect(mocks.storeValue.createList).toHaveBeenCalled();
     });
+  });
+
+  it("rollbacks created list when batch insert fails", async () => {
+    mocks.storeValue.createList.mockResolvedValue({
+      id: "new-list",
+      name: "Magic List",
+      owner_id: "owner-1",
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+      role: "owner",
+    });
+    mocks.addListItems.mockRejectedValue(new Error("batch insert failed"));
+
+    render(<CustomLists />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Lista Inteligente/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
+
+    await waitFor(() => {
+      expect(mocks.storeValue.createList).toHaveBeenCalled();
+      expect(mocks.addListItems).toHaveBeenCalled();
+      expect(mocks.storeValue.deleteList).toHaveBeenCalledWith("new-list");
+    });
+  });
+
+  it("logs error when rollback deletion also fails", async () => {
+    const logger = (await import("@/lib/logger")).logger;
+    const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
+
+    mocks.storeValue.createList.mockResolvedValue({
+      id: "new-list",
+      name: "Magic List",
+      owner_id: "owner-1",
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01",
+      role: "owner",
+    });
+    mocks.addListItems.mockRejectedValue(new Error("batch insert failed"));
+    mocks.storeValue.deleteList.mockRejectedValue(
+      new Error("rollback delete failed"),
+    );
+
+    render(<CustomLists />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Lista Inteligente/i }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
+
+    await waitFor(() => {
+      expect(loggerSpy).toHaveBeenCalledWith(
+        "Rollback failed:",
+        expect.any(Error),
+      );
+    });
+
+    loggerSpy.mockRestore();
   });
 
   it("closes magic modal through onClose callback", async () => {

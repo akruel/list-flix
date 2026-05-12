@@ -232,6 +232,44 @@ test(`[${SCENARIO_IDS.LIST_SMART_SAVE_SUCCESS}] saves smart list and opens creat
   await expect(page.getByRole("heading", { name: listName })).toBeVisible();
 });
 
+test(`[${SCENARIO_IDS.LIST_SMART_BACK_BUTTON}] navigates back from results to input and preserves prompt`, async ({
+  page,
+}) => {
+  await continueAsGuest(page);
+  await openCustomLists(page);
+  await openSmartListModal(page);
+
+  const prompt = "filmes de aventura para a família";
+  await page.getByTestId("magic-list-prompt-input").fill(prompt);
+  await page.getByTestId("magic-list-suggest-button").click();
+  await expect(page.getByTestId("magic-list-results-grid")).toBeVisible();
+
+  await page.getByTestId("magic-list-back-button").click();
+
+  await expect(page.getByTestId("magic-list-prompt-input")).toBeVisible();
+  await expect(page.getByTestId("magic-list-prompt-input")).toHaveValue(prompt);
+});
+
+test(`[${SCENARIO_IDS.LIST_SMART_EXAMPLE_CHIPS}] fills prompt when clicking example chip`, async ({
+  page,
+}) => {
+  await continueAsGuest(page);
+  await openCustomLists(page);
+  await openSmartListModal(page);
+
+  await expect(page.getByTestId("magic-list-example-chips")).toBeVisible();
+
+  const chips = page.getByTestId("magic-list-example-chips").locator("button");
+  const chipCount = await chips.count();
+  expect(chipCount).toBeGreaterThan(0);
+
+  await chips.first().click();
+  const textareaValue = await page
+    .getByTestId("magic-list-prompt-input")
+    .inputValue();
+  expect(textareaValue.length).toBeGreaterThan(0);
+});
+
 test(`[${SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK}] copies editor invite link from list share menu`, async ({
   page,
 }) => {

@@ -13,3 +13,10 @@ commit-msg:
   commands:
     commitlint:
       run: npx commitlint --edit "$1"
+
+pre-push:
+  commands:
+    build:
+      run: npm run build
+    test-unit-ui:
+      run: npm run test
