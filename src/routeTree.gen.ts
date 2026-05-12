@@ -17,8 +17,6 @@ import { Route as ProtectedThisWeekRouteImport } from './routes/_protected/this-
 import { Route as ProtectedSharedRouteRouteImport } from './routes/_protected/shared/route'
 import { Route as ProtectedSearchRouteRouteImport } from './routes/_protected/search/route'
 import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lists/index'
-import { Route as ProtectedListsIdRouteImport } from './routes/_protected/lists/$id'
-import { Route as ProtectedListsIdJoinRouteImport } from './routes/_protected/lists/$id.join'
 import { Route as ProtectedDetailsTypeIdRouteImport } from './routes/_protected/details/$type/$id'
 
 const AuthRouteRoute = AuthRouteRouteImport.update({
@@ -60,16 +58,6 @@ const ProtectedListsIndexRoute = ProtectedListsIndexRouteImport.update({
   path: '/lists/',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
-const ProtectedListsIdRoute = ProtectedListsIdRouteImport.update({
-  id: '/lists/$id',
-  path: '/lists/$id',
-  getParentRoute: () => ProtectedRouteRoute,
-} as any)
-const ProtectedListsIdJoinRoute = ProtectedListsIdJoinRouteImport.update({
-  id: '/join',
-  path: '/join',
-  getParentRoute: () => ProtectedListsIdRoute,
-} as any)
 const ProtectedDetailsTypeIdRoute = ProtectedDetailsTypeIdRouteImport.update({
   id: '/details/$type/$id',
   path: '/details/$type/$id',
@@ -83,10 +71,8 @@ export interface FileRoutesByFullPath {
   '/shared': typeof ProtectedSharedRouteRoute
   '/this-week': typeof ProtectedThisWeekRoute
   '/auth/callback': typeof AuthCallbackRoute
-  '/lists/$id': typeof ProtectedListsIdRouteWithChildren
   '/lists/': typeof ProtectedListsIndexRoute
   '/details/$type/$id': typeof ProtectedDetailsTypeIdRoute
-  '/lists/$id/join': typeof ProtectedListsIdJoinRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRoute
@@ -95,10 +81,8 @@ export interface FileRoutesByTo {
   '/this-week': typeof ProtectedThisWeekRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/': typeof ProtectedIndexRoute
-  '/lists/$id': typeof ProtectedListsIdRouteWithChildren
   '/lists': typeof ProtectedListsIndexRoute
   '/details/$type/$id': typeof ProtectedDetailsTypeIdRoute
-  '/lists/$id/join': typeof ProtectedListsIdJoinRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,10 +93,8 @@ export interface FileRoutesById {
   '/_protected/this-week': typeof ProtectedThisWeekRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/_protected/': typeof ProtectedIndexRoute
-  '/_protected/lists/$id': typeof ProtectedListsIdRouteWithChildren
   '/_protected/lists/': typeof ProtectedListsIndexRoute
   '/_protected/details/$type/$id': typeof ProtectedDetailsTypeIdRoute
-  '/_protected/lists/$id/join': typeof ProtectedListsIdJoinRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,10 +105,8 @@ export interface FileRouteTypes {
     | '/shared'
     | '/this-week'
     | '/auth/callback'
-    | '/lists/$id'
     | '/lists/'
     | '/details/$type/$id'
-    | '/lists/$id/join'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -135,10 +115,8 @@ export interface FileRouteTypes {
     | '/this-week'
     | '/auth/callback'
     | '/'
-    | '/lists/$id'
     | '/lists'
     | '/details/$type/$id'
-    | '/lists/$id/join'
   id:
     | '__root__'
     | '/_protected'
@@ -148,10 +126,8 @@ export interface FileRouteTypes {
     | '/_protected/this-week'
     | '/auth_/callback'
     | '/_protected/'
-    | '/_protected/lists/$id'
     | '/_protected/lists/'
     | '/_protected/details/$type/$id'
-    | '/_protected/lists/$id/join'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -218,20 +194,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedListsIndexRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
-    '/_protected/lists/$id': {
-      id: '/_protected/lists/$id'
-      path: '/lists/$id'
-      fullPath: '/lists/$id'
-      preLoaderRoute: typeof ProtectedListsIdRouteImport
-      parentRoute: typeof ProtectedRouteRoute
-    }
-    '/_protected/lists/$id/join': {
-      id: '/_protected/lists/$id/join'
-      path: '/join'
-      fullPath: '/lists/$id/join'
-      preLoaderRoute: typeof ProtectedListsIdJoinRouteImport
-      parentRoute: typeof ProtectedListsIdRoute
-    }
     '/_protected/details/$type/$id': {
       id: '/_protected/details/$type/$id'
       path: '/details/$type/$id'
@@ -242,23 +204,11 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface ProtectedListsIdRouteChildren {
-  ProtectedListsIdJoinRoute: typeof ProtectedListsIdJoinRoute
-}
-
-const ProtectedListsIdRouteChildren: ProtectedListsIdRouteChildren = {
-  ProtectedListsIdJoinRoute: ProtectedListsIdJoinRoute,
-}
-
-const ProtectedListsIdRouteWithChildren =
-  ProtectedListsIdRoute._addFileChildren(ProtectedListsIdRouteChildren)
-
 interface ProtectedRouteRouteChildren {
   ProtectedSearchRouteRoute: typeof ProtectedSearchRouteRoute
   ProtectedSharedRouteRoute: typeof ProtectedSharedRouteRoute
   ProtectedThisWeekRoute: typeof ProtectedThisWeekRoute
   ProtectedIndexRoute: typeof ProtectedIndexRoute
-  ProtectedListsIdRoute: typeof ProtectedListsIdRouteWithChildren
   ProtectedListsIndexRoute: typeof ProtectedListsIndexRoute
   ProtectedDetailsTypeIdRoute: typeof ProtectedDetailsTypeIdRoute
 }
@@ -268,7 +218,6 @@ const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
   ProtectedSharedRouteRoute: ProtectedSharedRouteRoute,
   ProtectedThisWeekRoute: ProtectedThisWeekRoute,
   ProtectedIndexRoute: ProtectedIndexRoute,
-  ProtectedListsIdRoute: ProtectedListsIdRouteWithChildren,
   ProtectedListsIndexRoute: ProtectedListsIndexRoute,
   ProtectedDetailsTypeIdRoute: ProtectedDetailsTypeIdRoute,
 }

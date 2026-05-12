@@ -17,7 +17,6 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/lib/logger";
 import { getPostLoginDestination } from "@/lib/postLoginNavigation";
-import { authService } from "@/services/auth";
 
 export const Route = createFileRoute("/auth")({
   component: AuthRouteComponent,
@@ -36,9 +35,7 @@ function AuthRouteComponent() {
 
   useEffect(() => {
     if (status === "anonymous" || status === "authenticated") {
-      const target = getPostLoginDestination(
-        authService.consumePostLoginTarget(),
-      );
+      const target = getPostLoginDestination();
       navigate({ ...target, replace: true });
     }
   }, [navigate, status]);
@@ -80,9 +77,7 @@ function AuthRouteComponent() {
     setIsGuestLoading(true);
     try {
       await continueAsGuest();
-      const target = getPostLoginDestination(
-        authService.consumePostLoginTarget(),
-      );
+      const target = getPostLoginDestination();
       navigate({ ...target, replace: true });
     } catch (error) {
       logger.error("Guest sign-in error:", error);

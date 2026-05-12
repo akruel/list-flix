@@ -6,8 +6,6 @@ export const ROUTE_TEST_IDS = {
   shared: "route-shared",
   details: "route-details",
   lists: "route-lists-screen",
-  listJoin: "route-list-join",
-  listDetails: "route-list-details",
   thisWeek: "route-this-week",
 } as const;
 
@@ -23,21 +21,8 @@ export const SCENARIO_IDS = {
   SHARED_ROUTE_RENDER_FROM_DATA: "SHARED_ROUTE_RENDER_FROM_DATA",
   SHARED_ROUTE_INVALID_LINK: "SHARED_ROUTE_INVALID_LINK",
   LISTS_INDEX_RENDER: "LISTS_INDEX_RENDER",
-  LISTS_JOIN_EDITOR_FLOW: "LISTS_JOIN_EDITOR_FLOW",
-  LISTS_JOIN_VIEWER_READ_ONLY: "LISTS_JOIN_VIEWER_READ_ONLY",
-  LISTS_JOIN_INVALID_ROLE_FALLBACK: "LISTS_JOIN_INVALID_ROLE_FALLBACK",
-  LIST_MANUAL_CREATE_OPEN_FORM: "LIST_MANUAL_CREATE_OPEN_FORM",
-  LIST_MANUAL_CREATE_SUBMIT_SUCCESS: "LIST_MANUAL_CREATE_SUBMIT_SUCCESS",
-  LIST_SMART_OPEN_MODAL: "LIST_SMART_OPEN_MODAL",
-  LIST_SMART_SUGGEST_RESULTS: "LIST_SMART_SUGGEST_RESULTS",
-  LIST_SMART_SAVE_SUCCESS: "LIST_SMART_SAVE_SUCCESS",
-  LIST_SMART_BACK_BUTTON: "LIST_SMART_BACK_BUTTON",
-  LIST_SMART_EXAMPLE_CHIPS: "LIST_SMART_EXAMPLE_CHIPS",
-  LIST_SHARE_COPY_EDITOR_LINK: "LIST_SHARE_COPY_EDITOR_LINK",
-  LIST_SHARE_COPY_VIEWER_LINK: "LIST_SHARE_COPY_VIEWER_LINK",
-  LIST_SHARE_OPEN_LINK_AND_JOIN: "LIST_SHARE_OPEN_LINK_AND_JOIN",
   DETAILS_VALID_RENDER: "DETAILS_VALID_RENDER",
-  DETAILS_ADD_TO_DEFAULT_LIST: "DETAILS_ADD_TO_DEFAULT_LIST",
+  DETAILS_ADD_TO_LIST: "DETAILS_ADD_TO_LIST",
   DETAILS_MARK_WATCHED_FILTERS: "DETAILS_MARK_WATCHED_FILTERS",
   DETAILS_INVALID_TYPE_REDIRECT: "DETAILS_INVALID_TYPE_REDIRECT",
   NOT_FOUND_RENDER: "NOT_FOUND_RENDER",
@@ -49,15 +34,4 @@ export function encodeSharedRouteData(
   items: Array<{ id: number; type: "movie" | "tv" }>,
 ): string {
   return Buffer.from(JSON.stringify(items)).toString("base64");
-}
-
-export function buildJoinRoutePath(listId: string, role?: string): string {
-  const encodedId = encodeURIComponent(listId);
-
-  if (!role) {
-    return `/lists/${encodedId}/join`;
-  }
-
-  const encodedRole = encodeURIComponent(role);
-  return `/lists/${encodedId}/join?role=${encodedRole}`;
 }

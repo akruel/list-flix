@@ -503,40 +503,24 @@ describe("authService", () => {
 
   it.each([
     {
-      caseName: "valid invite path",
+      caseName: "valid path",
       path: "/lists/list-1/join?role=editor",
-      shouldStore: true,
     },
     {
-      caseName: "invalid non invite path",
+      caseName: "any path",
       path: "/search?q=matrix",
-      shouldStore: false,
     },
-  ])("savePostLoginTarget handles $caseName", ({ path, shouldStore }) => {
+  ])("savePostLoginTarget handles $caseName", ({ path }) => {
     authService.savePostLoginTarget(path);
 
     const stored = localStorage.getItem(authService.AUTH_POST_LOGIN_TARGET_KEY);
-    expect(stored).toBe(shouldStore ? path : null);
+    expect(stored).toBe(path);
   });
 
-  it("consumePostLoginTarget returns and clears a valid invite target", () => {
-    localStorage.setItem(
-      authService.AUTH_POST_LOGIN_TARGET_KEY,
-      "/lists/list-1/join?role=viewer",
-    );
-
-    expect(authService.consumePostLoginTarget()).toBe(
-      "/lists/list-1/join?role=viewer",
-    );
-    expect(
-      localStorage.getItem(authService.AUTH_POST_LOGIN_TARGET_KEY),
-    ).toBeNull();
-  });
-
-  it("consumePostLoginTarget clears and discards invalid target", () => {
+  it("consumePostLoginTarget returns and clears stored target", () => {
     localStorage.setItem(authService.AUTH_POST_LOGIN_TARGET_KEY, "/search");
 
-    expect(authService.consumePostLoginTarget()).toBeNull();
+    expect(authService.consumePostLoginTarget()).toBe("/search");
     expect(
       localStorage.getItem(authService.AUTH_POST_LOGIN_TARGET_KEY),
     ).toBeNull();
@@ -544,23 +528,6 @@ describe("authService", () => {
 
   it("consumePostLoginTarget returns null when no target exists", () => {
     expect(authService.consumePostLoginTarget()).toBeNull();
-  });
-
-  it("getPostLoginTarget returns only valid invite paths", () => {
-    localStorage.setItem(authService.AUTH_POST_LOGIN_TARGET_KEY, "/search");
-    expect(authService.getPostLoginTarget()).toBeNull();
-
-    localStorage.setItem(
-      authService.AUTH_POST_LOGIN_TARGET_KEY,
-      "/lists/list-2/join?role=editor",
-    );
-    expect(authService.getPostLoginTarget()).toBe(
-      "/lists/list-2/join?role=editor",
-    );
-  });
-
-  it("getPostLoginTarget returns null when no target exists", () => {
-    expect(authService.getPostLoginTarget()).toBeNull();
   });
 
   it("clearMigrationOldUserId clears local migration state", () => {

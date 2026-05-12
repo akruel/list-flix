@@ -23,9 +23,7 @@ function AuthCallbackRouteComponent() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const redirectAfterLogin = useCallback(() => {
-    const target = getPostLoginDestination(
-      authService.consumePostLoginTarget(),
-    );
+    const target = getPostLoginDestination();
     navigate({ ...target, replace: true });
   }, [navigate]);
 

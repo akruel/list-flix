@@ -3,11 +3,7 @@ import { SCENARIO_IDS, type ScenarioId } from "./routes";
 export const JOURNEY_IDS = {
   GUEST_DISCOVERY: "JOURNEY_GUEST_DISCOVERY",
   ACCESS_GUARDS: "JOURNEY_ACCESS_GUARDS",
-  WATCHLIST_MANAGEMENT: "JOURNEY_WATCHLIST_MANAGEMENT",
-  CREATE_MANUAL_LIST: "JOURNEY_CREATE_MANUAL_LIST",
-  CREATE_SMART_LIST: "JOURNEY_CREATE_SMART_LIST",
-  SHARE_LIST_END_TO_END: "JOURNEY_SHARE_LIST_END_TO_END",
-  INVITE_ROLE_FALLBACK: "JOURNEY_INVITE_ROLE_FALLBACK",
+  LIST_MANAGEMENT: "JOURNEY_LIST_MANAGEMENT",
 } as const;
 
 export type JourneyId = (typeof JOURNEY_IDS)[keyof typeof JOURNEY_IDS];
@@ -66,63 +62,16 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
     ],
   },
   {
-    journeyId: JOURNEY_IDS.WATCHLIST_MANAGEMENT,
+    journeyId: JOURNEY_IDS.LIST_MANAGEMENT,
     persona: "guest",
     objective:
       "Adicionar conteúdo pela tela de detalhes e validar filtros de assistidos",
     blocking: true,
     requiredScenarioIds: [
-      SCENARIO_IDS.DETAILS_ADD_TO_DEFAULT_LIST,
+      SCENARIO_IDS.LISTS_INDEX_RENDER,
+      SCENARIO_IDS.DETAILS_ADD_TO_LIST,
       SCENARIO_IDS.DETAILS_MARK_WATCHED_FILTERS,
     ],
     touchedPaths: ["/auth", "/details/$type/$id", "/lists/"],
-  },
-  {
-    journeyId: JOURNEY_IDS.CREATE_MANUAL_LIST,
-    persona: "guest",
-    objective: "Criar lista manual pela UI e abrir detalhes da lista",
-    blocking: true,
-    requiredScenarioIds: [
-      SCENARIO_IDS.LISTS_INDEX_RENDER,
-      SCENARIO_IDS.LIST_MANUAL_CREATE_OPEN_FORM,
-      SCENARIO_IDS.LIST_MANUAL_CREATE_SUBMIT_SUCCESS,
-    ],
-    touchedPaths: ["/auth", "/lists/", "/lists/$id"],
-  },
-  {
-    journeyId: JOURNEY_IDS.CREATE_SMART_LIST,
-    persona: "guest",
-    objective: "Criar lista inteligente com IA e salvar lista com itens",
-    blocking: true,
-    requiredScenarioIds: [
-      SCENARIO_IDS.LIST_SMART_OPEN_MODAL,
-      SCENARIO_IDS.LIST_SMART_SUGGEST_RESULTS,
-      SCENARIO_IDS.LIST_SMART_SAVE_SUCCESS,
-      SCENARIO_IDS.LIST_SMART_BACK_BUTTON,
-      SCENARIO_IDS.LIST_SMART_EXAMPLE_CHIPS,
-    ],
-    touchedPaths: ["/auth", "/lists/", "/lists/$id"],
-  },
-  {
-    journeyId: JOURNEY_IDS.SHARE_LIST_END_TO_END,
-    persona: "owner->guest",
-    objective: "Compartilhar lista como editor e concluir entrada pelo convite",
-    blocking: true,
-    requiredScenarioIds: [
-      SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK,
-      SCENARIO_IDS.LIST_SHARE_COPY_VIEWER_LINK,
-      SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN,
-      SCENARIO_IDS.LISTS_JOIN_EDITOR_FLOW,
-      SCENARIO_IDS.LISTS_JOIN_VIEWER_READ_ONLY,
-    ],
-    touchedPaths: ["/auth", "/lists/", "/lists/$id", "/lists/$id/join"],
-  },
-  {
-    journeyId: JOURNEY_IDS.INVITE_ROLE_FALLBACK,
-    persona: "guest",
-    objective: "Validar fallback de role inválido para viewer",
-    blocking: true,
-    requiredScenarioIds: [SCENARIO_IDS.LISTS_JOIN_INVALID_ROLE_FALLBACK],
-    touchedPaths: ["/auth", "/lists/$id/join"],
   },
 ];

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Check, Star } from "lucide-react";
+import { Check, Clapperboard, Popcorn, Star } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,18 +7,35 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useSeriesProgress } from "../hooks/useSeriesProgress";
 import { tmdb } from "../services/tmdb";
 import { useStore } from "../store/useStore";
-import type { ContentItem } from "../types";
+import type { ContentItem, UserListTag, UserListTagType } from "../types";
 
 interface MovieCardProps {
   item: ContentItem;
   showProgress?: boolean;
   disableLink?: boolean;
+  tags?: UserListTag[];
 }
+
+const TAG_ICONS: Record<UserListTagType, typeof Popcorn> = {
+  noite_de_pipoca: Popcorn,
+  fim_de_semana: Clapperboard,
+};
+
+const TAG_LABELS: Record<UserListTagType, string> = {
+  noite_de_pipoca: "Noite de Pipoca",
+  fim_de_semana: "Fim de Semana",
+};
+
+const TAG_COLORS: Record<UserListTagType, string> = {
+  noite_de_pipoca: "bg-yellow-500/80",
+  fim_de_semana: "bg-blue-500/80",
+};
 
 export function MovieCard({
   item,
   showProgress = false,
   disableLink = false,
+  tags,
 }: MovieCardProps) {
   const title = item.media_type === "movie" ? item.title : item.name;
   const date =
@@ -27,16 +44,10 @@ export function MovieCard({
   const { isWatched, getSeriesMetadata } = useStore();
   const watched = isWatched(item.id);
 
-  // Get progress for TV series
   const { watchedCount } = useSeriesProgress(item.id, 0);
   const seriesMetadata =
     item.media_type === "tv" ? getSeriesMetadata(item.id) : undefined;
 
-  // Only show progress if:
-  // 1. showProgress prop is true
-  // 2. It's a TV series
-  // 3. We have metadata available
-  // 4. There are watched episodes
   const shouldShowProgress =
     showProgress &&
     item.media_type === "tv" &&
@@ -83,6 +94,26 @@ export function MovieCard({
             >
               Ver Detalhes
             </Badge>
+          </div>
+        )}
+        {tags != null && tags.length > 0 && (
+          <div className="absolute bottom-2 left-2 flex flex-col gap-1">
+            {tags.map((t) => {
+              const tagType = t.tag as UserListTagType;
+              const Icon = TAG_ICONS[tagType];
+              return (
+                <div
+                  key={t.id || t.tag}
+                  className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium text-white shadow-lg ${TAG_COLORS[tagType]}`}
+                  title={TAG_LABELS[tagType]}
+                >
+                  <Icon size={10} />
+                  <span className="hidden group-hover:inline">
+                    {TAG_LABELS[tagType]}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -10,27 +10,33 @@ interface UserContentFixture {
   users: TestUser[];
   userA: TestUser;
   userB: TestUser;
-  watchlistTmdbId: number;
+  userListTmdbId: number;
   movieTmdbId: number;
   episodeTmdbId: number;
   showTmdbId: number;
+  userListItemId: string;
 }
 
 async function createUserContentFixture(): Promise<UserContentFixture> {
   const userA = await createAuthenticatedUser("user-content-a");
   const userB = await createAuthenticatedUser("user-content-b");
 
-  const watchlistTmdbId = Math.floor(Math.random() * 100000) + 1;
+  const userListTmdbId = Math.floor(Math.random() * 100000) + 1;
   const movieTmdbId = Math.floor(Math.random() * 100000) + 1;
   const episodeTmdbId = Math.floor(Math.random() * 100000) + 1;
   const showTmdbId = Math.floor(Math.random() * 100000) + 1;
 
-  const insertWatchlist = await userA.client.from("watchlists").insert({
-    tmdb_id: watchlistTmdbId,
-    media_type: "movie",
-  });
+  const insertList = await userA.client
+    .from("user_list")
+    .insert({
+      tmdb_id: userListTmdbId,
+      media_type: "movie",
+      title: "Test Movie",
+    })
+    .select()
+    .single();
 
-  if (insertWatchlist.error) throw insertWatchlist.error;
+  if (insertList.error) throw insertList.error;
 
   const insertWatchedMovie = await userA.client.from("watched_movies").insert({
     tmdb_id: movieTmdbId,
@@ -53,10 +59,11 @@ async function createUserContentFixture(): Promise<UserContentFixture> {
     users: [userA, userB],
     userA,
     userB,
-    watchlistTmdbId,
+    userListTmdbId,
     movieTmdbId,
     episodeTmdbId,
     showTmdbId,
+    userListItemId: insertList.data.id,
   };
 }
 
@@ -64,40 +71,40 @@ async function teardownFixture(fixture: UserContentFixture): Promise<void> {
   await deleteUsers(fixture.users);
 }
 
-describe.sequential("RLS: watchlists policies", () => {
-  it("allows user to view and delete their own watchlist entries, blocks other users", async () => {
+describe.sequential("RLS: user_list policies", () => {
+  it("allows user to view and delete their own list entries, blocks other users", async () => {
     const fixture = await createUserContentFixture();
 
     try {
       const ownSelect = await fixture.userA.client
-        .from("watchlists")
+        .from("user_list")
         .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
+        .eq("tmdb_id", fixture.userListTmdbId)
         .single();
 
       expect(ownSelect.error).toBeNull();
       expect(ownSelect.data).not.toBeNull();
 
       const otherSelect = await fixture.userB.client
-        .from("watchlists")
+        .from("user_list")
         .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
+        .eq("tmdb_id", fixture.userListTmdbId)
         .single();
 
       expect(otherSelect.error).not.toBeNull();
       expect(otherSelect.data).toBeNull();
 
       const ownDelete = await fixture.userA.client
-        .from("watchlists")
+        .from("user_list")
         .delete()
-        .eq("tmdb_id", fixture.watchlistTmdbId);
+        .eq("tmdb_id", fixture.userListTmdbId);
 
       expect(ownDelete.error).toBeNull();
 
       const confirmDeleted = await fixture.userA.client
-        .from("watchlists")
+        .from("user_list")
         .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
+        .eq("tmdb_id", fixture.userListTmdbId)
         .single();
 
       expect(confirmDeleted.error).not.toBeNull();
@@ -111,7 +118,7 @@ describe.sequential("RLS: watchlists policies", () => {
 
     try {
       const insertForOther = await fixture.userB.client
-        .from("watchlists")
+        .from("user_list")
         .insert({
           user_id: fixture.userA.id,
           tmdb_id: Math.floor(Math.random() * 100000),
@@ -124,24 +131,122 @@ describe.sequential("RLS: watchlists policies", () => {
     }
   });
 
-  it("prevents user from deleting another users watchlist entry", async () => {
+  it("prevents user from deleting another users list entry", async () => {
     const fixture = await createUserContentFixture();
 
     try {
       const otherDelete = await fixture.userB.client
-        .from("watchlists")
+        .from("user_list")
         .delete()
-        .eq("tmdb_id", fixture.watchlistTmdbId);
+        .eq("tmdb_id", fixture.userListTmdbId);
 
       expect(otherDelete.error).toBeNull();
 
       const stillExists = await fixture.userA.client
-        .from("watchlists")
+        .from("user_list")
         .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
+        .eq("tmdb_id", fixture.userListTmdbId)
         .single();
 
       expect(stillExists.error).toBeNull();
+    } finally {
+      await teardownFixture(fixture);
+    }
+  });
+
+  it("allows user to update their own list entry", async () => {
+    const fixture = await createUserContentFixture();
+
+    try {
+      const ownUpdate = await fixture.userA.client
+        .from("user_list")
+        .update({ title: "Updated Title" })
+        .eq("tmdb_id", fixture.userListTmdbId);
+
+      expect(ownUpdate.error).toBeNull();
+
+      const otherUpdate = await fixture.userB.client
+        .from("user_list")
+        .update({ title: "Hacked" })
+        .eq("tmdb_id", fixture.userListTmdbId);
+
+      expect(otherUpdate.error).toBeNull();
+
+      const confirmNotChanged = await fixture.userA.client
+        .from("user_list")
+        .select("title")
+        .eq("tmdb_id", fixture.userListTmdbId)
+        .single();
+
+      expect(confirmNotChanged.data?.title).toBe("Updated Title");
+    } finally {
+      await teardownFixture(fixture);
+    }
+  });
+});
+
+describe.sequential("RLS: user_list_tags policies", () => {
+  it("allows user to manage tags on their own items, blocks other users", async () => {
+    const fixture = await createUserContentFixture();
+
+    try {
+      const insertTag = await fixture.userA.client
+        .from("user_list_tags")
+        .insert({
+          user_list_id: fixture.userListItemId,
+          tag: "noite_de_pipoca",
+        });
+
+      expect(insertTag.error).toBeNull();
+
+      const ownSelect = await fixture.userA.client
+        .from("user_list_tags")
+        .select("*")
+        .eq("user_list_id", fixture.userListItemId);
+
+      expect(ownSelect.error).toBeNull();
+      expect(ownSelect.data).toHaveLength(1);
+
+      const otherSelect = await fixture.userB.client
+        .from("user_list_tags")
+        .select("*")
+        .eq("user_list_id", fixture.userListItemId);
+
+      expect(otherSelect.error).toBeNull();
+      expect(otherSelect.data).toHaveLength(0);
+
+      const ownDelete = await fixture.userA.client
+        .from("user_list_tags")
+        .delete()
+        .eq("user_list_id", fixture.userListItemId)
+        .eq("tag", "noite_de_pipoca");
+
+      expect(ownDelete.error).toBeNull();
+
+      const confirmDeleted = await fixture.userA.client
+        .from("user_list_tags")
+        .select("*")
+        .eq("user_list_id", fixture.userListItemId);
+
+      expect(confirmDeleted.error).toBeNull();
+      expect(confirmDeleted.data).toHaveLength(0);
+    } finally {
+      await teardownFixture(fixture);
+    }
+  });
+
+  it("prevents user from inserting tag on another users item", async () => {
+    const fixture = await createUserContentFixture();
+
+    try {
+      const insertForOther = await fixture.userB.client
+        .from("user_list_tags")
+        .insert({
+          user_list_id: fixture.userListItemId,
+          tag: "noite_de_pipoca",
+        });
+
+      expect(insertForOther.error).not.toBeNull();
     } finally {
       await teardownFixture(fixture);
     }
