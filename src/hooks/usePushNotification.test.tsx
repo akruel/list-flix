@@ -204,6 +204,32 @@ describe("usePushNotification", () => {
     expect(result.current.isSubscribed).toBe(false);
   });
 
+  it("does not set state when subscription check resolves after unmount", async () => {
+    let resolveCheck!: (value: unknown) => void;
+    builder.maybeSingle.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCheck = resolve;
+      }),
+    );
+
+    mocks.useAuth.mockReturnValue({
+      user: { id: "user-1" },
+      status: "authenticated",
+    });
+
+    const { result, unmount } = renderHook(() => usePushNotification());
+
+    await waitFor(() => {
+      expect(mocks.supabaseFrom).toHaveBeenCalledWith("push_subscriptions");
+    });
+
+    expect(result.current.isSubscribed).toBe(false);
+
+    unmount();
+
+    resolveCheck({ data: { id: "sub-1" }, error: null });
+  });
+
   // ---------------------------------------------------------------
   // getActiveRegistration paths
   // ---------------------------------------------------------------
