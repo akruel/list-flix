@@ -5,6 +5,7 @@ import type { UserListTagType } from "../types";
 interface TagSelectorProps {
   selectedTags: UserListTagType[];
   onToggle: (tag: UserListTagType) => void;
+  availableTags?: UserListTagType[];
 }
 
 const TAG_OPTIONS: {
@@ -24,12 +25,20 @@ const TAG_OPTIONS: {
   },
 ];
 
-export function TagSelector({ selectedTags, onToggle }: TagSelectorProps) {
+export function TagSelector({
+  selectedTags,
+  onToggle,
+  availableTags,
+}: TagSelectorProps) {
+  const options = availableTags
+    ? TAG_OPTIONS.filter((o) => availableTags.includes(o.value))
+    : TAG_OPTIONS;
+
   return (
     <div className="space-y-2">
       <p className="text-sm text-gray-400">Tags (opcional)</p>
       <div className="flex flex-wrap gap-2">
-        {TAG_OPTIONS.map((option) => {
+        {options.map((option) => {
           const isSelected = selectedTags.includes(option.value);
 
           return (

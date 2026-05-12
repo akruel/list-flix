@@ -32,19 +32,19 @@ describe("ai service", () => {
   it("parses valid recommendation response", async () => {
     mocks.functionsInvoke.mockResolvedValue({
       data: {
-        suggested_list_name: "Terror Psicológico",
         items: [
           { title: "The Silence of the Lambs", media_type: "movie" },
           { title: "Seven", media_type: "movie" },
         ],
+        suggested_tags: ["fim_de_semana"],
       },
       error: null,
     });
 
     const result = await ai.getSuggestions("filmes de terror");
 
-    expect(result.suggested_list_name).toBe("Terror Psicológico");
     expect(result.items).toHaveLength(2);
+    expect(result.suggested_tags).toEqual(["fim_de_semana"]);
     expect(result.items[0].title).toBe("The Silence of the Lambs");
     expect(mocks.functionsInvoke).toHaveBeenCalledWith(
       "ai-suggestions",
@@ -57,8 +57,8 @@ describe("ai service", () => {
   it("includes user request in the generated prompt", async () => {
     mocks.functionsInvoke.mockResolvedValue({
       data: {
-        suggested_list_name: "Lista",
         items: [{ title: "Item", media_type: "movie" }],
+        suggested_tags: [],
       },
       error: null,
     });
@@ -73,7 +73,7 @@ describe("ai service", () => {
     );
   });
 
-  it("applies default suggested_list_name when missing", async () => {
+  it("applies default suggested_tags when missing", async () => {
     mocks.functionsInvoke.mockResolvedValue({
       data: {
         items: [{ title: "Matrix", media_type: "movie" }],
@@ -82,7 +82,7 @@ describe("ai service", () => {
     });
 
     const result = await ai.getSuggestions("filmes do Matrix");
-    expect(result.suggested_list_name).toBe("Lista Sugerida");
+    expect(result.suggested_tags).toEqual([]);
   });
 
   it.each([
@@ -99,7 +99,7 @@ describe("ai service", () => {
       caseName: "missing items array",
       setup: () =>
         mocks.functionsInvoke.mockResolvedValue({
-          data: { suggested_list_name: "Lista" },
+          data: { suggested_tags: [] },
           error: null,
         }),
       expectedError: /items/,
@@ -123,8 +123,8 @@ describe("ai service", () => {
       })
       .mockResolvedValueOnce({
         data: {
-          suggested_list_name: "Matrix",
           items: [{ title: "Matrix", media_type: "movie" }],
+          suggested_tags: [],
         },
         error: null,
       });
