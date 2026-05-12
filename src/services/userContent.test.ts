@@ -100,6 +100,17 @@ describe("userContentService", () => {
         ),
       insert: vi.fn().mockImplementation((payload: unknown[]) => {
         inserts[table] = payload;
+        if (table === "user_list") {
+          return {
+            select: vi.fn().mockResolvedValue({
+              data: payload.map((p) => ({
+                id: `new-uuid-${(p as Record<string, unknown>).tmdb_id}`,
+                tmdb_id: (p as Record<string, unknown>).tmdb_id,
+              })),
+              error: null,
+            }),
+          };
+        }
         return Promise.resolve({ error: null });
       }),
     }));
@@ -123,24 +134,129 @@ describe("userContentService", () => {
     expect(inserts.watched_episodes).toHaveLength(1);
   });
 
+  it("syncLocalData inserts tags for new items", async () => {
+    const inserts: Record<string, unknown[]> = {};
+    const userListTagInserts: { user_list_id: string; tag: string }[] = [];
+
+    mockedSupabase.from.mockImplementation((table: string) => {
+      if (table === "user_list_tags") {
+        return {
+          insert: vi.fn().mockImplementation((payload: unknown[]) => {
+            userListTagInserts.push(
+              ...(payload as { user_list_id: string; tag: string }[]),
+            );
+            return Promise.resolve({ error: null });
+          }),
+        };
+      }
+      return {
+        select: vi
+          .fn()
+          .mockResolvedValue(
+            table === "user_list" ? { data: [{ tmdb_id: 10 }] } : { data: [] },
+          ),
+        insert: vi.fn().mockImplementation((payload: unknown[]) => {
+          inserts[table] = payload;
+          if (table === "user_list") {
+            return {
+              select: vi.fn().mockResolvedValue({
+                data: payload.map((p) => ({
+                  id: `new-uuid-${(p as Record<string, unknown>).tmdb_id}`,
+                  tmdb_id: (p as Record<string, unknown>).tmdb_id,
+                })),
+                error: null,
+              }),
+            };
+          }
+          return Promise.resolve({ error: null });
+        }),
+      };
+    });
+
+    await userContentService.syncLocalData(
+      [
+        { id: 10, media_type: "movie", title: "Existing" },
+        { id: 11, media_type: "tv", name: "New item" },
+      ],
+      [],
+      {},
+      { 11: ["noite_de_pipoca"] },
+    );
+
+    expect(inserts.user_list).toHaveLength(1);
+    expect(inserts.user_list[0]).toMatchObject({ tmdb_id: 11 });
+    expect(userListTagInserts).toHaveLength(1);
+    expect(userListTagInserts[0]).toEqual({
+      user_list_id: "new-uuid-11",
+      tag: "noite_de_pipoca",
+    });
+  });
+
+  it("syncLocalData logs when tag insertion fails", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    mockedSupabase.from.mockImplementation((table: string) => {
+      if (table === "user_list_tags") {
+        return {
+          insert: vi
+            .fn()
+            .mockResolvedValue({ error: new Error("tag insert failed") }),
+        };
+      }
+      return {
+        select: vi.fn().mockResolvedValue({ data: [] }),
+        insert: vi.fn().mockImplementation(() => ({
+          select: vi.fn().mockResolvedValue({
+            data: [{ id: "new-uuid-1", tmdb_id: 1 }],
+            error: null,
+          }),
+        })),
+      };
+    });
+
+    await userContentService.syncLocalData(
+      [{ id: 1, media_type: "movie", title: "A" }],
+      [],
+      {},
+      { 1: ["noite_de_pipoca"] },
+    );
+
+    expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
   it("syncLocalData logs when insert operations return errors", async () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
+    let callCount = 0;
     mockedSupabase.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue({ data: [] }),
-      insert: vi.fn().mockResolvedValue({
-        error: table === "user_list" ? new Error("insert failed") : null,
+      insert: vi.fn().mockImplementation(() => {
+        if (table === "user_list") {
+          return {
+            select: vi.fn().mockResolvedValue({
+              data: null,
+              error: new Error("list insert failed"),
+            }),
+          };
+        }
+        callCount++;
+        return Promise.resolve({
+          error: callCount === 1 ? new Error("watch insert failed") : null,
+        });
       }),
     }));
 
     await userContentService.syncLocalData(
       [{ id: 1, media_type: "movie", title: "A" }],
-      [1],
+      [1, 2],
       {},
     );
 
-    expect(consoleErrorSpy).toHaveBeenCalled();
+    expect(consoleErrorSpy).toHaveBeenCalledTimes(2);
     consoleErrorSpy.mockRestore();
   });
 

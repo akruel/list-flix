@@ -20,6 +20,7 @@ export const userContentService = {
       number,
       Record<number, WatchedEpisodeMetadata>
     > = {},
+    localTags: Record<number, UserListTagType[]> = {},
   ) {
     const {
       data: { user },
@@ -89,10 +90,34 @@ export const userContentService = {
       }
     }
 
-    const promises = [];
     if (listUpdates.length > 0) {
-      promises.push(supabase.from("user_list").insert(listUpdates));
+      const { data: insertedItems, error } = await supabase
+        .from("user_list")
+        .insert(listUpdates)
+        .select("id, tmdb_id");
+
+      if (error) {
+        logger.error("Error syncing list data:", error);
+      } else if (insertedItems) {
+        const tagInserts: { user_list_id: string; tag: UserListTagType }[] = [];
+        for (const item of insertedItems) {
+          const tags = localTags[item.tmdb_id];
+          if (tags) {
+            for (const tag of tags) {
+              tagInserts.push({ user_list_id: item.id, tag });
+            }
+          }
+        }
+        if (tagInserts.length > 0) {
+          const { error: tagError } = await supabase
+            .from("user_list_tags")
+            .insert(tagInserts);
+          if (tagError) logger.error("Error syncing tags:", tagError);
+        }
+      }
     }
+
+    const promises = [];
     if (watchedMoviesUpdates.length > 0) {
       promises.push(
         supabase.from("watched_movies").insert(watchedMoviesUpdates),

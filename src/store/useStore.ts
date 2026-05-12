@@ -357,10 +357,18 @@ export const useStore = create<ListStore>()(
           overview: item.overview,
         }));
 
+        const localTags: Record<number, UserListTagType[]> = {};
+        for (const item of state.myList) {
+          if (item.tags && item.tags.length > 0) {
+            localTags[item.tmdb_id] = item.tags.map((t) => t.tag);
+          }
+        }
+
         await userContentService.syncLocalData(
           localItems,
           state.watchedIds,
           state.watchedEpisodes,
+          localTags,
         );
 
         const { watchlist, watchedIds, watchedEpisodes, seriesMetadata } =

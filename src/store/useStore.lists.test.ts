@@ -262,7 +262,7 @@ describe("useStore list actions", () => {
     );
   });
 
-  it("syncWithSupabase uploads and refreshes", async () => {
+  it("syncWithSupabase uploads, passes tags, and refreshes", async () => {
     mockedUserContentService.getUserContent.mockResolvedValue({
       watchlist: [
         {
@@ -288,7 +288,14 @@ describe("useStore list actions", () => {
           tmdb_id: 9,
           media_type: "movie",
           title: "Local",
-          tags: [],
+          tags: [
+            {
+              id: "",
+              user_list_id: "",
+              tag: "noite_de_pipoca",
+              created_at: "",
+            },
+          ],
           created_at: "",
         },
       ],
@@ -297,7 +304,12 @@ describe("useStore list actions", () => {
 
     await useStore.getState().syncWithSupabase();
 
-    expect(mockedUserContentService.syncLocalData).toHaveBeenCalled();
+    expect(mockedUserContentService.syncLocalData).toHaveBeenCalledWith(
+      [expect.objectContaining({ id: 9 })],
+      [9],
+      {},
+      { 9: ["noite_de_pipoca"] },
+    );
     expect(useStore.getState().myList).toEqual([
       {
         id: "uuid-1",

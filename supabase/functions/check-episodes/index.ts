@@ -98,7 +98,7 @@ Deno.serve(async () => {
     }
 
     if (!shows || shows.length === 0) {
-      console.log("No TV shows found in watchlists");
+      console.log("No TV shows found in user lists");
       return new Response(JSON.stringify({ notified: 0 }), {
         headers: { "Content-Type": "application/json" },
       });
