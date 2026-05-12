@@ -1,17 +1,18 @@
 import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
 
+import type { UserListTagType } from "../types";
 import { AiSuggestionSchema } from "./ai-schema";
 
-interface AiSuggestionItem {
+export interface AiSuggestionItem {
   title: string;
   year?: number;
   media_type: "movie" | "tv";
 }
 
-interface AiSuggestionResult {
-  suggested_list_name: string;
+export interface AiSuggestionResult {
   items: AiSuggestionItem[];
+  suggested_tags: UserListTagType[];
 }
 
 async function withRetry<T>(

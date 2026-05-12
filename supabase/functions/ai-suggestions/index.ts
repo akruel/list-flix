@@ -21,7 +21,7 @@ function buildPrompt(userRequest: string): string {
   return `
 Você é um curador de cinema e TV com conhecimento enciclopédico.
 
-Analise o pedido do usuário e crie uma lista curada de filmes e/ou séries.
+Analise o pedido do usuário e recomende filmes e/ou séries.
 
 INSTRUÇÕES:
 1. Interpretação: Considere gênero, época, diretor, ator, nacionalidade, clima, classificação indicativa, ou qualquer combinação.
@@ -30,24 +30,27 @@ INSTRUÇÕES:
 4. Ano: Inclua o ANO DE LANÇAMENTO para cada título — ajuda a buscar o filme correto no TMDB.
 5. Curadoria: Prefira filmes e séries POPULARES e BEM AVALIADOS. Escolha títulos que realmente existem e são conhecidos.
 6. Variedade: Dentro do tema, diversifique anos, países ou subgêneros quando possível.
-7. Título da lista: Criativo, curto e em PORTUGUÊS.
+7. Tags: Analise o contexto do pedido e sugira tags apropriadas:
+   - "noite_de_pipoca": se o pedido sugere filmes leves, divertidos, para assistir em grupo ou com a família
+   - "fim_de_semana": se o pedido sugere maratona, binge-watch, ou algo para o tempo livre
+   - Pode sugerir ambas ou nenhuma, dependendo do contexto
 8. Precisão: Todos os títulos devem ser de obras REAIS. Não invente.
 9. Evite repetir o mesmo título.
 10. Para séries, indique o título da série, não de um episódio específico.
+11. NÃO crie um nome de lista. Apenas retorne os itens e as tags.
 
 FORMATO DE SAÍDA (JSON obrigatório):
 {
-  "suggested_list_name": "Título da Lista em Português",
   "items": [
     { "title": "Original English Title", "year": 1999, "media_type": "movie" },
     { "title": "Original Series Title", "year": 2015, "media_type": "tv" }
-  ]
+  ],
+  "suggested_tags": ["noite_de_pipoca", "fim_de_semana"]
 }
 
 EXEMPLO 1:
 Usuário: "Filmes de suspense para assistir no final de semana"
 {
-  "suggested_list_name": "Suspense de Final de Semana",
   "items": [
     { "title": "Gone Girl", "year": 2014, "media_type": "movie" },
     { "title": "Prisoners", "year": 2013, "media_type": "movie" },
@@ -55,19 +58,20 @@ Usuário: "Filmes de suspense para assistir no final de semana"
     { "title": "The Girl with the Dragon Tattoo", "year": 2011, "media_type": "movie" },
     { "title": "Se7en", "year": 1995, "media_type": "movie" },
     { "title": "Rear Window", "year": 1954, "media_type": "movie" }
-  ]
+  ],
+  "suggested_tags": ["fim_de_semana"]
 }
 
 EXEMPLO 2:
 Usuário: "Séries de comédia dos anos 2000"
 {
-  "suggested_list_name": "Comédia 2000s",
   "items": [
     { "title": "The Office", "year": 2005, "media_type": "tv" },
     { "title": "Arrested Development", "year": 2003, "media_type": "tv" },
     { "title": "30 Rock", "year": 2006, "media_type": "tv" },
     { "title": "Curb Your Enthusiasm", "year": 2000, "media_type": "tv" }
-  ]
+  ],
+  "suggested_tags": []
 }
 
 PEDIDO DO USUÁRIO: "${userRequest}"
@@ -75,7 +79,6 @@ PEDIDO DO USUÁRIO: "${userRequest}"
 }
 
 const AiSuggestionSchema = z.object({
-  suggested_list_name: z.string().min(1).default("Lista Sugerida"),
   items: z
     .array(
       z.object({
@@ -86,6 +89,9 @@ const AiSuggestionSchema = z.object({
     )
     .min(1)
     .max(20),
+  suggested_tags: z
+    .array(z.enum(["noite_de_pipoca", "fim_de_semana"]))
+    .default([]),
 });
 
 async function callGroq(prompt: string) {

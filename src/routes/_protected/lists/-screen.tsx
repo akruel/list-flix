@@ -1,8 +1,10 @@
-import { Eye, EyeOff, List } from "lucide-react";
+import { Eye, EyeOff, List, Sparkles } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { AiRecommendationModal } from "@/components/AiRecommendationModal";
 import { MovieCard } from "@/components/MovieCard";
 import { TagFilter } from "@/components/TagFilter";
+import { Button } from "@/components/ui/button";
 import { useStore } from "@/store/useStore";
 import type { UserListTagType } from "@/types";
 
@@ -11,6 +13,7 @@ type FilterType = "all" | "watched" | "unwatched";
 export function MyListScreen() {
   const { myList, isWatched, activeTags, toggleTag } = useStore();
   const [filter, setFilter] = useState<FilterType>("all");
+  const [aiModalOpen, setAiModalOpen] = useState(false);
 
   const tagCounts = useMemo(() => {
     const counts: Record<UserListTagType, number> = {
@@ -47,6 +50,14 @@ export function MyListScreen() {
     <div data-testid="route-lists-screen">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold md:text-3xl">Minha Lista</h1>
+        <Button
+          data-testid="ai-recommendations-button"
+          onClick={() => setAiModalOpen(true)}
+          className="bg-purple-600 text-white hover:bg-purple-700"
+        >
+          <Sparkles size={16} className="mr-2" />
+          IA
+        </Button>
       </div>
 
       <div className="mb-6 space-y-4">
@@ -133,6 +144,11 @@ export function MyListScreen() {
           </p>
         </div>
       )}
+
+      <AiRecommendationModal
+        isOpen={aiModalOpen}
+        onClose={() => setAiModalOpen(false)}
+      />
     </div>
   );
 }
