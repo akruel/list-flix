@@ -10,6 +10,8 @@ import type {
 } from "../types";
 import { tmdb } from "./tmdb";
 
+export type TagInput = { tag: UserListTagType; partner_user_id?: string };
+
 export type ContentType = "movie" | "tv" | "episode";
 
 export const userContentService = {
@@ -20,7 +22,7 @@ export const userContentService = {
       number,
       Record<number, WatchedEpisodeMetadata>
     > = {},
-    localTags: Record<number, UserListTagType[]> = {},
+    localTags: Record<number, TagInput[]> = {},
   ) {
     const {
       data: { user },
@@ -99,12 +101,20 @@ export const userContentService = {
       if (error) {
         logger.error("Error syncing list data:", error);
       } else if (insertedItems) {
-        const tagInserts: { user_list_id: string; tag: UserListTagType }[] = [];
+        const tagInserts: {
+          user_list_id: string;
+          tag: UserListTagType;
+          partner_user_id?: string;
+        }[] = [];
         for (const item of insertedItems) {
           const tags = localTags[item.tmdb_id];
           if (tags) {
-            for (const tag of tags) {
-              tagInserts.push({ user_list_id: item.id, tag });
+            for (const t of tags) {
+              tagInserts.push({
+                user_list_id: item.id,
+                tag: t.tag,
+                partner_user_id: t.partner_user_id,
+              });
             }
           }
         }
@@ -287,7 +297,7 @@ export const userContentService = {
 
   async addToList(
     item: ContentItem,
-    tags?: UserListTagType[],
+    tags?: TagInput[],
   ): Promise<UserListItem | null> {
     const { data, error } = await supabase
       .from("user_list")
@@ -312,9 +322,10 @@ export const userContentService = {
     }
 
     if (tags && tags.length > 0) {
-      const tagRows = tags.map((tag) => ({
+      const tagRows = tags.map((t) => ({
         user_list_id: data.id,
-        tag,
+        tag: t.tag,
+        partner_user_id: t.partner_user_id,
       }));
 
       const { error: tagError } = await supabase

@@ -1,10 +1,26 @@
-export type UserListTagType = "noite_de_pipoca" | "fim_de_semana";
+export type UserListTagType =
+  | "noite_de_pipoca"
+  | "fim_de_semana"
+  | "assistir_com";
 
 export interface UserListTag {
   id: string;
   user_list_id: string;
   tag: UserListTagType;
+  partner_user_id?: string;
   created_at: string;
+}
+
+export interface WatchPartner {
+  id: string;
+  user_id: string;
+  partner_user_id: string;
+  created_at: string;
+}
+
+export interface AvailableUser {
+  user_id: string;
+  display_name: string;
 }
 
 export interface UserListItem {

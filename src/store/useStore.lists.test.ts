@@ -2,8 +2,19 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { partnerService } from "../services/partnerService";
 import { userContentService } from "../services/userContent";
 import { useStore } from "./useStore";
+
+vi.mock("../services/partnerService", () => ({
+  partnerService: {
+    getAvailableUsers: vi.fn().mockResolvedValue([]),
+    addPartner: vi.fn(),
+    removePartner: vi.fn(),
+    getPartners: vi.fn().mockResolvedValue([]),
+    getAcceptedPartners: vi.fn().mockResolvedValue([]),
+  },
+}));
 
 vi.mock("../services/userContent", () => ({
   userContentService: {
@@ -47,6 +58,9 @@ const baselineState = {
   seriesMetadata: {},
   seasonCache: {},
   activeTags: [],
+  partners: [],
+  availableUsers: [],
+  activePartnerId: null,
 };
 
 describe("useStore list actions", () => {
@@ -308,7 +322,7 @@ describe("useStore list actions", () => {
       [expect.objectContaining({ id: 9 })],
       [9],
       {},
-      { 9: ["noite_de_pipoca"] },
+      { 9: [{ tag: "noite_de_pipoca" }] },
     );
     expect(useStore.getState().myList).toEqual([
       {
@@ -350,7 +364,7 @@ describe("useStore list actions", () => {
     expect(myList[0]?.tags?.[0]?.tag).toBe("noite_de_pipoca");
     expect(mockedUserContentService.addToList).toHaveBeenCalledWith(
       { id: 20, media_type: "movie", title: "Tagged Movie" },
-      ["noite_de_pipoca"],
+      [{ tag: "noite_de_pipoca", partner_user_id: undefined }],
     );
   });
 
@@ -594,5 +608,126 @@ describe("useStore list actions", () => {
     useStore.getState().setCachedSeason(1, 1, seasonData);
     expect(useStore.getState().getCachedSeason(1, 1)).toEqual(seasonData);
     expect(useStore.getState().getCachedSeason(2, 1)).toBeNull();
+  });
+
+  describe("partner actions", () => {
+    it("fetchPartners gets accepted partners and updates state", async () => {
+      const partners = [
+        {
+          id: "p1",
+          user_id: "u1",
+          partner_user_id: "u2",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+      ];
+      (partnerService.getAcceptedPartners as MockFn).mockResolvedValue(
+        partners,
+      );
+
+      await useStore.getState().fetchPartners();
+
+      expect(useStore.getState().partners).toEqual(partners);
+    });
+
+    it("setActivePartnerId updates the partner filter", () => {
+      expect(useStore.getState().activePartnerId).toBeNull();
+
+      useStore.getState().setActivePartnerId("pu1");
+
+      expect(useStore.getState().activePartnerId).toBe("pu1");
+    });
+
+    it("setActivePartnerId clears with null", () => {
+      useStore.getState().setActivePartnerId("pu1");
+      useStore.getState().setActivePartnerId(null);
+
+      expect(useStore.getState().activePartnerId).toBeNull();
+    });
+
+    it("addPartner calls service and updates state", async () => {
+      const newPartner = {
+        id: "p2",
+        user_id: "u1",
+        partner_user_id: "u3",
+        created_at: "2026-01-01T00:00:00Z",
+      };
+      (partnerService.addPartner as MockFn).mockResolvedValue(newPartner);
+
+      await useStore.getState().addPartner("u3");
+
+      expect(partnerService.addPartner).toHaveBeenCalledWith("u3");
+      expect(useStore.getState().partners).toContainEqual(newPartner);
+    });
+
+    it("addPartner does not update state on failure", async () => {
+      (partnerService.addPartner as MockFn).mockResolvedValue(null);
+
+      await useStore.getState().addPartner("u3");
+
+      expect(useStore.getState().partners).toHaveLength(0);
+    });
+
+    it("removePartner calls service and updates state", async () => {
+      useStore.setState({
+        partners: [
+          {
+            id: "p1",
+            user_id: "u1",
+            partner_user_id: "u2",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+      });
+
+      await useStore.getState().removePartner("p1");
+
+      expect(partnerService.removePartner).toHaveBeenCalledWith("p1");
+      expect(useStore.getState().partners).toHaveLength(0);
+    });
+
+    it("removePartner clears activePartnerId when removing the active partner", async () => {
+      useStore.setState({
+        partners: [
+          {
+            id: "p1",
+            user_id: "u1",
+            partner_user_id: "u2",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+        ],
+        activePartnerId: "p1",
+      });
+
+      await useStore.getState().removePartner("p1");
+
+      expect(useStore.getState().activePartnerId).toBeNull();
+    });
+
+    it("fetchAvailableUsers gets users and updates state", async () => {
+      const users = [{ user_id: "u2", display_name: "User Two" }];
+      (partnerService.getAvailableUsers as MockFn).mockResolvedValue(users);
+
+      await useStore.getState().fetchAvailableUsers();
+
+      expect(useStore.getState().availableUsers).toEqual(users);
+    });
+
+    it("addToListWithTags with partner adds tag with partner_user_id", () => {
+      useStore
+        .getState()
+        .addToListWithTags(
+          { id: 30, media_type: "movie", title: "Partner Movie" },
+          ["noite_de_pipoca", "assistir_com"],
+          "partner-u2",
+        );
+
+      const myList = useStore.getState().myList;
+      expect(myList).toHaveLength(1);
+      expect(myList[0]?.tags).toHaveLength(2);
+      const assistirTag = myList[0]?.tags?.find(
+        (t) => t.tag === "assistir_com",
+      );
+      expect(assistirTag?.partner_user_id).toBe("partner-u2");
+    });
   });
 });

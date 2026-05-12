@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Check, Clapperboard, Popcorn, Star } from "lucide-react";
+import { Check, Clapperboard, Popcorn, Star, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -19,16 +19,19 @@ interface MovieCardProps {
 const TAG_ICONS: Record<UserListTagType, typeof Popcorn> = {
   noite_de_pipoca: Popcorn,
   fim_de_semana: Clapperboard,
+  assistir_com: Users,
 };
 
 const TAG_LABELS: Record<UserListTagType, string> = {
   noite_de_pipoca: "Noite de Pipoca",
   fim_de_semana: "Fim de Semana",
+  assistir_com: "Assistir com",
 };
 
 const TAG_COLORS: Record<UserListTagType, string> = {
   noite_de_pipoca: "bg-yellow-500/80",
   fim_de_semana: "bg-blue-500/80",
+  assistir_com: "bg-purple-500/80",
 };
 
 export function MovieCard({

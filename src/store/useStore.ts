@@ -1,8 +1,10 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
+import { partnerService } from "../services/partnerService";
 import { userContentService } from "../services/userContent";
 import type {
+  AvailableUser,
   ContentItem,
   Episode,
   SeasonDetails,
@@ -10,6 +12,7 @@ import type {
   UserListItem,
   UserListTagType,
   WatchedEpisodeMetadata,
+  WatchPartner,
 } from "../types";
 
 interface ListStore {
@@ -19,8 +22,16 @@ interface ListStore {
   seriesMetadata: Record<number, SeriesMetadata>;
   activeTags: UserListTagType[];
 
+  partners: WatchPartner[];
+  availableUsers: AvailableUser[];
+  activePartnerId: string | null;
+
   addToList: (item: ContentItem) => void;
-  addToListWithTags: (item: ContentItem, tags: UserListTagType[]) => void;
+  addToListWithTags: (
+    item: ContentItem,
+    tags: UserListTagType[],
+    partnerUserId?: string,
+  ) => void;
   removeFromList: (id: number) => void;
   isInList: (id: number) => boolean;
   markAsWatched: (id: number) => void;
@@ -60,6 +71,12 @@ interface ListStore {
   setActiveTags: (tags: UserListTagType[]) => void;
   toggleTag: (tag: UserListTagType) => void;
 
+  fetchPartners: () => Promise<void>;
+  fetchAvailableUsers: () => Promise<void>;
+  addPartner: (userId: string) => Promise<void>;
+  removePartner: (partnerId: string) => Promise<void>;
+  setActivePartnerId: (partnerId: string | null) => void;
+
   syncWithSupabase: () => Promise<void>;
 }
 
@@ -91,6 +108,9 @@ export const useStore = create<ListStore>()(
       seriesMetadata: {},
       seasonCache: {},
       activeTags: [],
+      partners: [],
+      availableUsers: [],
+      activePartnerId: null,
 
       addToList: (item) => {
         set((state) => {
@@ -100,19 +120,24 @@ export const useStore = create<ListStore>()(
         });
       },
 
-      addToListWithTags: (item, tags) => {
+      addToListWithTags: (item, tags, partnerUserId) => {
         set((state) => {
           if (state.myList.some((i) => i.tmdb_id === item.id)) return state;
-          userContentService.addToList(item, tags);
+          const tagInputs = tags.map((t) => ({
+            tag: t,
+            partner_user_id: t === "assistir_com" ? partnerUserId : undefined,
+          }));
+          userContentService.addToList(item, tagInputs);
           return {
             myList: [
               ...state.myList,
               {
                 ...itemToUserListItem(item),
-                tags: tags.map((t) => ({
+                tags: tagInputs.map((t) => ({
                   id: "",
                   user_list_id: "",
-                  tag: t,
+                  tag: t.tag,
+                  partner_user_id: t.partner_user_id,
                   created_at: "",
                 })),
               },
@@ -341,6 +366,38 @@ export const useStore = create<ListStore>()(
         });
       },
 
+      fetchPartners: async () => {
+        const partners = await partnerService.getAcceptedPartners();
+        set({ partners });
+      },
+
+      fetchAvailableUsers: async () => {
+        const availableUsers = await partnerService.getAvailableUsers();
+        set({ availableUsers });
+      },
+
+      addPartner: async (userId) => {
+        const partner = await partnerService.addPartner(userId);
+        if (partner) {
+          set((state) => ({
+            partners: [...state.partners, partner],
+          }));
+        }
+      },
+
+      removePartner: async (partnerId) => {
+        await partnerService.removePartner(partnerId);
+        set((state) => ({
+          partners: state.partners.filter((p) => p.id !== partnerId),
+          activePartnerId:
+            state.activePartnerId === partnerId ? null : state.activePartnerId,
+        }));
+      },
+
+      setActivePartnerId: (partnerId) => {
+        set({ activePartnerId: partnerId });
+      },
+
       syncWithSupabase: async () => {
         const state = get();
 
@@ -357,10 +414,16 @@ export const useStore = create<ListStore>()(
           overview: item.overview,
         }));
 
-        const localTags: Record<number, UserListTagType[]> = {};
+        const localTags: Record<
+          number,
+          { tag: UserListTagType; partner_user_id?: string }[]
+        > = {};
         for (const item of state.myList) {
           if (item.tags && item.tags.length > 0) {
-            localTags[item.tmdb_id] = item.tags.map((t) => t.tag);
+            localTags[item.tmdb_id] = item.tags.map((t) => ({
+              tag: t.tag,
+              partner_user_id: t.partner_user_id,
+            }));
           }
         }
 
@@ -379,6 +442,14 @@ export const useStore = create<ListStore>()(
     }),
     {
       name: "listflix-storage",
+      partialize: (state) => ({
+        myList: state.myList,
+        watchedIds: state.watchedIds,
+        watchedEpisodes: state.watchedEpisodes,
+        seriesMetadata: state.seriesMetadata,
+        seasonCache: state.seasonCache,
+        activeTags: state.activeTags,
+      }),
     },
   ),
 );

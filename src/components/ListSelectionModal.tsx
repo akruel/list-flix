@@ -1,5 +1,5 @@
 import { Check, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+import { useAuth } from "../contexts/AuthContext";
 import { useStore } from "../store/useStore";
 import type { ContentItem, UserListTagType } from "../types";
 import { TagSelector } from "./TagSelector";
@@ -24,22 +25,61 @@ export function ListSelectionModal({
   onClose,
   content,
 }: ListSelectionModalProps) {
-  const { myList, isInList, addToListWithTags, removeFromList } = useStore();
+  const { user } = useAuth();
+  const {
+    myList,
+    isInList,
+    addToListWithTags,
+    removeFromList,
+    partners,
+    availableUsers,
+    fetchPartners,
+  } = useStore();
   const [selectedTags, setSelectedTags] = useState<UserListTagType[]>([]);
+  const [selectedPartnerId, setSelectedPartnerId] = useState<string>();
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchPartners();
+    }
+  }, [isOpen, fetchPartners]);
+
+  const partnerOptions = useMemo(
+    () =>
+      partners
+        .map((p) => {
+          const partnerUserId =
+            p.user_id === user?.id ? p.partner_user_id : p.user_id;
+          const partnerUser = availableUsers.find(
+            (u) => u.user_id === partnerUserId,
+          );
+          return {
+            partnerUserId,
+            displayName: partnerUser?.display_name ?? "Usuário",
+          };
+        })
+        .filter((p) => p.partnerUserId),
+    [partners, availableUsers, user?.id],
+  );
 
   const inList = isInList(content.id);
   const existingItem = myList.find((i) => i.tmdb_id === content.id);
-  const existingTags =
-    existingItem?.tags?.map((t) => t.tag as UserListTagType) || [];
 
   const handleToggleTag = (tag: UserListTagType) => {
+    if (tag === "assistir_com") {
+      setSelectedPartnerId(undefined);
+    }
     setSelectedTags((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
   };
 
+  const handlePartnerChange = (partnerId: string | undefined) => {
+    setSelectedPartnerId(partnerId);
+  };
+
   const handleAdd = () => {
-    addToListWithTags(content, selectedTags);
+    addToListWithTags(content, selectedTags, selectedPartnerId);
     onClose();
   };
 
@@ -50,6 +90,7 @@ export function ListSelectionModal({
 
   const handleClose = () => {
     setSelectedTags([]);
+    setSelectedPartnerId(undefined);
     onClose();
   };
 
@@ -72,23 +113,32 @@ export function ListSelectionModal({
                 </span>
               </div>
 
-              {existingTags.length > 0 && (
+              {existingItem?.tags && existingItem.tags.length > 0 ? (
                 <div className="space-y-2">
                   <p className="text-sm text-gray-400">Tags atuais:</p>
                   <div className="flex flex-wrap gap-2">
-                    {existingTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-md bg-purple-600/20 px-2.5 py-1 text-xs text-purple-400"
-                      >
-                        {tag === "noite_de_pipoca"
-                          ? "Noite de Pipoca"
-                          : "Fim de Semana"}
-                      </span>
-                    ))}
+                    {existingItem?.tags?.map((t) => {
+                      const tagUser = t.partner_user_id
+                        ? availableUsers.find(
+                            (u) => u.user_id === t.partner_user_id,
+                          )
+                        : undefined;
+                      return (
+                        <span
+                          key={`${t.tag}-${t.partner_user_id ?? ""}`}
+                          className="rounded-md bg-purple-600/20 px-2.5 py-1 text-xs text-purple-400"
+                        >
+                          {t.tag === "noite_de_pipoca"
+                            ? "Noite de Pipoca"
+                            : t.tag === "fim_de_semana"
+                              ? "Fim de Semana"
+                              : `Assistir com ${tagUser?.display_name ?? "..."}`}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
-              )}
+              ) : null}
 
               <Button
                 data-testid="list-selection-remove"
@@ -105,6 +155,9 @@ export function ListSelectionModal({
               <TagSelector
                 selectedTags={selectedTags}
                 onToggle={handleToggleTag}
+                partnerOptions={partnerOptions}
+                selectedPartnerId={selectedPartnerId}
+                onPartnerChange={handlePartnerChange}
               />
 
               <Button

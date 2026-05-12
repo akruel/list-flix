@@ -180,13 +180,13 @@ describe("userContentService", () => {
       ],
       [],
       {},
-      { 11: ["noite_de_pipoca"] },
+      { 11: [{ tag: "noite_de_pipoca" }] },
     );
 
     expect(inserts.user_list).toHaveLength(1);
     expect(inserts.user_list[0]).toMatchObject({ tmdb_id: 11 });
     expect(userListTagInserts).toHaveLength(1);
-    expect(userListTagInserts[0]).toEqual({
+    expect(userListTagInserts[0]).toMatchObject({
       user_list_id: "new-uuid-11",
       tag: "noite_de_pipoca",
     });
@@ -220,7 +220,7 @@ describe("userContentService", () => {
       [{ id: 1, media_type: "movie", title: "A" }],
       [],
       {},
-      { 1: ["noite_de_pipoca"] },
+      { 1: [{ tag: "noite_de_pipoca" as const }] },
     );
 
     expect(consoleErrorSpy).toHaveBeenCalled();
@@ -502,7 +502,7 @@ describe("userContentService", () => {
 
     const result = await userContentService.addToList(
       { id: 1, media_type: "movie" },
-      ["noite_de_pipoca"],
+      [{ tag: "noite_de_pipoca" }],
     );
 
     expect(result).toEqual({
@@ -561,7 +561,7 @@ describe("userContentService", () => {
     });
 
     await userContentService.addToList({ id: 1, media_type: "movie" }, [
-      "noite_de_pipoca",
+      { tag: "noite_de_pipoca" },
     ]);
 
     expect(consoleErrorSpy).toHaveBeenCalled();

@@ -1,33 +1,72 @@
-import { Eye, EyeOff, List, Sparkles } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Eye, EyeOff, List, Sparkles, UserPlus } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { AiRecommendationModal } from "@/components/AiRecommendationModal";
 import { MovieCard } from "@/components/MovieCard";
+import { PartnerAddModal } from "@/components/PartnerAddModal";
 import { TagFilter } from "@/components/TagFilter";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStore } from "@/store/useStore";
 import type { UserListTagType } from "@/types";
 
 type FilterType = "all" | "watched" | "unwatched";
 
 export function MyListScreen() {
-  const { myList, isWatched, activeTags, toggleTag } = useStore();
+  const { user } = useAuth();
+  const {
+    myList,
+    isWatched,
+    activeTags,
+    toggleTag,
+    partners,
+    availableUsers,
+    activePartnerId,
+    fetchPartners,
+    fetchAvailableUsers,
+    setActivePartnerId,
+  } = useStore();
   const [filter, setFilter] = useState<FilterType>("all");
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [showPartnerModal, setShowPartnerModal] = useState(false);
+
+  useEffect(() => {
+    fetchPartners();
+    fetchAvailableUsers();
+  }, [fetchPartners, fetchAvailableUsers]);
+
+  const partnerOptions = useMemo(
+    () =>
+      partners
+        .map((p) => {
+          const partnerUserId =
+            p.user_id === user?.id ? p.partner_user_id : p.user_id;
+          const partnerUser = availableUsers.find(
+            (u) => u.user_id === partnerUserId,
+          );
+          return {
+            partnerUserId,
+            displayName: partnerUser?.display_name ?? "Usuário",
+          };
+        })
+        .filter((p) => p.partnerUserId),
+    [partners, availableUsers, user?.id],
+  );
 
   const tagCounts = useMemo(() => {
-    const counts: Record<UserListTagType, number> = {
+    const counts: Record<string, number> = {
       noite_de_pipoca: 0,
       fim_de_semana: 0,
+      assistir_com: 0,
     };
     for (const item of myList) {
       if (item.tags) {
         for (const t of item.tags) {
-          if (t.tag in counts) counts[t.tag as UserListTagType]++;
+          if (t.tag in counts) counts[t.tag]++;
         }
       }
     }
-    return counts;
+    return counts as Record<UserListTagType, number>;
   }, [myList]);
 
   const filteredList = useMemo(() => {
@@ -39,12 +78,28 @@ export function MyListScreen() {
       );
     }
 
+    if (activePartnerId) {
+      items = items.filter((item) =>
+        item.tags?.some(
+          (t) =>
+            t.tag === "assistir_com" && t.partner_user_id === activePartnerId,
+        ),
+      );
+    }
+
     if (filter === "watched")
       return items.filter((item) => isWatched(item.tmdb_id));
     if (filter === "unwatched")
       return items.filter((item) => !isWatched(item.tmdb_id));
     return items;
-  }, [myList, activeTags, filter, isWatched]);
+  }, [myList, activeTags, activePartnerId, filter, isWatched]);
+
+  const handlePartnerChange = useCallback(
+    (partnerId: string | null) => {
+      setActivePartnerId(partnerId);
+    },
+    [setActivePartnerId],
+  );
 
   return (
     <div data-testid="route-lists-screen">
@@ -58,6 +113,14 @@ export function MyListScreen() {
           <Sparkles size={16} className="mr-2" />
           IA
         </Button>
+        <button
+          data-testid="open-partner-modal"
+          onClick={() => setShowPartnerModal(true)}
+          className="flex items-center gap-2 rounded-lg bg-gray-800 px-3 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-gray-700 md:text-sm"
+        >
+          <UserPlus size={16} />
+          <span className="hidden sm:inline">Parceiros</span>
+        </button>
       </div>
 
       <div className="mb-6 space-y-4">
@@ -65,6 +128,9 @@ export function MyListScreen() {
           activeTags={activeTags}
           onToggle={toggleTag}
           counts={tagCounts}
+          partnerOptions={partnerOptions}
+          activePartnerId={activePartnerId}
+          onPartnerChange={handlePartnerChange}
         />
 
         <div className="flex flex-wrap gap-2">
@@ -148,6 +214,10 @@ export function MyListScreen() {
       <AiRecommendationModal
         isOpen={aiModalOpen}
         onClose={() => setAiModalOpen(false)}
+      />
+      <PartnerAddModal
+        isOpen={showPartnerModal}
+        onClose={() => setShowPartnerModal(false)}
       />
     </div>
   );

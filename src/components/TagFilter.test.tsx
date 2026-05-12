@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TagFilter } from "./TagFilter";
 
 describe("TagFilter", () => {
-  const counts = { noite_de_pipoca: 3, fim_de_semana: 2 };
+  const counts = { noite_de_pipoca: 3, fim_de_semana: 2, assistir_com: 0 };
   const onToggle = vi.fn();
 
   beforeEach(() => {
@@ -51,10 +51,94 @@ describe("TagFilter", () => {
       <TagFilter
         activeTags={[]}
         onToggle={onToggle}
-        counts={{ noite_de_pipoca: 0, fim_de_semana: 0 }}
+        counts={{ noite_de_pipoca: 0, fim_de_semana: 0, assistir_com: 0 }}
       />,
     );
 
     expect(screen.getByText(/Noite de Pipoca.*0/)).toBeInTheDocument();
+  });
+
+  it("renders partner select when partnerOptions are provided", () => {
+    render(
+      <TagFilter
+        activeTags={[]}
+        onToggle={onToggle}
+        counts={counts}
+        partnerOptions={[{ partnerUserId: "pu1", displayName: "Partner One" }]}
+      />,
+    );
+
+    expect(screen.getByText("Assistir com…")).toBeInTheDocument();
+    expect(screen.getByText("Partner One")).toBeInTheDocument();
+  });
+
+  it("calls onPartnerChange when partner is selected", async () => {
+    const onPartnerChange = vi.fn();
+    render(
+      <TagFilter
+        activeTags={[]}
+        onToggle={onToggle}
+        counts={counts}
+        partnerOptions={[{ partnerUserId: "pu1", displayName: "Partner One" }]}
+        activePartnerId={null}
+        onPartnerChange={onPartnerChange}
+      />,
+    );
+
+    await userEvent.selectOptions(
+      screen.getByTestId("tag-filter-partner"),
+      "pu1",
+    );
+
+    expect(onPartnerChange).toHaveBeenCalledWith("pu1");
+  });
+
+  it("does not render partner section when partnerOptions is empty", () => {
+    render(
+      <TagFilter
+        activeTags={[]}
+        onToggle={onToggle}
+        counts={counts}
+        partnerOptions={[]}
+      />,
+    );
+
+    expect(screen.queryByText("Assistir com…")).not.toBeInTheDocument();
+  });
+
+  it("shows active partner selection", () => {
+    render(
+      <TagFilter
+        activeTags={[]}
+        onToggle={onToggle}
+        counts={counts}
+        partnerOptions={[{ partnerUserId: "pu1", displayName: "Partner One" }]}
+        activePartnerId="pu1"
+        onPartnerChange={vi.fn()}
+      />,
+    );
+
+    const select = screen.getByTestId(
+      "tag-filter-partner",
+    ) as HTMLSelectElement;
+    expect(select.value).toBe("pu1");
+  });
+
+  it("clears partner filter when selecting empty option", async () => {
+    const onPartnerChange = vi.fn();
+    render(
+      <TagFilter
+        activeTags={[]}
+        onToggle={onToggle}
+        counts={counts}
+        partnerOptions={[{ partnerUserId: "pu1", displayName: "Partner One" }]}
+        activePartnerId="pu1"
+        onPartnerChange={onPartnerChange}
+      />,
+    );
+
+    await userEvent.selectOptions(screen.getByTestId("tag-filter-partner"), "");
+
+    expect(onPartnerChange).toHaveBeenCalledWith(null);
   });
 });
