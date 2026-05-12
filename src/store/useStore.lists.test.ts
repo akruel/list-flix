@@ -240,7 +240,7 @@ describe("useStore list actions", () => {
     expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(101);
   });
 
-  it("checks episode watched status", () => {
+  it("checks episode watched status by id", () => {
     useStore.setState({
       watchedEpisodes: { 1: { 101: { season_number: 1, episode_number: 1 } } },
     });
@@ -312,6 +312,62 @@ describe("useStore list actions", () => {
     expect(useStore.getState().watchedIds).toEqual([1]);
   });
 
+  it("setActiveTags replaces all active tags", () => {
+    useStore.getState().setActiveTags(["noite_de_pipoca"]);
+    expect(useStore.getState().activeTags).toEqual(["noite_de_pipoca"]);
+
+    useStore.getState().setActiveTags(["fim_de_semana"]);
+    expect(useStore.getState().activeTags).toEqual(["fim_de_semana"]);
+
+    useStore.getState().setActiveTags([]);
+    expect(useStore.getState().activeTags).toEqual([]);
+  });
+
+  it("addToListWithTags adds item with tags and calls service", () => {
+    useStore
+      .getState()
+      .addToListWithTags(
+        { id: 20, media_type: "movie", title: "Tagged Movie" },
+        ["noite_de_pipoca"],
+      );
+
+    const myList = useStore.getState().myList;
+    expect(myList).toHaveLength(1);
+    expect(myList[0]?.tmdb_id).toBe(20);
+    expect(myList[0]?.tags).toHaveLength(1);
+    expect(myList[0]?.tags?.[0]?.tag).toBe("noite_de_pipoca");
+    expect(mockedUserContentService.addToList).toHaveBeenCalledWith(
+      { id: 20, media_type: "movie", title: "Tagged Movie" },
+      ["noite_de_pipoca"],
+    );
+  });
+
+  it("addToListWithTags does not add duplicate item", () => {
+    useStore.setState({
+      myList: [
+        {
+          id: "temp_20",
+          user_id: "",
+          tmdb_id: 20,
+          media_type: "movie",
+          title: "Tagged Movie",
+          tags: [],
+          created_at: "",
+        },
+      ],
+    });
+
+    useStore
+      .getState()
+      .addToListWithTags(
+        { id: 20, media_type: "movie", title: "Tagged Movie" },
+        ["noite_de_pipoca"],
+      );
+
+    expect(useStore.getState().myList).toHaveLength(1);
+    expect(mockedUserContentService.addToList).not.toHaveBeenCalled();
+  });
+
   it("toggleTag adds and removes tags from activeTags", () => {
     expect(useStore.getState().activeTags).toEqual([]);
     useStore.getState().toggleTag("noite_de_pipoca");
@@ -323,6 +379,189 @@ describe("useStore list actions", () => {
     ]);
     useStore.getState().toggleTag("noite_de_pipoca");
     expect(useStore.getState().activeTags).toEqual(["fim_de_semana"]);
+  });
+
+  it("marks and unmarks episodes as watched", () => {
+    useStore.getState().markEpisodeAsWatched(1, 101, 2, 3);
+
+    expect(useStore.getState().watchedEpisodes[1]?.[101]).toEqual({
+      season_number: 2,
+      episode_number: 3,
+    });
+    expect(mockedUserContentService.markAsWatched).toHaveBeenCalledWith(
+      101,
+      "episode",
+      { show_id: 1, season_number: 2, episode_number: 3 },
+    );
+
+    useStore.getState().markEpisodeAsUnwatched(1, 101);
+    expect(useStore.getState().watchedEpisodes[1]).toEqual({});
+    expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(101);
+  });
+
+  it("adds episode to existing show bucket", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: { 101: { season_number: 1, episode_number: 1 } },
+      },
+    });
+
+    useStore.getState().markEpisodeAsWatched(1, 102, 1, 2);
+
+    expect(useStore.getState().watchedEpisodes[1]?.[101]).toBeDefined();
+    expect(useStore.getState().watchedEpisodes[1]?.[102]).toEqual({
+      season_number: 1,
+      episode_number: 2,
+    });
+  });
+
+  it("does not re-mark an already watched episode", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: { 101: { season_number: 2, episode_number: 1 } },
+      },
+    });
+
+    useStore.getState().markEpisodeAsWatched(1, 101, 2, 1);
+
+    expect(mockedUserContentService.markAsWatched).not.toHaveBeenCalled();
+  });
+
+  it("markEpisodeAsUnwatched handles missing show bucket", () => {
+    useStore.setState({ watchedEpisodes: {} });
+
+    useStore.getState().markEpisodeAsUnwatched(99, 1001);
+
+    expect(useStore.getState().watchedEpisodes[99]).toEqual({});
+    expect(mockedUserContentService.markAsUnwatched).toHaveBeenCalledWith(1001);
+  });
+
+  it("checks episode watched status with missing show", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: { 101: { season_number: 1, episode_number: 1 } },
+      },
+    });
+
+    expect(useStore.getState().isEpisodeWatched(1, 101)).toBe(true);
+    expect(useStore.getState().isEpisodeWatched(1, 999)).toBe(false);
+    expect(useStore.getState().isEpisodeWatched(99, 101)).toBe(false);
+  });
+
+  it("markSeasonAsUnwatched handles missing show bucket", () => {
+    useStore.setState({ watchedEpisodes: {} });
+
+    useStore.getState().markSeasonAsUnwatched(5, 3);
+
+    expect(useStore.getState().watchedEpisodes[5]).toEqual({});
+    expect(mockedUserContentService.markSeasonAsUnwatched).toHaveBeenCalledWith(
+      5,
+      3,
+    );
+  });
+
+  it("markSeasonAsWatched with new show initializes empty bucket", () => {
+    useStore.setState({
+      watchedEpisodes: {},
+    });
+
+    useStore
+      .getState()
+      .markSeasonAsWatched(99, 1, [
+        { id: 1, season_number: 1, episode_number: 1 },
+      ] as never);
+
+    expect(useStore.getState().watchedEpisodes[99]?.[1]).toEqual({
+      season_number: 1,
+      episode_number: 1,
+    });
+  });
+
+  it("marks and unmarks a full season", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: { 201: { season_number: 2, episode_number: 1 } },
+      },
+    });
+
+    useStore
+      .getState()
+      .markSeasonAsWatched(1, 1, [
+        { id: 101, season_number: 1, episode_number: 1 },
+      ] as never);
+
+    expect(mockedUserContentService.markSeasonAsWatched).toHaveBeenCalledWith(
+      1,
+      1,
+      [{ id: 101, season_number: 1, episode_number: 1 }],
+    );
+
+    useStore.getState().markSeasonAsUnwatched(1, 1);
+    expect(mockedUserContentService.markSeasonAsUnwatched).toHaveBeenCalledWith(
+      1,
+      1,
+    );
+  });
+
+  it("computes season progress", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: {
+          100: { season_number: 1, episode_number: 1 },
+          200: { season_number: 2, episode_number: 1 },
+        },
+      },
+    });
+
+    expect(useStore.getState().getSeasonProgress(1, 1)).toEqual({
+      watchedCount: 1,
+    });
+    expect(useStore.getState().getSeasonProgress(1, 2)).toEqual({
+      watchedCount: 1,
+    });
+  });
+
+  it("computes series progress excluding specials", () => {
+    useStore.setState({
+      watchedEpisodes: {
+        1: {
+          100: { season_number: 0, episode_number: 1 },
+          200: { season_number: 1, episode_number: 1 },
+        },
+      },
+    });
+
+    expect(useStore.getState().getSeriesProgress(1)).toEqual({
+      watchedCount: 1,
+    });
+  });
+
+  it("returns zero progress when show has no watched episodes", () => {
+    useStore.setState({ watchedEpisodes: {} });
+
+    expect(useStore.getState().getSeasonProgress(999, 1)).toEqual({
+      watchedCount: 0,
+    });
+    expect(useStore.getState().getSeriesProgress(999)).toEqual({
+      watchedCount: 0,
+    });
+  });
+
+  it("getSeriesMetadata returns metadata when it exists", () => {
+    useStore.setState({
+      seriesMetadata: { 1: { total_episodes: 10, number_of_seasons: 2 } },
+    });
+
+    expect(useStore.getState().getSeriesMetadata(1)).toEqual({
+      total_episodes: 10,
+      number_of_seasons: 2,
+    });
+  });
+
+  it("getSeriesMetadata returns undefined when not cached", () => {
+    useStore.setState({ seriesMetadata: {} });
+
+    expect(useStore.getState().getSeriesMetadata(99)).toBeUndefined();
   });
 
   it("getCachedSeason returns null when not cached", () => {

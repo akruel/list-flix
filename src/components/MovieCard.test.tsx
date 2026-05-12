@@ -243,4 +243,72 @@ describe("MovieCard", () => {
 
     expect(screen.queryByText("Ver Detalhes")).not.toBeInTheDocument();
   });
+
+  it("shows tag badges when tags prop is provided", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        tags={[
+          {
+            id: "1",
+            user_list_id: "l1",
+            tag: "noite_de_pipoca",
+            created_at: "",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTitle("Noite de Pipoca")).toBeInTheDocument();
+  });
+
+  it("shows multiple tag badges", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        tags={[
+          {
+            id: "1",
+            user_list_id: "l1",
+            tag: "noite_de_pipoca",
+            created_at: "",
+          },
+          { id: "2", user_list_id: "l1", tag: "fim_de_semana", created_at: "" },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTitle("Noite de Pipoca")).toBeInTheDocument();
+    expect(screen.getByTitle("Fim de Semana")).toBeInTheDocument();
+  });
+
+  it("handles tag badge with empty id fallback", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        tags={[
+          {
+            id: "",
+            user_list_id: "l1",
+            tag: "noite_de_pipoca",
+            created_at: "",
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTitle("Noite de Pipoca")).toBeInTheDocument();
+  });
 });

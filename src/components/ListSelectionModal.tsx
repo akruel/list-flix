@@ -1,4 +1,4 @@
-import { Check, Loader2, Plus, Trash2 } from "lucide-react";
+import { Check, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,6 @@ export function ListSelectionModal({
 }: ListSelectionModalProps) {
   const { myList, isInList, addToListWithTags, removeFromList } = useStore();
   const [selectedTags, setSelectedTags] = useState<UserListTagType[]>([]);
-  const [loading, setLoading] = useState(false);
 
   const inList = isInList(content.id);
   const existingItem = myList.find((i) => i.tmdb_id === content.id);
@@ -39,14 +38,9 @@ export function ListSelectionModal({
     );
   };
 
-  const handleAdd = async () => {
-    setLoading(true);
-    try {
-      addToListWithTags(content, selectedTags);
-      onClose();
-    } finally {
-      setLoading(false);
-    }
+  const handleAdd = () => {
+    addToListWithTags(content, selectedTags);
+    onClose();
   };
 
   const handleRemove = () => {
@@ -116,14 +110,9 @@ export function ListSelectionModal({
               <Button
                 data-testid="list-selection-add"
                 onClick={handleAdd}
-                disabled={loading}
                 className="w-full bg-purple-600 text-white hover:bg-purple-700"
               >
-                {loading ? (
-                  <Loader2 size={16} className="mr-2 animate-spin" />
-                ) : (
-                  <Plus size={16} className="mr-2" />
-                )}
+                <Plus size={16} className="mr-2" />
                 Adicionar à Lista
               </Button>
             </>

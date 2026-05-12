@@ -140,4 +140,43 @@ describe("ListSelectionModal", () => {
     expect(screen.getByText("Noite de Pipoca")).toBeInTheDocument();
     expect(screen.getByText("Fim de Semana")).toBeInTheDocument();
   });
+
+  it("calls removeFromList and closes when removing with tags", async () => {
+    mocks.storeValue.isInList.mockReturnValue(true);
+    mocks.storeValue.myList = [
+      { tmdb_id: 10, tags: [{ tag: "fim_de_semana" }] },
+    ];
+    const onClose = vi.fn();
+
+    render(<ListSelectionModal isOpen onClose={onClose} content={content} />);
+
+    expect(screen.getByText("Fim de Semana")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Remover da Lista"));
+    expect(mocks.storeValue.removeFromList).toHaveBeenCalledWith(10);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("selects and deselects tags via tag selector inside modal", async () => {
+    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+
+    const tagButton = screen.getByTestId("tag-selector-noite_de_pipoca");
+    await userEvent.click(tagButton);
+    expect(tagButton.className).toContain("border-purple-500");
+
+    await userEvent.click(tagButton);
+    expect(tagButton.className).not.toContain("border-purple-500");
+  });
+
+  it("calls addToListWithTags with selected tags and closes", async () => {
+    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+
+    await userEvent.click(screen.getByTestId("tag-selector-noite_de_pipoca"));
+    await userEvent.click(screen.getByTestId("tag-selector-fim_de_semana"));
+    await userEvent.click(screen.getByText("Adicionar à Lista"));
+
+    expect(mocks.storeValue.addToListWithTags).toHaveBeenCalledWith(content, [
+      "noite_de_pipoca",
+      "fim_de_semana",
+    ]);
+  });
 });
