@@ -9,6 +9,7 @@ export function NotificationToggle() {
   const {
     isSupported,
     swReady,
+    swChecked,
     isSubscribed,
     isSubscribing,
     isUnsubscribing,
@@ -18,7 +19,8 @@ export function NotificationToggle() {
 
   const isLoggedIn = status === "authenticated";
 
-  if (!isSupported || !isLoggedIn) return null;
+  if (!isSupported || !isLoggedIn || !swChecked) return null;
+  if (!swReady) return null;
 
   const handleClick = async () => {
     if (isSubscribed) {
@@ -44,7 +46,7 @@ export function NotificationToggle() {
     }
   };
 
-  const isBusy = isSubscribing || isUnsubscribing || !swReady;
+  const isBusy = isSubscribing || isUnsubscribing;
 
   return (
     <button

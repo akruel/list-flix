@@ -41,6 +41,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -57,6 +58,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: false,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -68,10 +70,11 @@ describe("NotificationToggle", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("shows loader when sw is not ready", () => {
+  it("returns null when service worker check has not completed yet", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: false,
+      swChecked: false,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -79,8 +82,24 @@ describe("NotificationToggle", () => {
       unsubscribe: vi.fn(),
     });
 
-    render(<NotificationToggle />);
-    expect(screen.getByTestId("loader-icon")).toBeInTheDocument();
+    const { container } = render(<NotificationToggle />);
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("returns null when service worker is not available", () => {
+    mocks.usePushNotification.mockReturnValue({
+      isSupported: true,
+      swReady: false,
+      swChecked: true,
+      isSubscribed: false,
+      isSubscribing: false,
+      isUnsubscribing: false,
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    });
+
+    const { container } = render(<NotificationToggle />);
+    expect(container.innerHTML).toBe("");
   });
 
   it("returns null when user is not logged in", () => {
@@ -88,6 +107,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -109,6 +129,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: true,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -125,9 +146,10 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
-      isSubscribed: false,
-      isSubscribing: true,
-      isUnsubscribing: false,
+      swChecked: true,
+      isSubscribed: true,
+      isSubscribing: false,
+      isUnsubscribing: true,
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     });
@@ -141,9 +163,10 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
-      isSubscribed: true,
-      isSubscribing: false,
-      isUnsubscribing: true,
+      swChecked: true,
+      isSubscribed: false,
+      isSubscribing: true,
+      isUnsubscribing: false,
       subscribe: vi.fn(),
       unsubscribe: vi.fn(),
     });
@@ -158,6 +181,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -177,6 +201,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: true,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -196,6 +221,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -216,6 +242,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -236,6 +263,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: true,
       isSubscribing: false,
       isUnsubscribing: false,
@@ -255,6 +283,7 @@ describe("NotificationToggle", () => {
     mocks.usePushNotification.mockReturnValue({
       isSupported: true,
       swReady: true,
+      swChecked: true,
       isSubscribed: false,
       isSubscribing: true,
       isUnsubscribing: false,

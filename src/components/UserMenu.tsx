@@ -62,6 +62,7 @@ export function UserMenu({ user }: UserMenuProps) {
               <AvatarImage
                 src={user.avatarUrl || ""}
                 alt={user.displayName || "User"}
+                referrerPolicy="no-referrer"
               />
               <AvatarFallback>
                 <User className="h-4 w-4" />
