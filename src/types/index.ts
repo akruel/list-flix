@@ -150,7 +150,7 @@ export interface SeasonDetails {
   season_number: number;
 }
 
-export type AuthProvider = "email" | "google" | "anonymous" | "unknown";
+export type AuthProvider = "email" | "google" | "unknown";
 
 export interface UserProfile {
   id: string;
@@ -158,5 +158,4 @@ export interface UserProfile {
   displayName?: string;
   avatarUrl?: string;
   provider: AuthProvider;
-  isAnonymous: boolean;
 }

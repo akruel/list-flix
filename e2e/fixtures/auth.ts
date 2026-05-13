@@ -1,16 +1,25 @@
 import { expect, type Page } from "@playwright/test";
 
 import { ROUTE_TEST_IDS } from "./routes";
+import { createSeededUser } from "./supabase-seed";
 
-export async function continueAsGuest(page: Page): Promise<void> {
+export async function signIn(page: Page): Promise<void> {
+  const user = await createSeededUser("e2e");
+
   await page.goto("/auth");
 
-  if (new URL(page.url()).pathname === "/auth") {
-    await expect(page.getByTestId(ROUTE_TEST_IDS.auth)).toBeVisible();
-    await page
-      .getByRole("button", { name: "Continuar como visitante" })
-      .click();
-  }
+  await page.evaluate(
+    async ({ email, password }) => {
+      const sb = window.__supabase;
+      if (!sb) throw new Error("__supabase not available on window");
+      const { error } = await sb.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+    },
+    { email: user.email, password: user.password },
+  );
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId(ROUTE_TEST_IDS.home)).toBeVisible();

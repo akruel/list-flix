@@ -6,8 +6,7 @@ import { UserMenu } from "./UserMenu";
 
 const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
-  signOutToGuest: vi.fn(),
-  signOutFully: vi.fn(),
+  signOut: vi.fn(),
   toastError: vi.fn(),
 }));
 
@@ -17,8 +16,7 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("../contexts/AuthContext", () => ({
   useAuth: () => ({
-    signOutToGuest: mocks.signOutToGuest,
-    signOutFully: mocks.signOutFully,
+    signOut: mocks.signOut,
   }),
 }));
 
@@ -55,33 +53,59 @@ vi.mock("@/components/ui/dropdown-menu", () => ({
   ),
 }));
 
-vi.mock("./LogoutChoiceDialog", () => ({
-  LogoutChoiceDialog: ({
+vi.mock("@/components/ui/alert-dialog", () => ({
+  AlertDialog: ({
+    children,
     open,
-    onContinueAsGuest,
-    onSignOutFully,
   }: {
-    open: boolean;
-    onContinueAsGuest: () => void;
-    onSignOutFully: () => void;
-  }) =>
-    open ? (
-      <div>
-        <button type="button" onClick={onContinueAsGuest}>
-          Continue as guest
-        </button>
-        <button type="button" onClick={onSignOutFully}>
-          Sign out fully
-        </button>
-      </div>
-    ) : null,
+    children: React.ReactNode;
+    open?: boolean;
+  }) => (open ? <div>{children}</div> : null),
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogCancel: ({
+    children,
+    ...props
+  }: {
+    children: React.ReactNode;
+    disabled?: boolean;
+  }) => (
+    <button type="button" {...props}>
+      {children}
+    </button>
+  ),
+  AlertDialogAction: ({
+    children,
+    onClick,
+    ...props
+  }: {
+    children: React.ReactNode;
+    onClick?: (e: React.MouseEvent) => void;
+    disabled?: boolean;
+  }) => (
+    <button type="button" onClick={onClick} {...props}>
+      {children}
+    </button>
+  ),
 }));
 
 describe("UserMenu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.signOutToGuest.mockResolvedValue(undefined);
-    mocks.signOutFully.mockResolvedValue(undefined);
+    mocks.signOut.mockResolvedValue(undefined);
   });
 
   async function openLogoutDialog() {
@@ -92,7 +116,6 @@ describe("UserMenu", () => {
           displayName: "Alice",
           email: "alice@example.com",
           provider: "email",
-          isAnonymous: false,
         }}
       />,
     );
@@ -106,7 +129,6 @@ describe("UserMenu", () => {
         user={{
           id: "user-1",
           provider: "email",
-          isAnonymous: false,
         }}
       />,
     );
@@ -115,50 +137,35 @@ describe("UserMenu", () => {
     expect(screen.getByText("Sem email")).toBeInTheDocument();
   });
 
-  it.each([
-    {
-      caseName: "continue as guest success",
-      actionLabel: "Continue as guest",
-      setup: () => mocks.signOutToGuest.mockResolvedValue(undefined),
-      expectedNavigate: { to: "/", replace: true },
-      expectedToast: false,
-    },
-    {
-      caseName: "continue as guest failure",
-      actionLabel: "Continue as guest",
-      setup: () => mocks.signOutToGuest.mockRejectedValue(new Error("failed")),
-      expectedNavigate: null,
-      expectedToast: true,
-    },
-    {
-      caseName: "sign out fully success",
-      actionLabel: "Sign out fully",
-      setup: () => mocks.signOutFully.mockResolvedValue(undefined),
-      expectedNavigate: { to: "/auth", replace: true },
-      expectedToast: false,
-    },
-    {
-      caseName: "sign out fully failure",
-      actionLabel: "Sign out fully",
-      setup: () => mocks.signOutFully.mockRejectedValue(new Error("failed")),
-      expectedNavigate: null,
-      expectedToast: true,
-    },
-  ])(
-    "handles $caseName",
-    async ({ actionLabel, setup, expectedNavigate, expectedToast }) => {
-      setup();
-      await openLogoutDialog();
+  it("handles sign out success", async () => {
+    mocks.signOut.mockResolvedValue(undefined);
+    await openLogoutDialog();
 
-      await userEvent.click(screen.getByRole("button", { name: actionLabel }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    const confirmButton = screen.getAllByRole("button", { name: "Sair" });
+    await userEvent.click(confirmButton[confirmButton.length - 1]);
 
-      await waitFor(() => {
-        expect(mocks.navigate).toHaveBeenCalledTimes(expectedNavigate ? 1 : 0);
-        expect(mocks.navigate.mock.calls[0]?.[0]).toEqual(
-          expectedNavigate ? expectedNavigate : undefined,
-        );
-        expect(mocks.toastError).toHaveBeenCalledTimes(expectedToast ? 1 : 0);
+    await waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledOnce();
+      expect(mocks.navigate).toHaveBeenCalledWith({
+        to: "/auth",
+        replace: true,
       });
-    },
-  );
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    });
+  });
+
+  it("handles sign out failure", async () => {
+    mocks.signOut.mockRejectedValue(new Error("failed"));
+    await openLogoutDialog();
+
+    const confirmButton = screen.getAllByRole("button", { name: "Sair" });
+    await userEvent.click(confirmButton[confirmButton.length - 1]);
+
+    await waitFor(() => {
+      expect(mocks.signOut).toHaveBeenCalledOnce();
+      expect(mocks.navigate).not.toHaveBeenCalled();
+      expect(mocks.toastError).toHaveBeenCalledOnce();
+    });
+  });
 });

@@ -46,6 +46,7 @@ export function usePushNotification() {
   const { user, status } = useAuth();
   const [isSupported] = useState(isPushSupported);
   const [swReady, setSwReady] = useState(false);
+  const [swChecked, setSwChecked] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | null>(
     () => (isPushSupported() ? Notification.permission : null),
   );
@@ -53,10 +54,13 @@ export function usePushNotification() {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
-  const isAuth = status === "authenticated" || status === "anonymous";
+  const isAuth = status === "authenticated";
 
   useEffect(() => {
-    getActiveRegistration().then((reg) => setSwReady(!!reg));
+    getActiveRegistration().then((reg) => {
+      setSwReady(!!reg);
+      setSwChecked(true);
+    });
   }, []);
 
   useEffect(() => {
@@ -194,6 +198,7 @@ export function usePushNotification() {
     isSubscribed: effectiveIsSubscribed,
     isSubscribing,
     isUnsubscribing,
+    swChecked,
     subscribe,
     unsubscribe,
   } as const;

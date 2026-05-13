@@ -15,9 +15,7 @@ const mocks = vi.hoisted(() => ({
   getUserProfile: vi.fn(),
   signInWithGoogle: vi.fn(),
   signInWithOtp: vi.fn(),
-  signInAnonymously: vi.fn(),
-  signOutToGuest: vi.fn(),
-  signOutFully: vi.fn(),
+  signOut: vi.fn(),
 }));
 
 vi.mock("../lib/supabase", () => ({
@@ -35,9 +33,7 @@ vi.mock("../services/auth", () => ({
     getUserProfile: (...args: unknown[]) => mocks.getUserProfile(...args),
     signInWithGoogle: (...args: unknown[]) => mocks.signInWithGoogle(...args),
     signInWithOtp: (...args: unknown[]) => mocks.signInWithOtp(...args),
-    signInAnonymously: (...args: unknown[]) => mocks.signInAnonymously(...args),
-    signOutToGuest: (...args: unknown[]) => mocks.signOutToGuest(...args),
-    signOutFully: (...args: unknown[]) => mocks.signOutFully(...args),
+    signOut: (...args: unknown[]) => mocks.signOut(...args),
   },
 }));
 
@@ -48,9 +44,7 @@ function AuthConsumer() {
     refreshProfile,
     signInWithGoogle,
     signInWithOtp,
-    continueAsGuest,
-    signOutToGuest,
-    signOutFully,
+    signOut,
   } = useAuth();
 
   return (
@@ -69,14 +63,8 @@ function AuthConsumer() {
       >
         otp
       </button>
-      <button type="button" onClick={() => void continueAsGuest()}>
-        guest
-      </button>
-      <button type="button" onClick={() => void signOutToGuest()}>
-        signout-guest
-      </button>
-      <button type="button" onClick={() => void signOutFully()}>
-        signout-full
+      <button type="button" onClick={() => void signOut()}>
+        signout
       </button>
     </div>
   );
@@ -95,9 +83,7 @@ describe("AuthContext", () => {
     mocks.getUserProfile.mockResolvedValue(null);
     mocks.signInWithGoogle.mockResolvedValue(undefined);
     mocks.signInWithOtp.mockResolvedValue(undefined);
-    mocks.signInAnonymously.mockResolvedValue("anon-1");
-    mocks.signOutToGuest.mockResolvedValue(undefined);
-    mocks.signOutFully.mockResolvedValue(undefined);
+    mocks.signOut.mockResolvedValue(undefined);
     mocks.onAuthStateChange.mockImplementation(
       (callback: (event: string, session: unknown) => void) => {
         mocks.authStateChangeCallback = callback;
@@ -127,35 +113,24 @@ describe("AuthContext", () => {
     });
   });
 
-  it.each([
-    {
-      caseName: "anonymous profile",
-      profile: { id: "anon-1", provider: "anonymous", isAnonymous: true },
-      expectedStatus: "anonymous",
-    },
-    {
-      caseName: "authenticated profile",
-      profile: { id: "user-1", provider: "google", isAnonymous: false },
-      expectedStatus: "authenticated",
-    },
-  ])(
-    "loads $caseName from initial session",
-    async ({ profile, expectedStatus }) => {
-      mocks.getSession.mockResolvedValue({
-        data: {
-          session: { access_token: "token" },
-        },
-      });
-      mocks.getUserProfile.mockResolvedValue(profile);
+  it("loads authenticated profile from initial session", async () => {
+    mocks.getSession.mockResolvedValue({
+      data: {
+        session: { access_token: "token" },
+      },
+    });
+    mocks.getUserProfile.mockResolvedValue({
+      id: "user-1",
+      provider: "google",
+    });
 
-      renderWithProvider();
+    renderWithProvider();
 
-      await waitFor(() => {
-        expect(screen.getByTestId("status")).toHaveTextContent(expectedStatus);
-        expect(screen.getByTestId("user-id")).toHaveTextContent(profile.id);
-      });
-    },
-  );
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("user-1");
+    });
+  });
 
   it("sets none when profile cannot be loaded for existing session", async () => {
     mocks.getSession.mockResolvedValue({
@@ -179,7 +154,6 @@ describe("AuthContext", () => {
     mocks.getUserProfile.mockResolvedValue({
       id: "user-2",
       provider: "email",
-      isAnonymous: false,
     });
 
     renderWithProvider();
@@ -198,9 +172,8 @@ describe("AuthContext", () => {
 
   it("refreshProfile updates status and user", async () => {
     mocks.getUserProfile.mockResolvedValue({
-      id: "anon-1",
-      provider: "anonymous",
-      isAnonymous: true,
+      id: "user-1",
+      provider: "google",
     });
 
     renderWithProvider();
@@ -212,16 +185,15 @@ describe("AuthContext", () => {
     await userEvent.click(screen.getByRole("button", { name: "refresh" }));
 
     await waitFor(() => {
-      expect(screen.getByTestId("status")).toHaveTextContent("anonymous");
-      expect(screen.getByTestId("user-id")).toHaveTextContent("anon-1");
+      expect(screen.getByTestId("status")).toHaveTextContent("authenticated");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("user-1");
     });
   });
 
-  it("refreshProfile sets authenticated status for non-anonymous profile", async () => {
+  it("refreshProfile sets authenticated status", async () => {
     mocks.getUserProfile.mockResolvedValue({
       id: "user-99",
       provider: "google",
-      isAnonymous: false,
     });
 
     renderWithProvider();
@@ -247,7 +219,6 @@ describe("AuthContext", () => {
     mocks.getUserProfile.mockResolvedValue({
       id: "user-1",
       provider: "email",
-      isAnonymous: false,
     });
 
     renderWithProvider();
@@ -282,7 +253,6 @@ describe("AuthContext", () => {
       .mockResolvedValueOnce({
         id: "newer-user",
         provider: "google",
-        isAnonymous: false,
       });
 
     renderWithProvider();
@@ -296,7 +266,6 @@ describe("AuthContext", () => {
     resolveFirst?.({
       id: "stale-user",
       provider: "email",
-      isAnonymous: false,
     });
     await Promise.resolve();
 
@@ -312,17 +281,11 @@ describe("AuthContext", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "google" }));
     await userEvent.click(screen.getByRole("button", { name: "otp" }));
-    await userEvent.click(screen.getByRole("button", { name: "guest" }));
-    await userEvent.click(
-      screen.getByRole("button", { name: "signout-guest" }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: "signout-full" }));
+    await userEvent.click(screen.getByRole("button", { name: "signout" }));
 
     expect(mocks.signInWithGoogle).toHaveBeenCalledOnce();
     expect(mocks.signInWithOtp).toHaveBeenCalledWith("alice@example.com");
-    expect(mocks.signInAnonymously).toHaveBeenCalledOnce();
-    expect(mocks.signOutToGuest).toHaveBeenCalledOnce();
-    expect(mocks.signOutFully).toHaveBeenCalledOnce();
+    expect(mocks.signOut).toHaveBeenCalledOnce();
   });
 
   it("unsubscribes from auth listener on unmount", async () => {

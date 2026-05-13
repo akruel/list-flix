@@ -4,8 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { supabase } from "../lib/supabase";
 import { authService } from "./auth";
-import { migrationService } from "./migrationService";
-import { userContentService } from "./userContent";
 
 vi.mock("../lib/supabase", () => ({
   supabase: {
@@ -14,22 +12,9 @@ vi.mock("../lib/supabase", () => ({
       getSession: vi.fn(),
       signInWithOAuth: vi.fn(),
       signInWithOtp: vi.fn(),
-      signInAnonymously: vi.fn(),
       signOut: vi.fn(),
       updateUser: vi.fn(),
     },
-  },
-}));
-
-vi.mock("./migrationService", () => ({
-  migrationService: {
-    migrateAnonymousUserData: vi.fn(),
-  },
-}));
-
-vi.mock("./userContent", () => ({
-  userContentService: {
-    hasData: vi.fn(),
   },
 }));
 
@@ -41,626 +26,393 @@ const mockedSupabase = supabase as unknown as {
     getSession: MockFn;
     signInWithOAuth: MockFn;
     signInWithOtp: MockFn;
-    signInAnonymously: MockFn;
     signOut: MockFn;
     updateUser: MockFn;
   };
 };
 
-const mockedMigrationService = migrationService as unknown as {
-  migrateAnonymousUserData: MockFn;
-};
-
-const mockedUserContentService = userContentService as unknown as {
-  hasData: MockFn;
-};
+const USER_1 = { id: "user-1", email: "alice@example.com" };
 
 describe("authService", () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
     vi.clearAllMocks();
-    localStorage.clear();
-
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: { user: null },
-    });
-    mockedSupabase.auth.getSession.mockResolvedValue({
-      data: { session: null },
-    });
-    mockedSupabase.auth.signInWithOAuth.mockResolvedValue({ error: null });
-    mockedSupabase.auth.signInWithOtp.mockResolvedValue({ error: null });
-    mockedSupabase.auth.signInAnonymously.mockResolvedValue({
-      data: { user: { id: "guest-1" } },
-      error: null,
-    });
-    mockedSupabase.auth.signOut.mockResolvedValue({ error: null });
-    mockedSupabase.auth.updateUser.mockResolvedValue({ error: null });
-    mockedUserContentService.hasData.mockResolvedValue(false);
-    mockedMigrationService.migrateAnonymousUserData.mockResolvedValue(
-      undefined,
-    );
   });
 
-  const signInCases = [
-    {
-      caseName: "google sign in",
-      run: () => authService.signInWithGoogle(),
-      expectCall: () =>
-        expect(mockedSupabase.auth.signInWithOAuth).toHaveBeenCalledWith({
-          provider: "google",
-          options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
-          },
-        }),
-    },
-    {
-      caseName: "otp sign in",
-      run: () => authService.signInWithOtp("alice@example.com"),
-      expectCall: () =>
-        expect(mockedSupabase.auth.signInWithOtp).toHaveBeenCalledWith({
-          email: "alice@example.com",
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        }),
-    },
-  ];
+  describe("signInWithGoogle", () => {
+    it("calls supabase signInWithOAuth with google provider", async () => {
+      mockedSupabase.auth.signInWithOAuth.mockResolvedValue({ error: null });
 
-  it.each(signInCases)(
-    "stores migration source and triggers $caseName",
-    async ({ run, expectCall }) => {
-      mockedSupabase.auth.getUser.mockResolvedValue({
-        data: {
-          user: {
-            id: "anon-1",
-            is_anonymous: true,
-          },
-        },
+      await authService.signInWithGoogle();
+
+      expect(mockedSupabase.auth.signInWithOAuth).toHaveBeenCalledWith({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/auth/callback` },
+      });
+    });
+
+    it("throws when sign in fails", async () => {
+      mockedSupabase.auth.signInWithOAuth.mockResolvedValue({
+        error: new Error("oauth failed"),
       });
 
-      await run();
-
-      expect(localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY)).toBe(
-        "anon-1",
+      await expect(authService.signInWithGoogle()).rejects.toThrow(
+        "oauth failed",
       );
-      expectCall();
-    },
-  );
-
-  it.each(signInCases)(
-    "throws when $caseName fails",
-    async ({ run, caseName }) => {
-      if (caseName === "google sign in") {
-        mockedSupabase.auth.signInWithOAuth.mockResolvedValue({
-          error: new Error("oauth failed"),
-        });
-      } else {
-        mockedSupabase.auth.signInWithOtp.mockResolvedValue({
-          error: new Error("otp failed"),
-        });
-      }
-
-      await expect(run()).rejects.toThrow(
-        caseName === "google sign in" ? "oauth failed" : "otp failed",
-      );
-    },
-  );
-
-  it("returns current anonymous id in signInAnonymously", async () => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: {
-        user: { id: "anon-1", is_anonymous: true },
-      },
-    });
-
-    await expect(authService.signInAnonymously()).resolves.toBe("anon-1");
-    expect(mockedSupabase.auth.signInAnonymously).not.toHaveBeenCalled();
-  });
-
-  it("creates anonymous session when current user is not anonymous", async () => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: {
-        user: { id: "auth-1", is_anonymous: false },
-      },
-    });
-    mockedSupabase.auth.signInAnonymously.mockResolvedValue({
-      data: { user: { id: "anon-2" } },
-      error: null,
-    });
-
-    await expect(authService.signInAnonymously()).resolves.toBe("anon-2");
-  });
-
-  it("returns null when anonymous sign in response has no user id", async () => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: {
-        user: null,
-      },
-    });
-    mockedSupabase.auth.signInAnonymously.mockResolvedValue({
-      data: { user: null },
-      error: null,
-    });
-
-    await expect(authService.signInAnonymously()).resolves.toBeNull();
-  });
-
-  it("throws when anonymous sign in fails", async () => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: {
-        user: null,
-      },
-    });
-    mockedSupabase.auth.signInAnonymously.mockResolvedValue({
-      data: { user: null },
-      error: new Error("anonymous failed"),
-    });
-
-    await expect(authService.signInAnonymously()).rejects.toThrow(
-      "anonymous failed",
-    );
-  });
-
-  it("signOutFully clears migration key and signs out", async () => {
-    localStorage.setItem(authService.MIGRATION_OLD_USER_ID_KEY, "anon-1");
-
-    await authService.signOutFully();
-
-    expect(mockedSupabase.auth.signOut).toHaveBeenCalledOnce();
-    expect(
-      localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY),
-    ).toBeNull();
-  });
-
-  it("signOutFully throws when signOut fails", async () => {
-    mockedSupabase.auth.signOut.mockResolvedValue({
-      error: new Error("signout failed"),
-    });
-
-    await expect(authService.signOutFully()).rejects.toThrow("signout failed");
-  });
-
-  it("signOutToGuest signs out and then creates anonymous session", async () => {
-    const signOutSpy = vi
-      .spyOn(authService, "signOutFully")
-      .mockResolvedValue();
-    const signInAnonSpy = vi
-      .spyOn(authService, "signInAnonymously")
-      .mockResolvedValue("anon-1");
-
-    await authService.signOutToGuest();
-
-    expect(signOutSpy).toHaveBeenCalledOnce();
-    expect(signInAnonSpy).toHaveBeenCalledOnce();
-  });
-
-  it("finalizePostLogin returns null user when there is no session", async () => {
-    mockedSupabase.auth.getSession.mockResolvedValue({
-      data: { session: null },
-    });
-
-    await expect(authService.finalizePostLogin()).resolves.toEqual({
-      userId: null,
-      isAnonymous: false,
-      migrationConflict: false,
     });
   });
 
-  it("finalizePostLogin returns anonymous session without migration", async () => {
-    const ensureSpy = vi
-      .spyOn(authService, "ensureDisplayName")
-      .mockResolvedValue();
-    mockedSupabase.auth.getSession.mockResolvedValue({
-      data: {
-        session: {
-          user: {
-            id: "anon-1",
-            is_anonymous: true,
-          },
-        },
-      },
-    });
+  describe("signInWithOtp", () => {
+    it("calls supabase signInWithOtp with email", async () => {
+      mockedSupabase.auth.signInWithOtp.mockResolvedValue({ error: null });
 
-    await expect(authService.finalizePostLogin()).resolves.toEqual({
-      userId: "anon-1",
-      isAnonymous: true,
-      migrationConflict: false,
-    });
+      await authService.signInWithOtp("alice@example.com");
 
-    expect(ensureSpy).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    {
-      caseName: "remote data conflict",
-      hasRemoteData: true,
-      shouldMigrate: false,
-    },
-    {
-      caseName: "migrate local data",
-      hasRemoteData: false,
-      shouldMigrate: true,
-    },
-  ])(
-    "finalizePostLogin handles migration path: $caseName",
-    async ({ hasRemoteData, shouldMigrate }) => {
-      localStorage.setItem(authService.MIGRATION_OLD_USER_ID_KEY, "anon-1");
-      const ensureSpy = vi
-        .spyOn(authService, "ensureDisplayName")
-        .mockResolvedValue();
-      mockedSupabase.auth.getSession.mockResolvedValue({
-        data: {
-          session: {
-            user: {
-              id: "auth-1",
-              is_anonymous: false,
-            },
-          },
-        },
-      });
-      mockedUserContentService.hasData.mockResolvedValue(hasRemoteData);
-
-      const result = await authService.finalizePostLogin();
-
-      expect(result.userId).toBe("auth-1");
-      expect(result.isAnonymous).toBe(false);
-      expect(result.migrationConflict).toBe(hasRemoteData);
-
-      expect(
-        mockedMigrationService.migrateAnonymousUserData.mock.calls,
-      ).toEqual(shouldMigrate ? [["anon-1", "auth-1"]] : []);
-      expect(localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY)).toBe(
-        shouldMigrate ? null : "anon-1",
-      );
-
-      expect(ensureSpy).toHaveBeenCalledOnce();
-    },
-  );
-
-  it("finalizePostLogin marks conflict when migration check throws", async () => {
-    localStorage.setItem(authService.MIGRATION_OLD_USER_ID_KEY, "anon-1");
-    vi.spyOn(authService, "ensureDisplayName").mockResolvedValue();
-    mockedSupabase.auth.getSession.mockResolvedValue({
-      data: {
-        session: {
-          user: {
-            id: "auth-1",
-            is_anonymous: false,
-          },
-        },
-      },
-    });
-    mockedUserContentService.hasData.mockRejectedValue(
-      new Error("check failed"),
-    );
-
-    await expect(authService.finalizePostLogin()).resolves.toEqual({
-      userId: "auth-1",
-      isAnonymous: false,
-      migrationConflict: true,
-    });
-  });
-
-  it("finalizePostLogin ignores migration when old and new users are equal", async () => {
-    localStorage.setItem(authService.MIGRATION_OLD_USER_ID_KEY, "auth-1");
-    vi.spyOn(authService, "ensureDisplayName").mockResolvedValue();
-    mockedSupabase.auth.getSession.mockResolvedValue({
-      data: {
-        session: {
-          user: {
-            id: "auth-1",
-            is_anonymous: false,
-          },
-        },
-      },
-    });
-
-    await authService.finalizePostLogin();
-
-    expect(mockedUserContentService.hasData).not.toHaveBeenCalled();
-    expect(
-      mockedMigrationService.migrateAnonymousUserData,
-    ).not.toHaveBeenCalled();
-  });
-
-  it("finalizePostLogin defaults isAnonymous to false when session user omits flag", async () => {
-    vi.spyOn(authService, "ensureDisplayName").mockResolvedValue();
-    mockedSupabase.auth.getSession.mockResolvedValue({
-      data: {
-        session: {
-          user: {
-            id: "auth-1",
-          },
-        },
-      },
-    });
-
-    await expect(authService.finalizePostLogin()).resolves.toEqual({
-      userId: "auth-1",
-      isAnonymous: false,
-      migrationConflict: false,
-    });
-  });
-
-  it.each([
-    {
-      caseName: "user id from getUser",
-      user: { id: "user-1" },
-      expected: "user-1",
-    },
-    { caseName: "missing user id", user: null, expected: null },
-  ])("returns $caseName in getUserId", async ({ user, expected }) => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: { user },
-    });
-
-    await expect(authService.getUserId()).resolves.toBe(expected);
-  });
-
-  it.each([
-    {
-      caseName: "anonymous user",
-      user: { id: "anon-1", is_anonymous: true },
-      expected: true,
-    },
-    {
-      caseName: "authenticated user",
-      user: { id: "auth-1", is_anonymous: false },
-      expected: false,
-    },
-    { caseName: "missing user", user: null, expected: false },
-  ])("returns $caseName in isAnonymous", async ({ user, expected }) => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: { user },
-    });
-
-    await expect(authService.isAnonymous()).resolves.toBe(expected);
-  });
-
-  it("returns null profile when user is missing", async () => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: { user: null },
-    });
-
-    await expect(authService.getUserProfile()).resolves.toBeNull();
-  });
-
-  it.each([
-    {
-      caseName: "anonymous provider overrides app provider",
-      user: {
-        id: "anon-1",
-        email: "anon@example.com",
-        is_anonymous: true,
-        app_metadata: { provider: "google" },
-        user_metadata: {},
-      },
-      expectedProvider: "anonymous",
-      expectedDisplayName: "anon",
-    },
-    {
-      caseName: "email provider with display_name",
-      user: {
-        id: "user-1",
+      expect(mockedSupabase.auth.signInWithOtp).toHaveBeenCalledWith({
         email: "alice@example.com",
-        is_anonymous: false,
-        app_metadata: { provider: "email" },
-        user_metadata: { display_name: "Alice" },
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+    });
+
+    it("throws when OTP fails", async () => {
+      mockedSupabase.auth.signInWithOtp.mockResolvedValue({
+        error: new Error("otp failed"),
+      });
+
+      await expect(
+        authService.signInWithOtp("alice@example.com"),
+      ).rejects.toThrow("otp failed");
+    });
+  });
+
+  describe("signOut", () => {
+    it("calls supabase signOut", async () => {
+      mockedSupabase.auth.signOut.mockResolvedValue({ error: null });
+
+      await authService.signOut();
+
+      expect(mockedSupabase.auth.signOut).toHaveBeenCalledOnce();
+    });
+
+    it("throws when sign out fails", async () => {
+      mockedSupabase.auth.signOut.mockResolvedValue({
+        error: new Error("signout failed"),
+      });
+
+      await expect(authService.signOut()).rejects.toThrow("signout failed");
+    });
+  });
+
+  describe("getUserId", () => {
+    it("returns user id when user exists", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: { user: USER_1 },
+      });
+
+      const result = await authService.getUserId();
+
+      expect(result).toBe("user-1");
+    });
+
+    it("returns null when no user", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: { user: null },
+      });
+
+      const result = await authService.getUserId();
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("getUserProfile", () => {
+    it.each([
+      {
+        caseName: "google user",
+        user: {
+          id: "user-1",
+          email: "alice@gmail.com",
+          app_metadata: { provider: "google" },
+          user_metadata: {
+            full_name: "Alice",
+            avatar_url: "https://example.com/avatar.jpg",
+          },
+        },
+        expected: {
+          id: "user-1",
+          email: "alice@gmail.com",
+          displayName: "Alice",
+          avatarUrl: "https://example.com/avatar.jpg",
+          provider: "google",
+        },
       },
-      expectedProvider: "email",
-      expectedDisplayName: "Alice",
-    },
-    {
-      caseName: "google provider with full_name",
-      user: {
-        id: "user-2",
-        email: "bob@example.com",
-        is_anonymous: false,
-        app_metadata: { provider: "google" },
-        user_metadata: { full_name: "Bob Full" },
+      {
+        caseName: "email user with display_name",
+        user: {
+          id: "user-2",
+          email: "bob@example.com",
+          app_metadata: { provider: "email" },
+          user_metadata: { display_name: "Bob" },
+        },
+        expected: {
+          id: "user-2",
+          email: "bob@example.com",
+          displayName: "Bob",
+          avatarUrl: undefined,
+          provider: "email",
+        },
       },
-      expectedProvider: "google",
-      expectedDisplayName: "Bob Full",
-    },
-    {
-      caseName: "unknown provider with name fallback",
-      user: {
-        id: "user-3",
-        email: "carol@example.com",
-        is_anonymous: false,
-        app_metadata: { provider: "github" },
-        user_metadata: { name: "Carol Name" },
+      {
+        caseName: "unknown provider fallback",
+        user: {
+          id: "user-3",
+          email: "test@example.com",
+          app_metadata: {},
+          user_metadata: {},
+        },
+        expected: {
+          id: "user-3",
+          email: "test@example.com",
+          displayName: "test",
+          avatarUrl: undefined,
+          provider: "unknown",
+        },
       },
-      expectedProvider: "unknown",
-      expectedDisplayName: "Carol Name",
-    },
-    {
-      caseName:
-        "missing email and metadata fall back to undefined display name",
-      user: {
-        id: "user-4",
-        is_anonymous: undefined,
-        app_metadata: { provider: "email" },
-        user_metadata: {},
+      {
+        caseName: "user with picture metadata instead of avatar_url",
+        user: {
+          id: "user-6",
+          email: "dave@example.com",
+          app_metadata: { provider: "google" },
+          user_metadata: { picture: "https://example.com/pic.jpg" },
+        },
+        expected: {
+          id: "user-6",
+          email: "dave@example.com",
+          displayName: "dave",
+          avatarUrl: "https://example.com/pic.jpg",
+          provider: "google",
+        },
       },
-      expectedProvider: "email",
-      expectedDisplayName: undefined,
-    },
-  ])(
-    "maps profile data for $caseName",
-    async ({ user, expectedProvider, expectedDisplayName }) => {
+      {
+        caseName:
+          "user without email or metadata falls back to undefined displayName",
+        user: {
+          id: "user-5",
+          app_metadata: {},
+          user_metadata: {},
+        },
+        expected: {
+          id: "user-5",
+          email: undefined,
+          displayName: undefined,
+          avatarUrl: undefined,
+          provider: "unknown",
+        },
+      },
+      {
+        caseName: "user without email uses name metadata",
+        user: {
+          id: "user-4",
+          app_metadata: { provider: "google" },
+          user_metadata: { name: "Charlie" },
+        },
+        expected: {
+          id: "user-4",
+          email: undefined,
+          displayName: "Charlie",
+          avatarUrl: undefined,
+          provider: "google",
+        },
+      },
+    ])("returns profile for $caseName", async ({ user, expected }) => {
       mockedSupabase.auth.getUser.mockResolvedValue({
         data: { user },
       });
 
       const profile = await authService.getUserProfile();
 
-      expect(profile?.provider).toBe(expectedProvider);
-      expect(profile?.displayName).toBe(expectedDisplayName);
-      expect(profile?.isAnonymous).toBe(user.is_anonymous ?? false);
-    },
-  );
+      expect(profile).toEqual(expected);
+    });
 
-  it.each([
-    {
-      caseName: "valid invite path",
-      path: "/lists/list-1/join?role=editor",
-      shouldStore: true,
-    },
-    {
-      caseName: "invalid non invite path",
-      path: "/search?q=matrix",
-      shouldStore: false,
-    },
-  ])("savePostLoginTarget handles $caseName", ({ path, shouldStore }) => {
-    authService.savePostLoginTarget(path);
-
-    const stored = localStorage.getItem(authService.AUTH_POST_LOGIN_TARGET_KEY);
-    expect(stored).toBe(shouldStore ? path : null);
-  });
-
-  it("consumePostLoginTarget returns and clears a valid invite target", () => {
-    localStorage.setItem(
-      authService.AUTH_POST_LOGIN_TARGET_KEY,
-      "/lists/list-1/join?role=viewer",
-    );
-
-    expect(authService.consumePostLoginTarget()).toBe(
-      "/lists/list-1/join?role=viewer",
-    );
-    expect(
-      localStorage.getItem(authService.AUTH_POST_LOGIN_TARGET_KEY),
-    ).toBeNull();
-  });
-
-  it("consumePostLoginTarget clears and discards invalid target", () => {
-    localStorage.setItem(authService.AUTH_POST_LOGIN_TARGET_KEY, "/search");
-
-    expect(authService.consumePostLoginTarget()).toBeNull();
-    expect(
-      localStorage.getItem(authService.AUTH_POST_LOGIN_TARGET_KEY),
-    ).toBeNull();
-  });
-
-  it("consumePostLoginTarget returns null when no target exists", () => {
-    expect(authService.consumePostLoginTarget()).toBeNull();
-  });
-
-  it("getPostLoginTarget returns only valid invite paths", () => {
-    localStorage.setItem(authService.AUTH_POST_LOGIN_TARGET_KEY, "/search");
-    expect(authService.getPostLoginTarget()).toBeNull();
-
-    localStorage.setItem(
-      authService.AUTH_POST_LOGIN_TARGET_KEY,
-      "/lists/list-2/join?role=editor",
-    );
-    expect(authService.getPostLoginTarget()).toBe(
-      "/lists/list-2/join?role=editor",
-    );
-  });
-
-  it("getPostLoginTarget returns null when no target exists", () => {
-    expect(authService.getPostLoginTarget()).toBeNull();
-  });
-
-  it("clearMigrationOldUserId clears local migration state", () => {
-    localStorage.setItem(authService.MIGRATION_OLD_USER_ID_KEY, "anon-1");
-
-    authService.clearMigrationOldUserId();
-
-    expect(
-      localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY),
-    ).toBeNull();
-  });
-
-  it.each([
-    {
-      caseName: "anonymous user stores id",
-      user: { id: "anon-1", is_anonymous: true },
-      expected: "anon-1",
-    },
-    {
-      caseName: "authenticated user does not store id",
-      user: { id: "auth-1", is_anonymous: false },
-      expected: null,
-    },
-    {
-      caseName: "missing user does not store id",
-      user: null,
-      expected: null,
-    },
-  ])(
-    "storeMigrationSourceIfAnonymous for $caseName",
-    async ({ user, expected }) => {
+    it("returns null when no user", async () => {
       mockedSupabase.auth.getUser.mockResolvedValue({
-        data: { user },
+        data: { user: null },
       });
 
-      await authService.storeMigrationSourceIfAnonymous();
+      const profile = await authService.getUserProfile();
 
-      expect(localStorage.getItem(authService.MIGRATION_OLD_USER_ID_KEY)).toBe(
-        expected,
-      );
-    },
-  );
+      expect(profile).toBeNull();
+    });
+  });
 
-  it.each([
-    {
-      caseName: "missing user",
-      user: null,
-      shouldUpdate: false,
-    },
-    {
-      caseName: "anonymous user",
-      user: {
-        id: "anon-1",
-        is_anonymous: true,
-        email: "anon@example.com",
-        user_metadata: {},
-      },
-      shouldUpdate: false,
-    },
-    {
-      caseName: "user already has display_name",
-      user: {
-        id: "user-1",
-        is_anonymous: false,
-        email: "alice@example.com",
-        user_metadata: { display_name: "Alice" },
-      },
-      shouldUpdate: false,
-    },
-  ])(
-    "ensureDisplayName does not update for $caseName",
-    async ({ user, shouldUpdate }) => {
+  describe("finalizePostLogin", () => {
+    it("calls ensureDisplayName", async () => {
+      const spy = vi
+        .spyOn(authService, "ensureDisplayName")
+        .mockResolvedValue();
+
+      await authService.finalizePostLogin();
+
+      expect(spy).toHaveBeenCalledOnce();
+      spy.mockRestore();
+    });
+  });
+
+  describe("ensureDisplayName", () => {
+    it("sets display_name from email when no display name exists", async () => {
       mockedSupabase.auth.getUser.mockResolvedValue({
-        data: { user },
+        data: {
+          user: {
+            id: "user-1",
+            email: "alice@example.com",
+            user_metadata: {},
+          },
+        },
+      });
+      mockedSupabase.auth.updateUser.mockResolvedValue({ error: null });
+
+      await authService.ensureDisplayName();
+
+      expect(mockedSupabase.auth.updateUser).toHaveBeenCalledWith({
+        data: { display_name: "alice" },
+      });
+    });
+
+    it("skips update when display name already exists", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: {
+          user: {
+            id: "user-1",
+            email: "alice@example.com",
+            user_metadata: { display_name: "Alice" },
+          },
+        },
       });
 
       await authService.ensureDisplayName();
 
-      expect(mockedSupabase.auth.updateUser).toHaveBeenCalledTimes(
-        shouldUpdate ? 1 : 0,
-      );
-    },
-  );
-
-  it("ensureDisplayName updates using email prefix when metadata is missing", async () => {
-    mockedSupabase.auth.getUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "user-1",
-          is_anonymous: false,
-          email: "alice@example.com",
-          user_metadata: {},
-        },
-      },
+      expect(mockedSupabase.auth.updateUser).not.toHaveBeenCalled();
     });
 
-    await authService.ensureDisplayName();
+    it("skips update when full_name already exists", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: {
+          user: {
+            id: "user-1",
+            email: "alice@example.com",
+            user_metadata: { full_name: "Alice" },
+          },
+        },
+      });
 
-    expect(mockedSupabase.auth.updateUser).toHaveBeenCalledWith({
-      data: { display_name: "alice" },
+      await authService.ensureDisplayName();
+
+      expect(mockedSupabase.auth.updateUser).not.toHaveBeenCalled();
+    });
+
+    it("skips update when name already exists in metadata", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: {
+          user: {
+            id: "user-1",
+            email: "alice@example.com",
+            user_metadata: { name: "Alice" },
+          },
+        },
+      });
+
+      await authService.ensureDisplayName();
+
+      expect(mockedSupabase.auth.updateUser).not.toHaveBeenCalled();
+    });
+
+    it("skips update when no email", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: {
+          user: {
+            id: "user-1",
+            user_metadata: {},
+          },
+        },
+      });
+
+      await authService.ensureDisplayName();
+
+      expect(mockedSupabase.auth.updateUser).not.toHaveBeenCalled();
+    });
+
+    it("does nothing when no user", async () => {
+      mockedSupabase.auth.getUser.mockResolvedValue({
+        data: { user: null },
+      });
+
+      await authService.ensureDisplayName();
+
+      expect(mockedSupabase.auth.updateUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("post-login target", () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it("saves invite path", () => {
+      authService.savePostLoginTarget("/lists/abc123/join");
+
+      expect(localStorage.getItem("auth_post_login_target")).toBe(
+        "/lists/abc123/join",
+      );
+    });
+
+    it("does not save non-invite path", () => {
+      authService.savePostLoginTarget("/home");
+
+      expect(localStorage.getItem("auth_post_login_target")).toBeNull();
+    });
+
+    it("consumes and removes target", () => {
+      localStorage.setItem("auth_post_login_target", "/lists/abc123/join");
+
+      const result = authService.consumePostLoginTarget();
+
+      expect(result).toBe("/lists/abc123/join");
+      expect(localStorage.getItem("auth_post_login_target")).toBeNull();
+    });
+
+    it("returns null when no target stored", () => {
+      expect(authService.consumePostLoginTarget()).toBeNull();
+    });
+
+    it("returns null when saved target is not an invite path", () => {
+      localStorage.setItem("auth_post_login_target", "/home");
+
+      const result = authService.consumePostLoginTarget();
+
+      expect(result).toBeNull();
+      expect(localStorage.getItem("auth_post_login_target")).toBeNull();
+    });
+
+    it("gets target without removing", () => {
+      localStorage.setItem("auth_post_login_target", "/lists/abc123/join");
+
+      const result = authService.getPostLoginTarget();
+
+      expect(result).toBe("/lists/abc123/join");
+      expect(localStorage.getItem("auth_post_login_target")).toBe(
+        "/lists/abc123/join",
+      );
+    });
+
+    it("getPostLoginTarget returns null for non-invite path", () => {
+      localStorage.setItem("auth_post_login_target", "/search");
+
+      const result = authService.getPostLoginTarget();
+
+      expect(result).toBeNull();
+      expect(localStorage.getItem("auth_post_login_target")).toBe("/search");
     });
   });
 });

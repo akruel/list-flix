@@ -65,7 +65,6 @@ BEGIN
       ('public.watched_movies'),
       ('public.watched_episodes'),
       ('public.series_cache'),
-      ('public.user_profiles'),
       ('public.user_interactions')
   ),
   existing_tables AS (
@@ -90,28 +89,8 @@ BEGIN
 END
 $$;
 
-DO $$
-DECLARE
-  has_is_anonymous boolean;
-BEGIN
-  SELECT EXISTS (
-    SELECT 1
-    FROM information_schema.columns
-    WHERE table_schema = 'auth'
-      AND table_name = 'users'
-      AND column_name = 'is_anonymous'
-  ) INTO has_is_anonymous;
-
-  IF has_is_anonymous THEN
-    DELETE FROM auth.users
-    WHERE is_anonymous IS TRUE
-      OR email LIKE '%@example.com';
-  ELSE
-    DELETE FROM auth.users
-    WHERE email LIKE '%@example.com';
-  END IF;
-END
-$$;
+DELETE FROM auth.users
+WHERE email LIKE '%@example.com';
 SQL
 then
   echo "E2E DB fast cleanup failed. Aborting test suite." >&2
