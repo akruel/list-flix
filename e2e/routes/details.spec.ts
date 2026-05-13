@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { continueAsGuest } from "../fixtures/auth";
+import { signIn } from "../fixtures/auth";
 import { ROUTE_TEST_IDS, SCENARIO_IDS } from "../fixtures/routes";
 import { expect, test } from "../fixtures/test";
 import { mockTmdbApi } from "../fixtures/tmdb-mock";
@@ -28,14 +28,14 @@ async function addCurrentDetailsToDefaultList(page: Page): Promise<void> {
 test(`[${SCENARIO_IDS.DETAILS_VALID_RENDER}] renders valid details route`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openMovieDetails(page);
 });
 
 test(`[${SCENARIO_IDS.DETAILS_ADD_TO_DEFAULT_LIST}] adds content from details into default watchlist`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openMovieDetails(page);
   await addCurrentDetailsToDefaultList(page);
 
@@ -50,7 +50,7 @@ test(`[${SCENARIO_IDS.DETAILS_ADD_TO_DEFAULT_LIST}] adds content from details in
 test(`[${SCENARIO_IDS.DETAILS_MARK_WATCHED_FILTERS}] marks content as watched and validates lists filters`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openMovieDetails(page);
   await addCurrentDetailsToDefaultList(page);
 
@@ -77,7 +77,7 @@ test(`[${SCENARIO_IDS.DETAILS_MARK_WATCHED_FILTERS}] marks content as watched an
 test(`[${SCENARIO_IDS.DETAILS_INVALID_TYPE_REDIRECT}] redirects invalid details type to home`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   await page.goto("/details/invalid/123");
 

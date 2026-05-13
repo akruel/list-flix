@@ -8,7 +8,7 @@ import {
   mockAiSuggestions,
   readClipboardStub,
 } from "../fixtures/ai-mock";
-import { continueAsGuest } from "../fixtures/auth";
+import { signIn } from "../fixtures/auth";
 import {
   buildJoinRoutePath,
   ROUTE_TEST_IDS,
@@ -144,7 +144,7 @@ test.beforeEach(async ({ page }) => {
 test(`[${SCENARIO_IDS.LISTS_INDEX_RENDER}] renders lists index route`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   await page.goto("/lists");
 
@@ -158,7 +158,7 @@ test(`[${SCENARIO_IDS.LISTS_INDEX_RENDER}] renders lists index route`, async ({
 test(`[${SCENARIO_IDS.LIST_MANUAL_CREATE_OPEN_FORM}] opens manual list form from lists route`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await openManualListForm(page);
 
@@ -171,7 +171,7 @@ test(`[${SCENARIO_IDS.LIST_MANUAL_CREATE_SUBMIT_SUCCESS}] creates manual list an
 }) => {
   const listName = `Lista Manual ${randomUUID().slice(0, 8)}`;
 
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
@@ -183,7 +183,7 @@ test(`[${SCENARIO_IDS.LIST_MANUAL_CREATE_SUBMIT_SUCCESS}] creates manual list an
 test(`[${SCENARIO_IDS.LIST_SMART_OPEN_MODAL}] opens smart list modal`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await openSmartListModal(page);
 
@@ -196,7 +196,7 @@ test(`[${SCENARIO_IDS.LIST_SMART_OPEN_MODAL}] opens smart list modal`, async ({
 test(`[${SCENARIO_IDS.LIST_SMART_SUGGEST_RESULTS}] generates smart list suggestions`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await openSmartListModal(page);
   await runSmartSuggestion(page, "filmes de aventura para a família");
@@ -211,7 +211,7 @@ test(`[${SCENARIO_IDS.LIST_SMART_SAVE_SUCCESS}] saves smart list and opens creat
 }) => {
   const listName = `Lista IA ${randomUUID().slice(0, 8)}`;
 
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await openSmartListModal(page);
   await runSmartSuggestion(page, "filmes de aventura para a família");
@@ -235,7 +235,7 @@ test(`[${SCENARIO_IDS.LIST_SMART_SAVE_SUCCESS}] saves smart list and opens creat
 test(`[${SCENARIO_IDS.LIST_SMART_BACK_BUTTON}] navigates back from results to input and preserves prompt`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await openSmartListModal(page);
 
@@ -253,7 +253,7 @@ test(`[${SCENARIO_IDS.LIST_SMART_BACK_BUTTON}] navigates back from results to in
 test(`[${SCENARIO_IDS.LIST_SMART_EXAMPLE_CHIPS}] fills prompt when clicking example chip`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await openSmartListModal(page);
 
@@ -276,7 +276,7 @@ test(`[${SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK}] copies editor invite link fr
   const listName = `Lista Share ${randomUUID().slice(0, 8)}`;
 
   await installClipboardStub(page);
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
@@ -291,7 +291,7 @@ test(`[${SCENARIO_IDS.LIST_SHARE_COPY_VIEWER_LINK}] copies viewer invite link fr
   const listName = `Lista Share Viewer ${randomUUID().slice(0, 8)}`;
 
   await installClipboardStub(page);
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
@@ -307,7 +307,7 @@ test(`[${SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN}] shares list and joins invi
   const listName = `Lista Invite ${randomUUID().slice(0, 8)}`;
 
   await installClipboardStub(page);
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
@@ -318,7 +318,7 @@ test(`[${SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN}] shares list and joins invi
 
   try {
     await mockTmdbApi(invitedPage);
-    await continueAsGuest(invitedPage);
+    await signIn(invitedPage);
     await invitedPage.goto(inviteLink);
 
     await expect(
@@ -342,7 +342,7 @@ test(`[${SCENARIO_IDS.LISTS_JOIN_EDITOR_FLOW}] joins invite as editor and redire
   const { list, cleanup } = await seedListOwnedByNewUser("join-editor");
 
   try {
-    await continueAsGuest(page);
+    await signIn(page);
 
     await page.goto(buildJoinRoutePath(list.id, "editor"));
 
@@ -366,7 +366,7 @@ test(`[${SCENARIO_IDS.LISTS_JOIN_VIEWER_READ_ONLY}] joins invite as viewer and k
   const listName = `Lista Viewer ${randomUUID().slice(0, 8)}`;
 
   await installClipboardStub(page);
-  await continueAsGuest(page);
+  await signIn(page);
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
@@ -377,7 +377,7 @@ test(`[${SCENARIO_IDS.LISTS_JOIN_VIEWER_READ_ONLY}] joins invite as viewer and k
 
   try {
     await mockTmdbApi(invitedPage);
-    await continueAsGuest(invitedPage);
+    await signIn(invitedPage);
     await invitedPage.goto(inviteLink);
 
     await expect(
@@ -412,14 +412,15 @@ test(`[${SCENARIO_IDS.LISTS_JOIN_INVALID_ROLE_FALLBACK}] falls back to viewer ro
   const { list, cleanup } = await seedListOwnedByNewUser("join-invalid-role");
 
   try {
-    await continueAsGuest(page);
+    await signIn(page);
 
     await page.goto(buildJoinRoutePath(list.id, "invalid-role"));
 
     await expect(page.getByTestId(ROUTE_TEST_IDS.listJoin)).toBeVisible();
+    await expect(page.getByText("✏️ Editor")).not.toBeVisible();
     await expect(page.getByText("👁️ Visualizador")).toBeVisible();
     await expect(
-      page.getByText("Você terá acesso somente para visualizar esta lista."),
+      page.getByRole("button", { name: "Confirmar entrada" }),
     ).toBeVisible();
   } finally {
     await cleanup.run();

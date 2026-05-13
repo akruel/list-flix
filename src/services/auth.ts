@@ -1,28 +1,7 @@
-import { logger } from "@/lib/logger";
-
 import { supabase } from "../lib/supabase";
 import type { AuthProvider, UserProfile } from "../types";
-import { migrationService } from "./migrationService";
-import { userContentService } from "./userContent";
 
-const MIGRATION_OLD_USER_ID_KEY = "migration_old_user_id";
 const AUTH_POST_LOGIN_TARGET_KEY = "auth_post_login_target";
-
-interface FinalizePostLoginResult {
-  userId: string | null;
-  isAnonymous: boolean;
-  migrationConflict: boolean;
-}
-
-const mapProvider = (
-  provider?: string,
-  isAnonymous?: boolean,
-): AuthProvider => {
-  if (isAnonymous) return "anonymous";
-  if (provider === "email") return "email";
-  if (provider === "google") return "google";
-  return "unknown";
-};
 
 const normalizePathname = (path: string): string => {
   const [pathname] = path.split("?");
@@ -34,12 +13,9 @@ const isInvitePath = (path: string): boolean => {
 };
 
 export const authService = {
-  MIGRATION_OLD_USER_ID_KEY,
   AUTH_POST_LOGIN_TARGET_KEY,
 
   async signInWithGoogle() {
-    await this.storeMigrationSourceIfAnonymous();
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -53,8 +29,6 @@ export const authService = {
   },
 
   async signInWithOtp(email: string) {
-    await this.storeMigrationSourceIfAnonymous();
-
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
@@ -67,79 +41,16 @@ export const authService = {
     }
   },
 
-  async signInAnonymously() {
-    const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser();
-    if (currentUser?.is_anonymous) {
-      return currentUser.id;
-    }
-
-    const { data, error } = await supabase.auth.signInAnonymously();
-    if (error) {
-      throw error;
-    }
-
-    return data.user?.id ?? null;
-  },
-
-  async signOutFully() {
+  async signOut() {
     const { error } = await supabase.auth.signOut();
-    localStorage.removeItem(MIGRATION_OLD_USER_ID_KEY);
 
     if (error) {
       throw error;
     }
   },
 
-  async signOutToGuest() {
-    await this.signOutFully();
-    await this.signInAnonymously();
-  },
-
-  async finalizePostLogin(): Promise<FinalizePostLoginResult> {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-    if (!session) {
-      return {
-        userId: null,
-        isAnonymous: false,
-        migrationConflict: false,
-      };
-    }
-
-    const user = session.user;
-    const isAnonymous = user.is_anonymous ?? false;
-    let migrationConflict = false;
-
-    if (!isAnonymous) {
-      const oldUserId = localStorage.getItem(MIGRATION_OLD_USER_ID_KEY);
-
-      if (oldUserId && oldUserId !== user.id) {
-        try {
-          const hasRemoteData = await userContentService.hasData(user.id);
-
-          if (hasRemoteData) {
-            migrationConflict = true;
-          } else {
-            await this.migrateAnonymousData(oldUserId, user.id);
-            localStorage.removeItem(MIGRATION_OLD_USER_ID_KEY);
-          }
-        } catch (error) {
-          logger.error("Migration failed during finalizePostLogin:", error);
-          migrationConflict = true;
-        }
-      }
-
-      await this.ensureDisplayName();
-    }
-
-    return {
-      userId: user.id,
-      isAnonymous,
-      migrationConflict,
-    };
+  async finalizePostLogin(): Promise<void> {
+    await this.ensureDisplayName();
   },
 
   async getUserId() {
@@ -147,13 +58,6 @@ export const authService = {
       data: { user },
     } = await supabase.auth.getUser();
     return user?.id ?? null;
-  },
-
-  async isAnonymous() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    return user?.is_anonymous ?? false;
   },
 
   async getUserProfile(): Promise<UserProfile | null> {
@@ -168,18 +72,19 @@ export const authService = {
       user.user_metadata.name ||
       (user.email ? user.email.split("@")[0] : undefined);
 
+    const mapProvider = (provider?: string): AuthProvider => {
+      if (provider === "email") return "email";
+      if (provider === "google") return "google";
+      return "unknown";
+    };
+
     return {
       id: user.id,
       email: user.email,
       displayName,
       avatarUrl: user.user_metadata.avatar_url || user.user_metadata.picture,
-      provider: mapProvider(user.app_metadata.provider, user.is_anonymous),
-      isAnonymous: user.is_anonymous ?? false,
+      provider: mapProvider(user.app_metadata.provider),
     };
-  },
-
-  async migrateAnonymousData(oldUserId: string, newUserId: string) {
-    return migrationService.migrateAnonymousUserData(oldUserId, newUserId);
   },
 
   savePostLoginTarget(path: string) {
@@ -188,38 +93,23 @@ export const authService = {
     }
   },
 
-  consumePostLoginTarget() {
-    const target = localStorage.getItem(AUTH_POST_LOGIN_TARGET_KEY);
-    localStorage.removeItem(AUTH_POST_LOGIN_TARGET_KEY);
-
-    if (!target) return null;
-    return isInvitePath(target) ? target : null;
-  },
-
   getPostLoginTarget() {
     const target = localStorage.getItem(AUTH_POST_LOGIN_TARGET_KEY);
     if (!target) return null;
     return isInvitePath(target) ? target : null;
   },
 
-  clearMigrationOldUserId() {
-    localStorage.removeItem(MIGRATION_OLD_USER_ID_KEY);
-  },
-
-  async storeMigrationSourceIfAnonymous() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user?.is_anonymous) {
-      localStorage.setItem(MIGRATION_OLD_USER_ID_KEY, user.id);
-    }
+  consumePostLoginTarget() {
+    const target = this.getPostLoginTarget();
+    localStorage.removeItem(AUTH_POST_LOGIN_TARGET_KEY);
+    return target;
   },
 
   async ensureDisplayName() {
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user || user.is_anonymous) return;
+    if (!user) return;
 
     const meta = user.user_metadata;
     if (!meta.display_name && !meta.full_name && !meta.name && user.email) {

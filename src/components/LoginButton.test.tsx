@@ -23,11 +23,6 @@ vi.mock("./UserMenu", () => ({
   ),
 }));
 
-vi.mock("./LoginOptionsDialog", () => ({
-  LoginOptionsDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="login-options-open">dialog open</div> : null,
-}));
-
 describe("LoginButton", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -58,38 +53,16 @@ describe("LoginButton", () => {
     expect(screen.getByTestId("user-menu")).toHaveTextContent("Alice");
   });
 
-  it.each([
-    {
-      caseName: "anonymous status opens login options",
-      status: "anonymous",
-      shouldNavigate: false,
-      dialogVisible: true,
-    },
-    {
-      caseName: "unauthenticated status navigates to auth",
+  it("navigates to auth page when unauthenticated", async () => {
+    mocks.useAuth.mockReturnValue({
       status: "none",
-      shouldNavigate: true,
-      dialogVisible: false,
-    },
-  ])(
-    "handles click for $caseName",
-    async ({ status, shouldNavigate, dialogVisible }) => {
-      mocks.useAuth.mockReturnValue({
-        status,
-        user: null,
-      });
+      user: null,
+    });
 
-      render(<LoginButton />);
+    render(<LoginButton />);
 
-      await userEvent.click(screen.getByRole("button"));
+    await userEvent.click(screen.getByRole("button"));
 
-      expect(mocks.navigate).toHaveBeenCalledTimes(shouldNavigate ? 1 : 0);
-      expect(mocks.navigate.mock.calls[0]?.[0]).toEqual(
-        shouldNavigate ? { to: "/auth" } : undefined,
-      );
-      expect(screen.queryByTestId("login-options-open") !== null).toBe(
-        dialogVisible,
-      );
-    },
-  );
+    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/auth" });
+  });
 });

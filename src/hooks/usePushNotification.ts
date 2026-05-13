@@ -53,7 +53,7 @@ export function usePushNotification() {
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
-  const isAuth = status === "authenticated" || status === "anonymous";
+  const isAuth = status === "authenticated";
 
   useEffect(() => {
     getActiveRegistration().then((reg) => setSwReady(!!reg));

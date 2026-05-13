@@ -83,22 +83,6 @@ describe("NotificationToggle", () => {
     expect(screen.getByTestId("loader-icon")).toBeInTheDocument();
   });
 
-  it("returns null when user is anonymous", () => {
-    mocks.useAuth.mockReturnValue({ status: "anonymous" });
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
-
-    const { container } = render(<NotificationToggle />);
-    expect(container.innerHTML).toBe("");
-  });
-
   it("returns null when user is not logged in", () => {
     mocks.useAuth.mockReturnValue({ status: "none" });
     mocks.usePushNotification.mockReturnValue({

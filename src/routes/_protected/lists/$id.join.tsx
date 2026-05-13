@@ -58,7 +58,7 @@ function JoinListRouteComponent() {
         setListName(name);
 
         const profile = await authService.getUserProfile();
-        if (profile && !profile.isAnonymous && profile.displayName) {
+        if (profile && profile.displayName) {
           setMemberName(profile.displayName);
           setStatus("confirm");
           return;

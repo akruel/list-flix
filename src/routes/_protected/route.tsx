@@ -3,7 +3,6 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Layout } from "@/components/Layout";
-import { MigrationConflictModal } from "@/components/MigrationConflictModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/lib/logger";
 import { authService } from "@/services/auth";
@@ -32,22 +31,17 @@ function ProtectedLayoutRouteComponent() {
   const syncWithSupabase = useStore((state) => state.syncWithSupabase);
   const location = useLocation();
 
-  const [showMigrationModal, setShowMigrationModal] = useState(false);
   const [isSessionProcessing, setIsSessionProcessing] = useState(false);
   const lastHandledUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (status === "none") {
-      queueMicrotask(() => {
-        setShowMigrationModal(false);
-        setIsSessionProcessing(false);
-      });
       lastHandledUserIdRef.current = null;
     }
   }, [status]);
 
   useEffect(() => {
-    if (status !== "anonymous" && status !== "authenticated") return;
+    if (status !== "authenticated") return;
 
     const userId = user?.id;
     if (!userId) return;
@@ -59,13 +53,8 @@ function ProtectedLayoutRouteComponent() {
       setIsSessionProcessing(true);
 
       try {
-        const finalizeResult = await authService.finalizePostLogin();
+        await authService.finalizePostLogin();
         if (cancelled) return;
-
-        if (finalizeResult.migrationConflict) {
-          setShowMigrationModal(true);
-          return;
-        }
 
         await syncWithSupabase();
         if (cancelled) return;
@@ -86,76 +75,12 @@ function ProtectedLayoutRouteComponent() {
     };
   }, [location.pathname, status, syncWithSupabase, user?.id]);
 
-  const handleKeepLocal = async () => {
-    const oldUserId = localStorage.getItem(
-      authService.MIGRATION_OLD_USER_ID_KEY,
-    );
-    const newUserId = user?.id ?? (await authService.getUserId());
-
-    if (oldUserId && newUserId) {
-      try {
-        await authService.migrateAnonymousData(oldUserId, newUserId);
-      } catch (error) {
-        logger.error("Manual migration failed:", error);
-      }
-    }
-
-    authService.clearMigrationOldUserId();
-    setShowMigrationModal(false);
-
-    try {
-      await syncWithSupabase();
-      if (newUserId) {
-        lastHandledUserIdRef.current = newUserId;
-      }
-    } catch (error) {
-      logger.error("Sync after manual migration failed:", error);
-    }
-  };
-
-  const handleUseAccount = async () => {
-    const currentUserId = user?.id ?? (await authService.getUserId());
-
-    authService.clearMigrationOldUserId();
-    setShowMigrationModal(false);
-
-    try {
-      await syncWithSupabase();
-      if (currentUserId) {
-        lastHandledUserIdRef.current = currentUserId;
-      }
-    } catch (error) {
-      logger.error("Sync after selecting account data failed:", error);
-    }
-  };
-
   const isProtectedBlocked =
-    status === "loading" ||
-    status === "none" ||
-    isSessionProcessing ||
-    showMigrationModal;
+    status === "loading" || status === "none" || isSessionProcessing;
 
   if (isProtectedBlocked) {
-    return (
-      <>
-        <FullScreenLoader />
-        <MigrationConflictModal
-          isOpen={showMigrationModal}
-          onKeepLocal={handleKeepLocal}
-          onUseAccount={handleUseAccount}
-        />
-      </>
-    );
+    return <FullScreenLoader />;
   }
 
-  return (
-    <>
-      <MigrationConflictModal
-        isOpen={showMigrationModal}
-        onKeepLocal={handleKeepLocal}
-        onUseAccount={handleUseAccount}
-      />
-      <Layout />
-    </>
-  );
+  return <Layout />;
 }

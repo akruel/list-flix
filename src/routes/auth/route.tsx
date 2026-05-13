@@ -24,18 +24,16 @@ export const Route = createFileRoute("/auth")({
 });
 
 function AuthRouteComponent() {
-  const { status, signInWithGoogle, signInWithOtp, continueAsGuest } =
-    useAuth();
+  const { status, signInWithGoogle, signInWithOtp } = useAuth();
   const navigate = useNavigate();
 
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [email, setEmail] = useState("");
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isOtpLoading, setIsOtpLoading] = useState(false);
-  const [isGuestLoading, setIsGuestLoading] = useState(false);
 
   useEffect(() => {
-    if (status === "anonymous" || status === "authenticated") {
+    if (status === "authenticated") {
       const target = getPostLoginDestination(
         authService.consumePostLoginTarget(),
       );
@@ -76,21 +74,6 @@ function AuthRouteComponent() {
     }
   };
 
-  const handleContinueAsGuest = async () => {
-    setIsGuestLoading(true);
-    try {
-      await continueAsGuest();
-      const target = getPostLoginDestination(
-        authService.consumePostLoginTarget(),
-      );
-      navigate({ ...target, replace: true });
-    } catch (error) {
-      logger.error("Guest sign-in error:", error);
-      toast.error("Não foi possível continuar como visitante.");
-      setIsGuestLoading(false);
-    }
-  };
-
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -110,7 +93,7 @@ function AuthRouteComponent() {
             Entrar no ListFlix
           </CardTitle>
           <CardDescription>
-            Entre com Google, receba link por email ou continue como visitante.
+            Entre com Google ou receba um link de acesso por email.
           </CardDescription>
         </CardHeader>
 
@@ -118,7 +101,7 @@ function AuthRouteComponent() {
           <Button
             onClick={handleGoogleLogin}
             className="w-full"
-            disabled={isGoogleLoading || isOtpLoading || isGuestLoading}
+            disabled={isGoogleLoading || isOtpLoading}
           >
             {isGoogleLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -158,7 +141,10 @@ function AuthRouteComponent() {
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => setShowEmailInput(false)}
+                  onClick={() => {
+                    setShowEmailInput(false);
+                    setEmail("");
+                  }}
                   disabled={isOtpLoading}
                 >
                   <X className="h-4 w-4" />
@@ -170,24 +156,12 @@ function AuthRouteComponent() {
               onClick={() => setShowEmailInput(true)}
               variant="outline"
               className="w-full"
-              disabled={isGoogleLoading || isOtpLoading || isGuestLoading}
+              disabled={isGoogleLoading || isOtpLoading}
             >
               <Mail className="h-4 w-4" />
               Entrar com Email
             </Button>
           )}
-
-          <Button
-            variant="ghost"
-            onClick={handleContinueAsGuest}
-            className="w-full"
-            disabled={isGoogleLoading || isOtpLoading || isGuestLoading}
-          >
-            {isGuestLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : null}
-            Continuar como visitante
-          </Button>
         </CardContent>
       </Card>
     </div>

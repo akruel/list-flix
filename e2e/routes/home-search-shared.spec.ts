@@ -1,4 +1,4 @@
-import { continueAsGuest } from "../fixtures/auth";
+import { signIn } from "../fixtures/auth";
 import {
   encodeSharedRouteData,
   ROUTE_TEST_IDS,
@@ -11,20 +11,20 @@ test.beforeEach(async ({ page }) => {
   await mockTmdbApi(page);
 });
 
-test(`[${SCENARIO_IDS.HOME_GUEST_RENDER}] allows guest login and lands on home route`, async ({
+test(`[${SCENARIO_IDS.HOME_GUEST_RENDER}] signs in and lands on home route`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   await expect(page).toHaveURL(/\/$/);
   await expect(page.getByTestId(ROUTE_TEST_IDS.home)).toBeVisible();
   await expect(page.getByRole("heading", { name: "Em Alta" })).toBeVisible();
 });
 
-test(`[${SCENARIO_IDS.SEARCH_ROUTE_RENDER}] renders search route for authenticated guest`, async ({
+test(`[${SCENARIO_IDS.SEARCH_ROUTE_RENDER}] renders search route for authenticated user`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   await page.goto("/search");
 
@@ -38,7 +38,7 @@ test(`[${SCENARIO_IDS.SEARCH_ROUTE_RENDER}] renders search route for authenticat
 test(`[${SCENARIO_IDS.SEARCH_QUERY_RESULTS}] renders TMDB search results after user query`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await page.goto("/search");
 
   await expect(page.getByTestId(ROUTE_TEST_IDS.search)).toBeVisible();
@@ -50,7 +50,7 @@ test(`[${SCENARIO_IDS.SEARCH_QUERY_RESULTS}] renders TMDB search results after u
 test(`[${SCENARIO_IDS.SEARCH_RESULT_OPENS_DETAILS}] opens details route when clicking a search result`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
   await page.goto("/search");
 
   await page.getByTestId("search-input").fill("mock movie");
@@ -70,7 +70,7 @@ test(`[${SCENARIO_IDS.SEARCH_RESULT_OPENS_DETAILS}] opens details route when cli
 test(`[${SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA}] renders shared route using encoded data payload`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   const sharedData = encodeSharedRouteData([{ id: 101, type: "movie" }]);
   await page.goto(`/shared?data=${encodeURIComponent(sharedData)}`);
@@ -86,7 +86,7 @@ test(`[${SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA}] renders shared route using
 test(`[${SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK}] shows validation error for invalid shared route`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   await page.goto("/shared");
 
@@ -97,7 +97,7 @@ test(`[${SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK}] shows validation error for inv
 test(`[${SCENARIO_IDS.THIS_WEEK_RENDER}] renders this-week route for empty watchlist`, async ({
   page,
 }) => {
-  await continueAsGuest(page);
+  await signIn(page);
 
   await page.goto("/this-week");
 

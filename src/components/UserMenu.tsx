@@ -3,6 +3,16 @@ import { LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,7 +27,6 @@ import { logger } from "@/lib/logger";
 
 import { useAuth } from "../contexts/AuthContext";
 import type { UserProfile } from "../types";
-import { LogoutChoiceDialog } from "./LogoutChoiceDialog";
 
 interface UserMenuProps {
   user: UserProfile;
@@ -25,34 +34,20 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   const navigate = useNavigate();
-  const { signOutToGuest, signOutFully } = useAuth();
+  const { signOut } = useAuth();
 
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
 
-  const handleContinueAsGuest = async () => {
+  const handleSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await signOutToGuest();
-      setIsLogoutDialogOpen(false);
-      navigate({ to: "/", replace: true });
-    } catch (error) {
-      logger.error("Error signing out to guest mode:", error);
-      toast.error("Não foi possível continuar como visitante.");
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
-
-  const handleSignOutFully = async () => {
-    setIsSigningOut(true);
-    try {
-      await signOutFully();
+      await signOut();
       setIsLogoutDialogOpen(false);
       navigate({ to: "/auth", replace: true });
     } catch (error) {
-      logger.error("Error signing out fully:", error);
-      toast.error("Não foi possível sair totalmente.");
+      logger.error("Error signing out:", error);
+      toast.error("Não foi possível sair.");
     } finally {
       setIsSigningOut(false);
     }
@@ -96,17 +91,33 @@ export function UserMenu({ user }: UserMenuProps) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <LogoutChoiceDialog
+      <AlertDialog
         open={isLogoutDialogOpen}
         onOpenChange={setIsLogoutDialogOpen}
-        onContinueAsGuest={() => {
-          void handleContinueAsGuest();
-        }}
-        onSignOutFully={() => {
-          void handleSignOutFully();
-        }}
-        isLoading={isSigningOut}
-      />
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja sair da sua conta?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isSigningOut}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                void handleSignOut();
+              }}
+              disabled={isSigningOut}
+            >
+              {isSigningOut ? "Saindo..." : "Sair"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

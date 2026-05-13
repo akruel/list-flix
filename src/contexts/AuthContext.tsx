@@ -14,7 +14,7 @@ import { supabase } from "../lib/supabase";
 import { authService } from "../services/auth";
 import type { UserProfile } from "../types";
 
-export type AuthStatus = "loading" | "none" | "anonymous" | "authenticated";
+export type AuthStatus = "loading" | "none" | "authenticated";
 
 export interface AuthContextSnapshot {
   status: AuthStatus;
@@ -27,9 +27,7 @@ interface AuthContextValue {
   refreshProfile: () => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithOtp: (email: string) => Promise<void>;
-  continueAsGuest: () => Promise<void>;
-  signOutToGuest: () => Promise<void>;
-  signOutFully: () => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -66,7 +64,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     setUser(profile);
-    setStatus(profile.isAnonymous ? "anonymous" : "authenticated");
+    setStatus("authenticated");
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -78,7 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     setUser(profile);
-    setStatus(profile.isAnonymous ? "anonymous" : "authenticated");
+    setStatus("authenticated");
   }, []);
 
   useEffect(() => {
@@ -113,10 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       refreshProfile,
       signInWithGoogle: () => authService.signInWithGoogle(),
       signInWithOtp: (email: string) => authService.signInWithOtp(email),
-      continueAsGuest: () =>
-        authService.signInAnonymously().then(() => undefined),
-      signOutToGuest: () => authService.signOutToGuest(),
-      signOutFully: () => authService.signOutFully(),
+      signOut: () => authService.signOut(),
     }),
     [refreshProfile, status, user],
   );
