@@ -13,7 +13,7 @@ import {
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 import { useStore } from "@/store/useStore";
-import type { ContentDetails } from "@/types";
+import type { Episode } from "@/types";
 
 export const Route = createFileRoute("/_protected/this-week")({
   component: ThisWeekComponent,
@@ -23,11 +23,12 @@ interface WeekEpisode {
   showId: number;
   showName: string;
   showPoster: string | null;
-  episode: NonNullable<ContentDetails["next_episode_to_air"]>;
+  episode: Episode;
 }
 
 function ThisWeekComponent() {
-  const { myList } = useStore();
+  const { myList, isEpisodeWatched, getCachedSeason, setCachedSeason } =
+    useStore();
   const [episodes, setEpisodes] = useState<WeekEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,14 +61,40 @@ function ThisWeekComponent() {
         for (const result of results) {
           if (result.status === "fulfilled") {
             const details = result.value;
-            const nextEp = details.next_episode_to_air;
-            if (nextEp && isDateInCurrentWeek(nextEp.air_date)) {
-              weekEpisodes.push({
-                showId: details.id,
-                showName: details.name || "",
-                showPoster: details.poster_path ?? null,
-                episode: nextEp,
-              });
+
+            const activeSeason =
+              details.next_episode_to_air?.season_number ??
+              details.last_episode_to_air?.season_number;
+
+            if (activeSeason == null) continue;
+
+            let seasonData = getCachedSeason(details.id, activeSeason);
+            if (!seasonData) {
+              try {
+                seasonData = await tmdb.getSeasonDetails(
+                  details.id,
+                  activeSeason,
+                );
+                setCachedSeason(details.id, activeSeason, seasonData);
+              } catch {
+                failCount++;
+                continue;
+              }
+            }
+
+            for (const episode of seasonData.episodes) {
+              if (
+                episode.air_date &&
+                isDateInCurrentWeek(episode.air_date) &&
+                !isEpisodeWatched(details.id, episode.id)
+              ) {
+                weekEpisodes.push({
+                  showId: details.id,
+                  showName: details.name || "",
+                  showPoster: details.poster_path ?? null,
+                  episode,
+                });
+              }
             }
           } else {
             failCount++;
@@ -97,7 +124,7 @@ function ThisWeekComponent() {
     return () => {
       cancelled = true;
     };
-  }, [tvShows]);
+  }, [tvShows, isEpisodeWatched, getCachedSeason, setCachedSeason]);
 
   const groupedEpisodes = episodes.reduce<Record<string, WeekEpisode[]>>(
     (acc, ep) => {
