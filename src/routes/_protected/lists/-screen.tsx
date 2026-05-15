@@ -10,6 +10,7 @@ import { MovieCard } from "@/components/MovieCard";
 import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 import { listService } from "@/services/listService";
+import { userContentService } from "@/services/userContent";
 import { useStore } from "@/store/useStore";
 import type { ContentItem, WatchingContext } from "@/types";
 
@@ -33,6 +34,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
   >({});
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [itemToRemove, setItemToRemove] = useState<ContentItem | null>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
   const allMembers = useMemo(() => {
     const names = new Set<string>();
     Object.values(watchingContextMap).forEach((contexts) =>
@@ -90,11 +92,26 @@ export function MyListScreen({ listId }: MyListScreenProps) {
     setMemberFilter(null);
   }, [myList]);
 
-  const handleRemoveFromWatchlist = () => {
+  const handleRemoveFromWatchlist = async () => {
     if (!itemToRemove) return;
-    removeFromList(itemToRemove.id);
-    toast.success("Item removido da lista");
-    setItemToRemove(null);
+    setIsRemoving(true);
+    try {
+      const success = await userContentService.removeFromWatchlist(
+        itemToRemove.id,
+      );
+      if (!success) {
+        toast.error("Erro ao remover item da lista");
+        return;
+      }
+      removeFromList(itemToRemove.id);
+      toast.success("Item removido da lista");
+      setItemToRemove(null);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Erro ao remover item da lista");
+    } finally {
+      setIsRemoving(false);
+    }
   };
 
   const filteredList = myList.filter((item) => {
@@ -266,7 +283,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
             isOpen={!!itemToRemove}
             onClose={() => setItemToRemove(null)}
             onConfirm={() => {
-              handleRemoveFromWatchlist();
+              void handleRemoveFromWatchlist();
             }}
             title="Remover da lista"
             description={
@@ -274,6 +291,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
                 ? `Tem certeza que deseja remover "${itemToRemove.title || itemToRemove.name || "este item"}" da sua lista?`
                 : ""
             }
+            isDeleting={isRemoving}
           />
         </>
       ) : listId ? (

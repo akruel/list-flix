@@ -117,7 +117,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
 
   const getRemoveItemName = (listItem: ListItem | null) => {
     if (!listItem?.content) return null;
-    return listItem.content.title ?? listItem.content.name;
+    return listItem.content.title || listItem.content.name;
   };
 
   const handleConfirmRemoveItem = async () => {

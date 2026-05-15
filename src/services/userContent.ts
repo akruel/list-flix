@@ -277,13 +277,17 @@ export const userContentService = {
     if (error) logger.error("Error adding to watchlist:", error);
   },
 
-  async removeFromWatchlist(contentId: number) {
+  async removeFromWatchlist(contentId: number): Promise<boolean> {
     const { error } = await supabase
       .from("watchlists")
       .delete()
       .match({ tmdb_id: contentId });
 
-    if (error) logger.error("Error removing from watchlist:", error);
+    if (error) {
+      logger.error("Error removing from watchlist:", error);
+      return false;
+    }
+    return true;
   },
 
   async markAsWatched(
