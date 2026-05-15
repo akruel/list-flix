@@ -74,6 +74,8 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   const [editingName, setEditingName] = useState("");
   const [memberToRemove, setMemberToRemove] = useState<ListMember | null>(null);
   const [isRemovingMember, setIsRemovingMember] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState<ListItem | null>(null);
+  const [isRemovingItem, setIsRemovingItem] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -113,60 +115,35 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     loadList();
   }, [id]);
 
-  const handleShare = async (role: "editor" | "viewer") => {
-    /* v8 ignore next -- defensive guard: share actions render only when list exists */
-    if (!list) return;
-    const url = listService.getShareUrl(list.id, role);
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const getRemoveItemName = (listItem: ListItem | null) => {
+    if (!listItem?.content) return null;
+    return listItem.content.title ?? listItem.content.name;
   };
 
-  const handleRemoveItem = async (itemId: string) => {
-    if (!confirm("Are you sure you want to remove this item?")) return;
+  const handleConfirmRemoveItem = async () => {
+    const itemId = itemToRemove!.id;
     try {
+      setIsRemovingItem(true);
       await listService.removeListItem(itemId);
       setItems(items.filter((i) => i.id !== itemId));
+      toast.success("Item removido com sucesso");
+      setItemToRemove(null);
     } catch (err) {
       logger.error(err);
       toast.error("Falha ao remover item");
+    } finally {
+      setIsRemovingItem(false);
     }
   };
 
-  const handleRemoveItemButtonClick = (
-    e: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    e.preventDefault();
-    const { itemId } = e.currentTarget.dataset;
-    /* v8 ignore next -- button always sets data-item-id */
-    if (!itemId) return;
-    void handleRemoveItem(itemId);
-  };
-
-  const startEditing = () => {
-    /* v8 ignore next -- defensive guard: edit button only renders when list exists */
-    if (!list) return;
-    setIsEditing(true);
-    setEditingName(list.name);
+  const handleItemRemoveModalClose = () => {
+    if (isRemovingItem) return;
+    setItemToRemove(null);
   };
 
   const cancelEditing = () => {
     setIsEditing(false);
     setEditingName("");
-  };
-
-  const saveEditing = async () => {
-    if (!list || !editingName.trim()) return;
-
-    try {
-      await updateList(list.id, editingName);
-      setList({ ...list, name: editingName });
-      toast.success("Nome da lista atualizado");
-      setIsEditing(false);
-    } catch (err) {
-      logger.error(err);
-      toast.error("Erro ao atualizar nome da lista");
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -179,48 +156,6 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     }
   };
 
-  const handleDeleteList = async () => {
-    /* v8 ignore next -- defensive guard: delete action only renders when list exists */
-    if (!list) return;
-    try {
-      setIsDeleting(true);
-      await listService.deleteList(list.id);
-      toast.success("Lista excluída com sucesso");
-      navigate({ to: "/lists" });
-    } catch (err) {
-      logger.error(err);
-      toast.error("Erro ao excluir lista");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleRemoveMember = async () => {
-    /* v8 ignore next -- defensive guard: confirm only opens with list + selected member */
-    if (!list || !memberToRemove) return;
-
-    try {
-      setIsRemovingMember(true);
-      await listService.removeListMember(list.id, memberToRemove.user_id);
-      setMembers((prev) =>
-        prev.filter(
-          (member) =>
-            !(
-              member.list_id === memberToRemove.list_id &&
-              member.user_id === memberToRemove.user_id
-            ),
-        ),
-      );
-      toast.success("Membro removido com sucesso");
-      setMemberToRemove(null);
-    } catch (err) {
-      logger.error(err);
-      toast.error("Falha ao remover membro");
-    } finally {
-      setIsRemovingMember(false);
-    }
-  };
-
   const handleMemberModalClose = () => {
     if (isRemovingMember) return;
     setMemberToRemove(null);
@@ -228,14 +163,6 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
 
   const openDeleteModal = () => {
     setShowDeleteModal(true);
-  };
-
-  const handleEditorShareClick = () => {
-    void handleShare("editor");
-  };
-
-  const handleViewerShareClick = () => {
-    void handleShare("viewer");
   };
 
   if (loading) {
@@ -261,6 +188,78 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   }
 
   const canEdit = list.role === "owner" || list.role === "editor";
+
+  const handleShare = async (role: "editor" | "viewer") => {
+    const url = listService.getShareUrl(list.id, role);
+    await navigator.clipboard.writeText(url);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleEditorShareClick = () => {
+    void handleShare("editor");
+  };
+
+  const handleViewerShareClick = () => {
+    void handleShare("viewer");
+  };
+
+  const startEditing = () => {
+    setIsEditing(true);
+    setEditingName(list.name);
+  };
+
+  const saveEditing = async () => {
+    if (!editingName.trim()) return;
+
+    try {
+      await updateList(list.id, editingName);
+      setList({ ...list, name: editingName });
+      toast.success("Nome da lista atualizado");
+      setIsEditing(false);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Erro ao atualizar nome da lista");
+    }
+  };
+
+  const handleDeleteList = async () => {
+    try {
+      setIsDeleting(true);
+      await listService.deleteList(list.id);
+      toast.success("Lista excluída com sucesso");
+      navigate({ to: "/lists" });
+    } catch (err) {
+      logger.error(err);
+      toast.error("Erro ao excluir lista");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleRemoveMember = async () => {
+    const removedMember = memberToRemove!;
+    try {
+      setIsRemovingMember(true);
+      await listService.removeListMember(list.id, removedMember.user_id);
+      setMembers((prev) =>
+        prev.filter(
+          (member) =>
+            !(
+              member.list_id === removedMember.list_id &&
+              member.user_id === removedMember.user_id
+            ),
+        ),
+      );
+      toast.success("Membro removido com sucesso");
+      setMemberToRemove(null);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Falha ao remover membro");
+    } finally {
+      setIsRemovingMember(false);
+    }
+  };
 
   return (
     <div
@@ -463,8 +462,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
               <Button
                 variant="destructive"
                 size="icon"
-                data-item-id={item.id}
-                onClick={handleRemoveItemButtonClick}
+                onClick={() => setItemToRemove(item)}
                 className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
                 title="Remover item"
               >
@@ -506,6 +504,21 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
             : ""
         }
         isDeleting={isRemovingMember}
+      />
+
+      <DeleteConfirmationModal
+        isOpen={!!itemToRemove}
+        onClose={handleItemRemoveModalClose}
+        onConfirm={() => {
+          void handleConfirmRemoveItem();
+        }}
+        title="Remover item"
+        description={
+          itemToRemove
+            ? `Tem certeza que deseja remover "${getRemoveItemName(itemToRemove) ?? "este item"}" da lista?`
+            : ""
+        }
+        isDeleting={isRemovingItem}
       />
     </div>
   );

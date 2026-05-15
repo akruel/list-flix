@@ -1,14 +1,17 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, LayoutGrid, List } from "lucide-react";
+import { Eye, EyeOff, LayoutGrid, List, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { CustomLists } from "@/components/CustomLists";
+import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ListDetailsView } from "@/components/ListDetailsView";
 import { MovieCard } from "@/components/MovieCard";
+import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 import { listService } from "@/services/listService";
 import { useStore } from "@/store/useStore";
-import type { WatchingContext } from "@/types";
+import type { ContentItem, WatchingContext } from "@/types";
 
 type FilterType = "all" | "watched" | "unwatched";
 type TabType = "watchlist" | "custom";
@@ -19,7 +22,7 @@ interface MyListScreenProps {
 
 export function MyListScreen({ listId }: MyListScreenProps) {
   const navigate = useNavigate();
-  const { myList, isWatched } = useStore();
+  const { myList, isWatched, removeFromList } = useStore();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [activeTab, setActiveTab] = useState<TabType>(
@@ -29,6 +32,7 @@ export function MyListScreen({ listId }: MyListScreenProps) {
     Record<number, WatchingContext[]>
   >({});
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
+  const [itemToRemove, setItemToRemove] = useState<ContentItem | null>(null);
   const allMembers = useMemo(() => {
     const names = new Set<string>();
     Object.values(watchingContextMap).forEach((contexts) =>
@@ -85,6 +89,13 @@ export function MyListScreen({ listId }: MyListScreenProps) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMemberFilter(null);
   }, [myList]);
+
+  const handleRemoveFromWatchlist = () => {
+    if (!itemToRemove) return;
+    removeFromList(itemToRemove.id);
+    toast.success("Item removido da lista");
+    setItemToRemove(null);
+  };
 
   const filteredList = myList.filter((item) => {
     if (filter === "watched" && !isWatched(item.id)) return false;
@@ -219,12 +230,22 @@ export function MyListScreen({ listId }: MyListScreenProps) {
           {filteredList.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredList.map((item) => (
-                <MovieCard
-                  key={item.id}
-                  item={item}
-                  showProgress={true}
-                  watchingWith={watchingContextMap[item.id]}
-                />
+                <div key={item.id} className="group relative">
+                  <MovieCard
+                    item={item}
+                    showProgress={true}
+                    watchingWith={watchingContextMap[item.id]}
+                  />
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => setItemToRemove(item)}
+                    className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
+                    title="Remover da lista"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               ))}
             </div>
           ) : myList.length > 0 ? (
@@ -240,6 +261,20 @@ export function MyListScreen({ listId }: MyListScreenProps) {
               </p>
             </div>
           )}
+
+          <DeleteConfirmationModal
+            isOpen={!!itemToRemove}
+            onClose={() => setItemToRemove(null)}
+            onConfirm={() => {
+              handleRemoveFromWatchlist();
+            }}
+            title="Remover da lista"
+            description={
+              itemToRemove
+                ? `Tem certeza que deseja remover "${itemToRemove.title || itemToRemove.name || "este item"}" da sua lista?`
+                : ""
+            }
+          />
         </>
       ) : listId ? (
         <ListDetailsView id={listId} />
