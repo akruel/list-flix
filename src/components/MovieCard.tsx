@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Check, Star } from "lucide-react";
+import { Check, Star, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,18 +7,20 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useSeriesProgress } from "../hooks/useSeriesProgress";
 import { tmdb } from "../services/tmdb";
 import { useStore } from "../store/useStore";
-import type { ContentItem } from "../types";
+import type { ContentItem, WatchingContext } from "../types";
 
 interface MovieCardProps {
   item: ContentItem;
   showProgress?: boolean;
   disableLink?: boolean;
+  watchingWith?: WatchingContext[];
 }
 
 export function MovieCard({
   item,
   showProgress = false,
   disableLink = false,
+  watchingWith,
 }: MovieCardProps) {
   const title = item.media_type === "movie" ? item.title : item.name;
   const date =
@@ -63,6 +65,23 @@ export function MovieCard({
             data-testid="watched-badge"
           >
             <Check size={16} />
+          </div>
+        )}
+        {!!watchingWith && watchingWith.length > 0 && (
+          <div
+            className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-1 text-xs text-white shadow-lg backdrop-blur-sm"
+            data-testid="watching-with-badge"
+          >
+            <div className="flex items-center gap-1">
+              <Users size={12} />
+              <span className="max-w-[100px] truncate">
+                {[
+                  ...new Set(
+                    watchingWith.flatMap((c) => c.memberNames).filter(Boolean),
+                  ),
+                ].join(", ")}
+              </span>
+            </div>
           </div>
         )}
         {!!shouldShowProgress && (

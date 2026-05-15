@@ -1,5 +1,11 @@
 import { supabase } from "../lib/supabase";
-import type { ContentItem, List, ListItem, ListMember } from "../types";
+import type {
+  ContentItem,
+  List,
+  ListItem,
+  ListMember,
+  WatchingContext,
+} from "../types";
 
 interface ListWithMembers extends Omit<List, "role"> {
   list_members: Array<{
@@ -230,6 +236,56 @@ export const listService = {
       }),
       {},
     );
+  },
+
+  async getWatchingContext(
+    contentId: number,
+    contentType: "movie" | "tv",
+  ): Promise<WatchingContext[]> {
+    const { data, error } = await supabase.rpc("get_watching_context", {
+      p_content_id: contentId,
+      p_content_type: contentType,
+    });
+
+    if (error) throw error;
+    return (
+      (data || []) as Array<{
+        list_name: string;
+        member_names: string[];
+      }>
+    ).map((item) => ({
+      listName: item.list_name,
+      memberNames: item.member_names,
+    }));
+  },
+
+  async getWatchingContextBatch(
+    items: Array<{ contentId: number; contentType: "movie" | "tv" }>,
+  ): Promise<Record<number, WatchingContext[]>> {
+    const payload = items.map((i) => ({
+      content_id: i.contentId,
+      content_type: i.contentType,
+    }));
+
+    const { data, error } = await supabase.rpc("get_watching_context_batch", {
+      p_items: payload,
+    });
+
+    if (error) throw error;
+
+    const map: Record<number, WatchingContext[]> = {};
+    for (const row of (data || []) as Array<{
+      content_id: number;
+      list_name: string;
+      member_names: string[];
+    }>) {
+      if (!map[row.content_id]) map[row.content_id] = [];
+      map[row.content_id].push({
+        listName: row.list_name,
+        memberNames: row.member_names,
+      });
+    }
+    return map;
   },
 
   async deleteList(listId: string): Promise<void> {

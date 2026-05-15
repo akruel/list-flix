@@ -79,4 +79,4 @@ When creating pull requests, use bullet points for the description body:
 
 ## Existing Agent Rules
 
-No additional agent rules configured.
+- If lint rules or test coverage thresholds fail, refactor the code instead of adding suppressions or ignore comments. The tools exist to enforce quality — work with them, not around them.
