@@ -75,10 +75,11 @@ export function MovieCard({
             <div className="flex items-center gap-1">
               <Users size={12} />
               <span className="max-w-[100px] truncate">
-                {watchingWith
-                  .flatMap((c) => c.memberNames)
-                  .filter(Boolean)
-                  .join(", ")}
+                {[
+                  ...new Set(
+                    watchingWith.flatMap((c) => c.memberNames).filter(Boolean),
+                  ),
+                ].join(", ")}
               </span>
             </div>
           </div>

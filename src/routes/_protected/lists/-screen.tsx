@@ -58,22 +58,16 @@ export function MyListScreen({ listId }: MyListScreenProps) {
     let cancelled = false;
 
     const fetchContexts = async () => {
-      const results = await Promise.all(
-        myList.map((item) =>
-          listService
-            .getWatchingContext(item.id, item.media_type)
-            .catch(() => [] as WatchingContext[]),
-        ),
-      );
+      const items = myList.map((item) => ({
+        contentId: item.id,
+        contentType: item.media_type as "movie" | "tv",
+      }));
+
+      const map = await listService
+        .getWatchingContextBatch(items)
+        .catch(() => ({}) as Record<number, WatchingContext[]>);
 
       if (cancelled) return;
-
-      const map: Record<number, WatchingContext[]> = {};
-      myList.forEach((item, i) => {
-        if (results[i].length > 0) {
-          map[item.id] = results[i];
-        }
-      });
       setWatchingContextMap(map);
     };
 

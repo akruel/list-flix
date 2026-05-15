@@ -259,6 +259,35 @@ export const listService = {
     }));
   },
 
+  async getWatchingContextBatch(
+    items: Array<{ contentId: number; contentType: "movie" | "tv" }>,
+  ): Promise<Record<number, WatchingContext[]>> {
+    const payload = items.map((i) => ({
+      content_id: i.contentId,
+      content_type: i.contentType,
+    }));
+
+    const { data, error } = await supabase.rpc("get_watching_context_batch", {
+      p_items: JSON.stringify(payload),
+    });
+
+    if (error) throw error;
+
+    const map: Record<number, WatchingContext[]> = {};
+    for (const row of (data || []) as Array<{
+      content_id: number;
+      list_name: string;
+      member_names: string[];
+    }>) {
+      if (!map[row.content_id]) map[row.content_id] = [];
+      map[row.content_id].push({
+        listName: row.list_name,
+        memberNames: row.member_names,
+      });
+    }
+    return map;
+  },
+
   async deleteList(listId: string): Promise<void> {
     const { error } = await supabase.from("lists").delete().eq("id", listId);
 

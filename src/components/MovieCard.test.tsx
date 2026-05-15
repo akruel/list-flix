@@ -337,4 +337,23 @@ describe("MovieCard", () => {
     expect(screen.getByTestId("watched-badge")).toBeInTheDocument();
     expect(screen.getByTestId("watching-with-badge")).toBeInTheDocument();
   });
+
+  it("deduplicates member names across multiple contexts", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        watchingWith={[
+          { listName: "Amigos", memberNames: ["Amanda"] },
+          { listName: "Família", memberNames: ["Amanda", "João"] },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Amanda, João")).toBeInTheDocument();
+    expect(screen.queryByText("Amanda, Amanda, João")).not.toBeInTheDocument();
+  });
 });
