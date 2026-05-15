@@ -614,8 +614,16 @@ describe("ListDetailsView", () => {
         );
       });
 
+      expect(mocks.removeListItem.mock.calls[0]?.[0]).toBe(
+        shouldCallRemove ? "item-1" : undefined,
+      );
+
       expect(mocks.toastError).toHaveBeenCalledTimes(
         expectedToastError ? 1 : 0,
+      );
+
+      expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
+        expectedToastError ? "Falha ao remover item" : undefined,
       );
     },
   );
