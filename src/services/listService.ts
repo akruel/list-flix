@@ -268,7 +268,7 @@ export const listService = {
     }));
 
     const { data, error } = await supabase.rpc("get_watching_context_batch", {
-      p_items: JSON.stringify(payload),
+      p_items: payload,
     });
 
     if (error) throw error;

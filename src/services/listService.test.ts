@@ -906,10 +906,10 @@ describe("listService", () => {
     expect(mockedSupabase.rpc).toHaveBeenCalledWith(
       "get_watching_context_batch",
       {
-        p_items: JSON.stringify([
+        p_items: [
           { content_id: 10, content_type: "tv" },
           { content_id: 20, content_type: "movie" },
-        ]),
+        ],
       },
     );
     expect(result).toEqual({
