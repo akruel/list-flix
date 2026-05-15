@@ -1,5 +1,11 @@
 import { supabase } from "../lib/supabase";
-import type { ContentItem, List, ListItem, ListMember } from "../types";
+import type {
+  ContentItem,
+  List,
+  ListItem,
+  ListMember,
+  WatchingContext,
+} from "../types";
 
 interface ListWithMembers extends Omit<List, "role"> {
   list_members: Array<{
@@ -230,6 +236,27 @@ export const listService = {
       }),
       {},
     );
+  },
+
+  async getWatchingContext(
+    contentId: number,
+    contentType: "movie" | "tv",
+  ): Promise<WatchingContext[]> {
+    const { data, error } = await supabase.rpc("get_watching_context", {
+      p_content_id: contentId,
+      p_content_type: contentType,
+    });
+
+    if (error) throw error;
+    return (
+      (data || []) as Array<{
+        list_name: string;
+        member_names: string[];
+      }>
+    ).map((item) => ({
+      listName: item.list_name,
+      memberNames: item.member_names,
+    }));
   },
 
   async deleteList(listId: string): Promise<void> {

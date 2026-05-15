@@ -243,4 +243,98 @@ describe("MovieCard", () => {
 
     expect(screen.queryByText("Ver Detalhes")).not.toBeInTheDocument();
   });
+
+  it("shows watching-with badge when context has members", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        watchingWith={[
+          {
+            listName: "Amigos",
+            memberNames: ["Amanda"],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("watching-with-badge")).toBeInTheDocument();
+    expect(screen.getByText("Amanda")).toBeInTheDocument();
+  });
+
+  it("shows multiple member names in watching-with badge", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 20,
+          media_type: "movie",
+          title: "Movie Two",
+        }}
+        watchingWith={[
+          {
+            listName: "Amigos",
+            memberNames: ["Amanda", "João"],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("watching-with-badge")).toBeInTheDocument();
+    expect(screen.getByText("Amanda, João")).toBeInTheDocument();
+  });
+
+  it("hides watching-with badge when context is empty", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        watchingWith={[]}
+      />,
+    );
+
+    expect(screen.queryByTestId("watching-with-badge")).not.toBeInTheDocument();
+  });
+
+  it("hides watching-with badge when context is undefined", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+      />,
+    );
+
+    expect(screen.queryByTestId("watching-with-badge")).not.toBeInTheDocument();
+  });
+
+  it("shows watching-with badge alongside watched badge", () => {
+    mocks.isWatched.mockReturnValue(true);
+
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Movie One",
+        }}
+        watchingWith={[
+          {
+            listName: "Amigos",
+            memberNames: ["Amanda"],
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByTestId("watched-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("watching-with-badge")).toBeInTheDocument();
+  });
 });

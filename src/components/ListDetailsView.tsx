@@ -226,21 +226,6 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     setMemberToRemove(null);
   };
 
-  const handleMemberRemoveButtonClick = (
-    e: React.MouseEvent<HTMLButtonElement>,
-  ) => {
-    const { memberUserId, memberListId } = e.currentTarget.dataset;
-    /* v8 ignore next -- button always sets member identifiers */
-    if (!memberUserId || !memberListId) return;
-    const selectedMember = members.find(
-      (member) =>
-        member.user_id === memberUserId && member.list_id === memberListId,
-    );
-    /* v8 ignore next -- source list comes from current members map */
-    if (!selectedMember) return;
-    setMemberToRemove(selectedMember);
-  };
-
   const openDeleteModal = () => {
     setShowDeleteModal(true);
   };
@@ -385,9 +370,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
                         <Button
                           variant="ghost"
                           size="icon"
-                          data-member-user-id={member.user_id}
-                          data-member-list-id={member.list_id}
-                          onClick={handleMemberRemoveButtonClick}
+                          onClick={() => setMemberToRemove(member)}
                           disabled={isRemovingMember}
                           className="h-6 w-6 rounded-full text-destructive hover:text-destructive"
                           title="Remover membro"

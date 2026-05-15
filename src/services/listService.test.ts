@@ -848,6 +848,46 @@ describe("listService", () => {
     },
   );
 
+  it("getWatchingContext returns data from RPC", async () => {
+    const rpcData = [{ list_name: "Amigos", member_names: ["João", "Maria"] }];
+    mockedSupabase.rpc.mockResolvedValue({
+      data: rpcData,
+      error: null,
+    });
+
+    const result = await listService.getWatchingContext(123, "tv");
+
+    expect(mockedSupabase.rpc).toHaveBeenCalledWith("get_watching_context", {
+      p_content_id: 123,
+      p_content_type: "tv",
+    });
+    expect(result).toEqual([
+      { listName: "Amigos", memberNames: ["João", "Maria"] },
+    ]);
+  });
+
+  it("getWatchingContext returns empty array when data is null", async () => {
+    mockedSupabase.rpc.mockResolvedValue({
+      data: null,
+      error: null,
+    });
+
+    const result = await listService.getWatchingContext(789, "movie");
+
+    expect(result).toEqual([]);
+  });
+
+  it("getWatchingContext throws on RPC failure", async () => {
+    mockedSupabase.rpc.mockResolvedValue({
+      data: null,
+      error: new Error("rpc failed"),
+    });
+
+    await expect(listService.getWatchingContext(456, "movie")).rejects.toThrow(
+      "rpc failed",
+    );
+  });
+
   it("updates list name and throws on update failure", async () => {
     const okBuilder = createThenableBuilder({
       data: null,

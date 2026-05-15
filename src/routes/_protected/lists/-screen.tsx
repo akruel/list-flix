@@ -1,11 +1,14 @@
 import { useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, LayoutGrid, List } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { CustomLists } from "@/components/CustomLists";
 import { ListDetailsView } from "@/components/ListDetailsView";
 import { MovieCard } from "@/components/MovieCard";
+import { logger } from "@/lib/logger";
+import { listService } from "@/services/listService";
 import { useStore } from "@/store/useStore";
+import type { WatchingContext } from "@/types";
 
 type FilterType = "all" | "watched" | "unwatched";
 type TabType = "watchlist" | "custom";
@@ -22,6 +25,17 @@ export function MyListScreen({ listId }: MyListScreenProps) {
   const [activeTab, setActiveTab] = useState<TabType>(
     listId ? "custom" : "watchlist",
   );
+  const [watchingContextMap, setWatchingContextMap] = useState<
+    Record<number, WatchingContext[]>
+  >({});
+  const [memberFilter, setMemberFilter] = useState<string | null>(null);
+  const allMembers = useMemo(() => {
+    const names = new Set<string>();
+    Object.values(watchingContextMap).forEach((contexts) =>
+      contexts.forEach((c) => c.memberNames.forEach((n) => names.add(n))),
+    );
+    return Array.from(names).sort();
+  }, [watchingContextMap]);
 
   useEffect(() => {
     if (listId) {
@@ -37,9 +51,55 @@ export function MyListScreen({ listId }: MyListScreenProps) {
     }
   };
 
+  // Fetch watching contexts for all watchlist items
+  useEffect(() => {
+    if (activeTab !== "watchlist" || myList.length === 0) return;
+
+    let cancelled = false;
+
+    const fetchContexts = async () => {
+      const results = await Promise.all(
+        myList.map((item) =>
+          listService
+            .getWatchingContext(item.id, item.media_type)
+            .catch(() => [] as WatchingContext[]),
+        ),
+      );
+
+      if (cancelled) return;
+
+      const map: Record<number, WatchingContext[]> = {};
+      myList.forEach((item, i) => {
+        if (results[i].length > 0) {
+          map[item.id] = results[i];
+        }
+      });
+      setWatchingContextMap(map);
+    };
+
+    fetchContexts().catch((err) =>
+      logger.error("Error fetching watching contexts:", err),
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, myList]);
+
+  // Reset member filter when watchlist changes
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMemberFilter(null);
+  }, [myList]);
+
   const filteredList = myList.filter((item) => {
-    if (filter === "watched") return isWatched(item.id);
-    if (filter === "unwatched") return !isWatched(item.id);
+    if (filter === "watched" && !isWatched(item.id)) return false;
+    if (filter === "unwatched" && isWatched(item.id)) return false;
+    if (memberFilter) {
+      const contexts = watchingContextMap[item.id];
+      if (!contexts?.some((c) => c.memberNames.includes(memberFilter)))
+        return false;
+    }
     return true;
   });
 
@@ -88,53 +148,89 @@ export function MyListScreen({ listId }: MyListScreenProps) {
 
       {activeTab === "watchlist" ? (
         <>
-          <div className="mb-6 flex items-center justify-between">
-            <div className="flex flex-wrap gap-2">
+          <div className="mb-6">
+            <div className="flex w-full flex-nowrap gap-1 md:flex-wrap md:gap-2">
               <button
                 data-testid="lists-filter-all"
                 onClick={() => setFilter("all")}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors md:flex-initial md:px-4 md:text-sm ${
                   filter === "all"
                     ? "bg-purple-600 text-white"
                     : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
-                <List size={16} />
+                <List size={16} className="hidden md:inline" />
                 Todos ({myList.length})
               </button>
               <button
                 data-testid="lists-filter-watched"
                 onClick={() => setFilter("watched")}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors md:flex-initial md:px-4 md:text-sm ${
                   filter === "watched"
                     ? "bg-blue-600 text-white"
                     : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
-                <Eye size={16} />
+                <Eye size={16} className="hidden md:inline" />
                 Assistidos ({myList.filter((item) => isWatched(item.id)).length}
                 )
               </button>
               <button
                 data-testid="lists-filter-unwatched"
                 onClick={() => setFilter("unwatched")}
-                className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors md:px-4 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors md:flex-initial md:px-4 md:text-sm ${
                   filter === "unwatched"
                     ? "bg-orange-600 text-white"
                     : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
               >
-                <EyeOff size={16} />
+                <EyeOff size={16} className="hidden md:inline" />
                 Não Assistidos (
                 {myList.filter((item) => !isWatched(item.id)).length})
               </button>
             </div>
           </div>
 
+          {allMembers.length > 0 && (
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-xs text-gray-500">
+                Assistindo com:
+              </span>
+              <button
+                onClick={() => setMemberFilter(null)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  memberFilter === null
+                    ? "bg-purple-600 text-white"
+                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                }`}
+              >
+                Todos
+              </button>
+              {allMembers.map((name) => (
+                <button
+                  key={name}
+                  onClick={() => setMemberFilter(name)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                    memberFilter === name
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                >
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
+
           {filteredList.length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filteredList.map((item) => (
-                <MovieCard key={item.id} item={item} showProgress={true} />
+                <MovieCard
+                  key={item.id}
+                  item={item}
+                  showProgress={true}
+                  watchingWith={watchingContextMap[item.id]}
+                />
               ))}
             </div>
           ) : myList.length > 0 ? (

@@ -150,6 +150,11 @@ export interface SeasonDetails {
   season_number: number;
 }
 
+export interface WatchingContext {
+  listName: string;
+  memberNames: string[];
+}
+
 export type AuthProvider = "email" | "google" | "unknown";
 
 export interface UserProfile {
