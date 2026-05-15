@@ -93,6 +93,31 @@ feat: Add remove action to watchlist and replace confirm with modal (#38)
 feat: Add remove action to watchlist and replace confirm with modal
 ```
 
+### Via Web
+
+The body is auto-populated by GitHub with the list of commits. Just ensure the title has `(#NN)`.
+
+### Via CLI
+
+Use `--body` to populate the body with the commit list automatically:
+
+```bash
+gh pr merge --squash --subject "<type>: <description> (#NN)" --body "$(git log main...HEAD --oneline | sed 's/^/* /')"
+```
+
+feat: Add remove action to watchlist and replace confirm with modal (#38)
+
+```
+
+**Incorrect** (missing PR number):
+
+```
+
+feat: Add remove action to watchlist and replace confirm with modal
+
+```
+
 ## Existing Agent Rules
 
 - If lint rules or test coverage thresholds fail, refactor the code instead of adding suppressions or ignore comments. The tools exist to enforce quality — work with them, not around them.
+```
