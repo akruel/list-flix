@@ -242,7 +242,6 @@ describe("ListDetailsView", () => {
   });
 
   it("removes list item after confirmation", async () => {
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
     mocks.getListDetails.mockResolvedValue(createListDetails());
     mocks.tmdbGetDetails.mockResolvedValue({
       id: 100,
@@ -257,11 +256,149 @@ describe("ListDetailsView", () => {
 
     await userEvent.click(screen.getByTitle("Remover item"));
 
+    expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirmar exclusao" }),
+    );
+
     await waitFor(() => {
       expect(mocks.removeListItem).toHaveBeenCalledWith("item-1");
     });
 
     expect(screen.queryByText("Movie One")).not.toBeInTheDocument();
+  });
+
+  it("shows item name in remove-modal description for TV show", async () => {
+    mocks.getListDetails.mockResolvedValue(
+      createListDetails({
+        items: [
+          {
+            id: "item-tv-1",
+            list_id: "list-1",
+            content_id: 200,
+            content_type: "tv",
+            added_by: "owner-1",
+            created_at: "2026-01-01",
+          },
+        ],
+      }),
+    );
+    mocks.tmdbGetDetails.mockResolvedValue({
+      id: 200,
+      media_type: "tv",
+      name: "TV Show One",
+    });
+    mocks.removeListItem.mockResolvedValue(undefined);
+
+    render(<ListDetailsView id="list-1" />);
+
+    expect(await screen.findByText("TV Show One")).toBeInTheDocument();
+    await userEvent.click(screen.getByTitle("Remover item"));
+
+    expect(
+      screen.getByText(
+        /Tem certeza que deseja remover "TV Show One" da lista/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("shows generic description when removing an item without content", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails());
+    mocks.tmdbGetDetails.mockRejectedValue(new Error("tmdb failed"));
+    mocks.removeListItem.mockResolvedValue(undefined);
+
+    render(<ListDetailsView id="list-1" />);
+
+    expect(
+      await screen.findByText("Conteúdo indisponível"),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTitle("Remover item"));
+
+    expect(
+      screen.getByText(/Tem certeza que deseja remover "este item" da lista/i),
+    ).toBeInTheDocument();
+  });
+
+  it("shows generic fallback name when item content has no title or name", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails());
+    mocks.tmdbGetDetails.mockResolvedValue({
+      id: 100,
+      media_type: "movie",
+    });
+    mocks.removeListItem.mockResolvedValue(undefined);
+
+    render(<ListDetailsView id="list-1" />);
+
+    expect(await screen.findByText("no title")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTitle("Remover item"));
+
+    expect(
+      screen.getByText(/Tem certeza que deseja remover "este item" da lista/i),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps item modal open when close is clicked during removal", async () => {
+    let resolveRemoval: () => void = () => {};
+    const pendingRemoval = new Promise<void>((resolve) => {
+      resolveRemoval = () => resolve();
+    });
+
+    mocks.getListDetails.mockResolvedValue(createListDetails());
+    mocks.tmdbGetDetails.mockResolvedValue({
+      id: 100,
+      media_type: "movie",
+      title: "Movie One",
+    });
+    mocks.removeListItem.mockReturnValue(pendingRemoval);
+
+    render(<ListDetailsView id="list-1" />);
+
+    expect(await screen.findByText("Movie One")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Confirmar exclusao" }),
+    );
+
+    expect(await screen.findByText("deleting")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Fechar modal" }));
+    expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
+
+    resolveRemoval();
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("modal-Remover item"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("closes item modal when not removing", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails());
+    mocks.tmdbGetDetails.mockResolvedValue({
+      id: 100,
+      media_type: "movie",
+      title: "Movie One",
+    });
+    mocks.removeListItem.mockResolvedValue(undefined);
+
+    render(<ListDetailsView id="list-1" />);
+
+    expect(await screen.findByText("Movie One")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTitle("Remover item"));
+    expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Fechar modal" }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("modal-Remover item"),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("removes non-owner member after confirmation", async () => {
@@ -424,27 +561,26 @@ describe("ListDetailsView", () => {
   it.each([
     {
       caseName: "cancelled confirmation",
-      confirmValue: false,
       removeError: null,
       shouldCallRemove: false,
       expectedToastError: false,
+      shouldCancel: true,
     },
     {
       caseName: "remove item failure",
-      confirmValue: true,
       removeError: new Error("remove failed"),
       shouldCallRemove: true,
       expectedToastError: true,
+      shouldCancel: false,
     },
   ])(
     "handles remove item flow for $caseName",
     async ({
-      confirmValue,
       removeError,
       shouldCallRemove,
       expectedToastError,
+      shouldCancel,
     }) => {
-      vi.stubGlobal("confirm", vi.fn().mockReturnValue(confirmValue));
       mocks.getListDetails.mockResolvedValue(createListDetails());
       mocks.tmdbGetDetails.mockResolvedValue({
         id: 100,
@@ -460,18 +596,32 @@ describe("ListDetailsView", () => {
       await screen.findByText("Movie One");
       await userEvent.click(screen.getByTitle("Remover item"));
 
+      expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
+
+      if (shouldCancel) {
+        await userEvent.click(
+          screen.getByRole("button", { name: "Fechar modal" }),
+        );
+      } else {
+        await userEvent.click(
+          screen.getByRole("button", { name: "Confirmar exclusao" }),
+        );
+      }
+
       await waitFor(() => {
         expect(mocks.removeListItem).toHaveBeenCalledTimes(
           shouldCallRemove ? 1 : 0,
         );
-        expect(mocks.removeListItem.mock.calls[0]?.[0]).toBe(
-          shouldCallRemove ? "item-1" : undefined,
-        );
       });
+
+      expect(mocks.removeListItem.mock.calls[0]?.[0]).toBe(
+        shouldCallRemove ? "item-1" : undefined,
+      );
 
       expect(mocks.toastError).toHaveBeenCalledTimes(
         expectedToastError ? 1 : 0,
       );
+
       expect(mocks.toastError.mock.calls[0]?.[0]).toBe(
         expectedToastError ? "Falha ao remover item" : undefined,
       );

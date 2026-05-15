@@ -308,10 +308,12 @@ describe("userContentService", () => {
       caseName: "addToWatchlist",
       run: () =>
         userContentService.addToWatchlist({ id: 1, media_type: "movie" }),
+      expected: undefined,
     },
     {
       caseName: "removeFromWatchlist",
       run: () => userContentService.removeFromWatchlist(1),
+      expected: true,
     },
     {
       caseName: "saveSeriesMetadata",
@@ -320,8 +322,9 @@ describe("userContentService", () => {
           total_episodes: 8,
           number_of_seasons: 1,
         }),
+      expected: undefined,
     },
-  ])("runs query for $caseName", async ({ run }) => {
+  ])("runs query for $caseName", async ({ run, expected }) => {
     mockedSupabase.from.mockReturnValue({
       insert: vi.fn().mockResolvedValue({ error: null }),
       delete: vi.fn().mockReturnValue({
@@ -331,7 +334,7 @@ describe("userContentService", () => {
       upsert: vi.fn().mockResolvedValue({ error: null }),
     });
 
-    await expect(run()).resolves.toBeUndefined();
+    await expect(run()).resolves.toBe(expected);
     expect(mockedSupabase.from).toHaveBeenCalled();
   });
 
