@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { CalendarDays, ChevronRight, Clock, Tv } from "lucide-react";
+import { CalendarDays, ChevronRight, Clock, Tv, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,10 @@ import {
   isDateInCurrentWeek,
 } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
+import { listService } from "@/services/listService";
 import { tmdb } from "@/services/tmdb";
 import { useStore } from "@/store/useStore";
-import type { Episode } from "@/types";
+import type { ContentItem, Episode, WatchingContext } from "@/types";
 
 export const Route = createFileRoute("/_protected/this-week")({
   component: ThisWeekComponent,
@@ -33,14 +34,69 @@ function ThisWeekComponent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const tvShows = useMemo(
+  const [sharedTvIds, setSharedTvIds] = useState<Set<number>>(new Set());
+  const [watchingContextMap, setWatchingContextMap] = useState<
+    Record<number, WatchingContext[]>
+  >({});
+  const [sharedLoading, setSharedLoading] = useState(true);
+
+  const personalTvShows = useMemo(
     () => myList.filter((item) => item.media_type === "tv"),
     [myList],
   );
-  const effectiveLoading = tvShows.length === 0 ? false : loading;
+
+  const allTvShows = useMemo(() => {
+    const personalIds = new Set(personalTvShows.map((i) => i.id));
+
+    const combined = [...personalTvShows];
+    for (const id of sharedTvIds) {
+      if (!personalIds.has(id)) {
+        combined.push({ id, media_type: "tv" } as ContentItem);
+      }
+    }
+    return combined;
+  }, [personalTvShows, sharedTvIds]);
+
+  const hasAnyTvShows = personalTvShows.length > 0 || sharedTvIds.size > 0;
+  const effectiveLoading = loading || (sharedLoading && !hasAnyTvShows);
+
+  // Fetch shared list TV shows and watching contexts
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchSharedItems = async () => {
+      try {
+        const items = await listService.getAllSharedTvItems();
+        if (cancelled) return;
+        const ids = new Set(items.map((i) => i.content_id));
+        setSharedTvIds(ids);
+
+        if (items.length > 0) {
+          const batchItems = items.map((i) => ({
+            contentId: i.content_id,
+            contentType: i.content_type as "movie" | "tv",
+          }));
+          const map = await listService
+            .getWatchingContextBatch(batchItems)
+            .catch(() => ({}) as Record<number, WatchingContext[]>);
+          if (!cancelled) setWatchingContextMap(map);
+        }
+      } catch (err) {
+        logger.error("Erro ao buscar séries de listas compartilhadas:", err);
+      } finally {
+        if (!cancelled) setSharedLoading(false);
+      }
+    };
+
+    fetchSharedItems();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
-    if (tvShows.length === 0) return;
+    if (allTvShows.length === 0) return;
 
     let cancelled = false;
 
@@ -50,7 +106,7 @@ function ThisWeekComponent() {
 
       try {
         const results = await Promise.allSettled(
-          tvShows.map((show) => tmdb.getDetails(show.id, "tv")),
+          allTvShows.map((show) => tmdb.getDetails(show.id, "tv")),
         );
 
         if (cancelled) return;
@@ -124,7 +180,7 @@ function ThisWeekComponent() {
     return () => {
       cancelled = true;
     };
-  }, [tvShows, isEpisodeWatched, getCachedSeason, setCachedSeason]);
+  }, [allTvShows, isEpisodeWatched, getCachedSeason, setCachedSeason]);
 
   const groupedEpisodes = episodes.reduce<Record<string, WeekEpisode[]>>(
     (acc, ep) => {
@@ -167,7 +223,8 @@ function ThisWeekComponent() {
 
       {!effectiveLoading &&
         !error &&
-        myList.filter((i) => i.media_type === "tv").length === 0 && (
+        personalTvShows.length === 0 &&
+        sharedTvIds.size === 0 && (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <Tv className="h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">
@@ -182,7 +239,7 @@ function ThisWeekComponent() {
       {!effectiveLoading &&
         !error &&
         sortedDays.length === 0 &&
-        myList.filter((i) => i.media_type === "tv").length > 0 && (
+        allTvShows.length > 0 && (
           <div className="flex flex-col items-center gap-4 py-16 text-center">
             <CalendarDays className="h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">
@@ -238,6 +295,24 @@ function ThisWeekComponent() {
                             Temporada {item.episode.season_number} &bull; Ep.{" "}
                             {item.episode.episode_number}
                           </span>
+                          {!!watchingContextMap[item.showId] &&
+                            watchingContextMap[item.showId].length > 0 && (
+                              <>
+                                <span>&bull;</span>
+                                <span className="flex items-center gap-1 text-purple-400">
+                                  <Users size={12} />
+                                  <span className="max-w-[120px] truncate">
+                                    {[
+                                      ...new Set(
+                                        watchingContextMap[item.showId]
+                                          .flatMap((c) => c.memberNames)
+                                          .filter(Boolean),
+                                      ),
+                                    ].join(", ")}
+                                  </span>
+                                </span>
+                              </>
+                            )}
                         </div>
                         {!!item.episode.overview && (
                           <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">

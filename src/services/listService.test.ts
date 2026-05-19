@@ -947,6 +947,58 @@ describe("listService", () => {
     ).rejects.toThrow("batch rpc failed");
   });
 
+  it("returns shared TV items from getAllSharedTvItems", async () => {
+    const builder = createThenableBuilder({
+      data: [
+        { content_id: 100, content_type: "tv" },
+        { content_id: 200, content_type: "tv" },
+      ],
+      error: null,
+    });
+
+    mockedSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue(builder),
+    });
+
+    const result = await listService.getAllSharedTvItems();
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("list_items");
+    expect(result).toEqual([
+      { content_id: 100, content_type: "tv" },
+      { content_id: 200, content_type: "tv" },
+    ]);
+  });
+
+  it("returns empty array when getAllSharedTvItems data is null", async () => {
+    const builder = createThenableBuilder({
+      data: null,
+      error: null,
+    });
+
+    mockedSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue(builder),
+    });
+
+    const result = await listService.getAllSharedTvItems();
+
+    expect(result).toEqual([]);
+  });
+
+  it("throws when getAllSharedTvItems fails", async () => {
+    const builder = createThenableBuilder({
+      data: null,
+      error: new Error("query failed"),
+    });
+
+    mockedSupabase.from.mockReturnValue({
+      select: vi.fn().mockReturnValue(builder),
+    });
+
+    await expect(listService.getAllSharedTvItems()).rejects.toThrow(
+      "query failed",
+    );
+  });
+
   it("updates list name and throws on update failure", async () => {
     const okBuilder = createThenableBuilder({
       data: null,

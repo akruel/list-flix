@@ -210,7 +210,10 @@ describe("ListDetailsView", () => {
       screen.getByRole("button", { name: "Voltar para minhas listas" }),
     );
 
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/lists" });
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/lists",
+      search: { tab: "custom" },
+    });
   });
 
   it("allows owner to edit, save and cancel list name changes", async () => {
@@ -523,7 +526,10 @@ describe("ListDetailsView", () => {
     await screen.findByText("Minha Lista");
     await userEvent.click(screen.getByTitle("Voltar"));
 
-    expect(mocks.navigate).toHaveBeenCalledWith({ to: "/lists" });
+    expect(mocks.navigate).toHaveBeenCalledWith({
+      to: "/lists",
+      search: { tab: "custom" },
+    });
   });
 
   it.each([
