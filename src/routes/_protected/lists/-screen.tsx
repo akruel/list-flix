@@ -19,15 +19,16 @@ type TabType = "watchlist" | "custom";
 
 interface MyListScreenProps {
   listId?: string;
+  initialTab?: TabType;
 }
 
-export function MyListScreen({ listId }: MyListScreenProps) {
+export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
   const navigate = useNavigate();
   const { myList, isWatched, removeFromList } = useStore();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [activeTab, setActiveTab] = useState<TabType>(
-    listId ? "custom" : "watchlist",
+    initialTab || (listId ? "custom" : "watchlist"),
   );
   const [watchingContextMap, setWatchingContextMap] = useState<
     Record<number, WatchingContext[]>
@@ -43,18 +44,13 @@ export function MyListScreen({ listId }: MyListScreenProps) {
     return Array.from(names).sort();
   }, [watchingContextMap]);
 
-  useEffect(() => {
-    if (listId) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setActiveTab("custom");
-    }
-  }, [listId]);
-
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    if (listId) {
-      navigate({ to: "/lists" });
-    }
+    navigate({
+      to: "/lists",
+      search: { tab },
+      replace: !listId,
+    });
   };
 
   // Fetch watching contexts for all watchlist items

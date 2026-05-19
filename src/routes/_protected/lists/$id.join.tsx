@@ -48,7 +48,7 @@ function JoinListRouteComponent() {
   const isBlockingClose = status === "joining" || status === "success";
 
   const closeToLists = () => {
-    navigate({ to: "/lists" });
+    navigate({ to: "/lists", search: { tab: "custom" } });
   };
 
   useEffect(() => {

@@ -177,7 +177,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
         </h2>
         <Button
           variant="link"
-          onClick={() => navigate({ to: "/lists" })}
+          onClick={() => navigate({ to: "/lists", search: { tab: "custom" } })}
           className="mx-auto"
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -228,7 +228,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
       setIsDeleting(true);
       await listService.deleteList(list.id);
       toast.success("Lista excluída com sucesso");
-      navigate({ to: "/lists" });
+      navigate({ to: "/lists", search: { tab: "custom" } });
     } catch (err) {
       logger.error(err);
       toast.error("Erro ao excluir lista");
@@ -271,7 +271,9 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate({ to: "/lists" })}
+            onClick={() =>
+              navigate({ to: "/lists", search: { tab: "custom" } })
+            }
             title="Voltar"
             className="mt-1 shrink-0"
           >
