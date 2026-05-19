@@ -38,6 +38,7 @@ function ThisWeekComponent() {
   const [watchingContextMap, setWatchingContextMap] = useState<
     Record<number, WatchingContext[]>
   >({});
+  const [sharedLoading, setSharedLoading] = useState(true);
 
   const personalTvShows = useMemo(
     () => myList.filter((item) => item.media_type === "tv"),
@@ -45,20 +46,19 @@ function ThisWeekComponent() {
   );
 
   const allTvShows = useMemo(() => {
-    const personal = myList.filter((item) => item.media_type === "tv");
-    const personalIds = new Set(personal.map((i) => i.id));
+    const personalIds = new Set(personalTvShows.map((i) => i.id));
 
-    const combined = [...personal];
+    const combined = [...personalTvShows];
     for (const id of sharedTvIds) {
       if (!personalIds.has(id)) {
         combined.push({ id, media_type: "tv" } as ContentItem);
       }
     }
     return combined;
-  }, [myList, sharedTvIds]);
+  }, [personalTvShows, sharedTvIds]);
 
   const hasAnyTvShows = personalTvShows.length > 0 || sharedTvIds.size > 0;
-  const effectiveLoading = hasAnyTvShows ? loading : false;
+  const effectiveLoading = loading || (sharedLoading && !hasAnyTvShows);
 
   // Fetch shared list TV shows and watching contexts
   useEffect(() => {
@@ -83,6 +83,8 @@ function ThisWeekComponent() {
         }
       } catch (err) {
         logger.error("Erro ao buscar séries de listas compartilhadas:", err);
+      } finally {
+        if (!cancelled) setSharedLoading(false);
       }
     };
 
