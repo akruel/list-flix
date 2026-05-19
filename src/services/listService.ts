@@ -288,6 +288,21 @@ export const listService = {
     return map;
   },
 
+  async getAllSharedTvItems(): Promise<
+    Array<{ content_id: number; content_type: string }>
+  > {
+    const { data, error } = await supabase
+      .from("list_items")
+      .select("content_id, content_type")
+      .eq("content_type", "tv");
+
+    if (error) throw error;
+    return (data || []) as Array<{
+      content_id: number;
+      content_type: string;
+    }>;
+  },
+
   async deleteList(listId: string): Promise<void> {
     const { error } = await supabase.from("lists").delete().eq("id", listId);
 
