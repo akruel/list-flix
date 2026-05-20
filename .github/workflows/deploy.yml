@@ -31,7 +31,6 @@ jobs:
         run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Trigger Vercel deploy
-        if: success()
         env:
           VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
-        run: curl -X POST "$VERCEL_DEPLOY_HOOK_URL"
+        run: curl --fail-with-body -X POST "$VERCEL_DEPLOY_HOOK_URL"
