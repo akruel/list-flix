@@ -110,6 +110,9 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
     }
   };
 
+  const watchedCount = myList.filter((item) => isWatched(item.id)).length;
+  const unwatchedCount = myList.length - watchedCount;
+
   const filteredList = myList.filter((item) => {
     if (filter === "watched" && !isWatched(item.id)) return false;
     if (filter === "unwatched" && isWatched(item.id)) return false;
@@ -167,44 +170,51 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
       {activeTab === "watchlist" ? (
         <>
           <div className="mb-6">
-            <div className="flex w-full flex-nowrap gap-1 md:flex-wrap md:gap-2">
+            <div className="flex w-full rounded-lg bg-gray-900 p-0.5 md:w-auto">
               <button
                 data-testid="lists-filter-all"
                 onClick={() => setFilter("all")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors md:flex-initial md:px-4 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-medium transition-colors md:gap-2 md:px-4 md:py-2 md:text-sm ${
                   filter === "all"
-                    ? "bg-purple-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    ? "bg-purple-600 text-white shadow-sm"
+                    : "text-gray-400 hover:text-gray-200"
                 }`}
               >
-                <List size={16} className="hidden md:inline" />
-                Todos ({myList.length})
+                <List size={14} className="md:size-4" />
+                <span className="md:hidden">{myList.length}</span>
+                <span className="hidden md:inline">
+                  Todos ({myList.length})
+                </span>
               </button>
               <button
                 data-testid="lists-filter-watched"
                 onClick={() => setFilter("watched")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors md:flex-initial md:px-4 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-medium transition-colors md:gap-2 md:px-4 md:py-2 md:text-sm ${
                   filter === "watched"
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-gray-400 hover:text-gray-200"
                 }`}
               >
-                <Eye size={16} className="hidden md:inline" />
-                Assistidos ({myList.filter((item) => isWatched(item.id)).length}
-                )
+                <Eye size={14} className="md:size-4" />
+                <span className="md:hidden">{watchedCount}</span>
+                <span className="hidden md:inline">
+                  Assistidos ({watchedCount})
+                </span>
               </button>
               <button
                 data-testid="lists-filter-unwatched"
                 onClick={() => setFilter("unwatched")}
-                className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-2 py-2 text-xs font-medium transition-colors md:flex-initial md:px-4 md:text-sm ${
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-medium transition-colors md:gap-2 md:px-4 md:py-2 md:text-sm ${
                   filter === "unwatched"
-                    ? "bg-orange-600 text-white"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    ? "bg-orange-600 text-white shadow-sm"
+                    : "text-gray-400 hover:text-gray-200"
                 }`}
               >
-                <EyeOff size={16} className="hidden md:inline" />
-                Não Assistidos (
-                {myList.filter((item) => !isWatched(item.id)).length})
+                <EyeOff size={14} className="md:size-4" />
+                <span className="md:hidden">{unwatchedCount}</span>
+                <span className="hidden md:inline">
+                  Não Assistidos ({unwatchedCount})
+                </span>
               </button>
             </div>
           </div>
