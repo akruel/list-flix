@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Eye, EyeOff, LayoutGrid, List, Trash2 } from "lucide-react";
+import { Eye, EyeOff, LayoutGrid, List, Trash2, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -220,13 +220,13 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
           </div>
 
           {allMembers.length > 0 && (
-            <div className="mb-6 flex flex-wrap items-center gap-2">
-              <span className="mr-1 text-xs text-gray-500">
-                Assistindo com:
+            <div className="mb-6 flex flex-nowrap items-center gap-1.5 overflow-x-auto md:flex-wrap">
+              <span className="flex text-gray-500">
+                <Users size={14} />
               </span>
               <button
                 onClick={() => setMemberFilter(null)}
-                className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                   memberFilter === null
                     ? "bg-purple-600 text-white"
                     : "bg-gray-800 text-gray-300 hover:bg-gray-700"
@@ -238,7 +238,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                 <button
                   key={name}
                   onClick={() => setMemberFilter(name)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                     memberFilter === name
                       ? "bg-purple-600 text-white"
                       : "bg-gray-800 text-gray-300 hover:bg-gray-700"
