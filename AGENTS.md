@@ -41,7 +41,7 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 - `pnpm test` is fast, no Docker required
 - RLS and E2E require Docker running + Supabase CLI installed
 - E2E tests clean DB automatically before each run
-- CI uses Supabase CLI v2.58.5
+- CI uses Supabase CLI v2.100.1
 
 ## Commit Message Convention
 
