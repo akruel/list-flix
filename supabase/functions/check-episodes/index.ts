@@ -44,6 +44,7 @@ async function getShowDetails(showId: number): Promise<{
       headers: {
         Authorization: `Bearer ${TMDB_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
+        "Accept-Encoding": "identity",
       },
     });
 
