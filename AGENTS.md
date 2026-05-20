@@ -99,25 +99,25 @@ The body is auto-populated by GitHub with the list of commits. Just ensure the t
 
 ### Via CLI
 
-Use `--body` to populate the body with the commit list automatically:
+Present the proposed title and body (extended description) to the user. Only run the command after receiving explicit approval. Pass the approved body as a multi-line string, not a git log command.
 
 ```bash
-gh pr merge --squash --subject "<type>: <description> (#NN)" --body "$(git log main...HEAD --oneline | sed 's/^/* /')"
+gh pr merge --squash --subject "<type>: <description> (#NN)" --body "- Change one
+- Change two
+- Change three"
 ```
 
-feat: Add remove action to watchlist and replace confirm with modal (#38)
+## Merge Approval
 
-```
+Before performing a squash merge, always:
 
-**Incorrect** (missing PR number):
-
-```
-
-feat: Add remove action to watchlist and replace confirm with modal
-
-```
+1. Suggest the commit title and body (extended description explaining the changes)
+2. Wait for the user's explicit approval before running the merge command
 
 ## Existing Agent Rules
 
 - If lint rules or test coverage thresholds fail, refactor the code instead of adding suppressions or ignore comments. The tools exist to enforce quality — work with them, not around them.
+
+```
+
 ```
