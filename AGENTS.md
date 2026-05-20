@@ -99,10 +99,12 @@ The body is auto-populated by GitHub with the list of commits. Just ensure the t
 
 ### Via CLI
 
-Present the proposed title and body to the user. Only run the command after receiving explicit approval.
+Present the proposed title and body (extended description) to the user. Only run the command after receiving explicit approval. Pass the approved body as a multi-line string, not a git log command.
 
 ```bash
-gh pr merge --squash --subject "<type>: <description> (#NN)" --body "$(git log main...HEAD --oneline | sed 's/^/* /')"
+gh pr merge --squash --subject "<type>: <description> (#NN)" --body "- Change one
+- Change two
+- Change three"
 ```
 
 ## Merge Approval
