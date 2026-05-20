@@ -24,7 +24,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 2.58.5
+          version: 2.100.1
 
       - name: Run database migrations
         env:
