@@ -44,8 +44,6 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     markSeasonAsWatched,
     markSeasonAsUnwatched,
     getSeasonProgress,
-    getCachedSeason,
-    setCachedSeason,
   } = useStore();
 
   const handleSeasonToggle = async (
@@ -65,14 +63,8 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
         let seasonEpisodes = episodes;
         const isCurrentSeason = expandedSeason === seasonNumber;
         if (!isCurrentSeason || episodes.length === 0) {
-          const cached = getCachedSeason(tvId, seasonNumber);
-          if (cached) {
-            seasonEpisodes = cached.episodes;
-          } else {
-            const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
-            setCachedSeason(tvId, seasonNumber, data);
-            seasonEpisodes = data.episodes;
-          }
+          const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
+          seasonEpisodes = data.episodes;
         }
 
         markSeasonAsWatched(tvId, seasonNumber, seasonEpisodes);
@@ -92,17 +84,9 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     setExpandedSeason(seasonNumber);
     setError(null);
     setEpisodes([]);
-
-    const cached = getCachedSeason(tvId, seasonNumber);
-    if (cached) {
-      setEpisodes(cached.episodes);
-      return;
-    }
-
     setLoading(true);
     try {
       const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
-      setCachedSeason(tvId, seasonNumber, data);
       setEpisodes(data.episodes);
     } catch (err) {
       logger.error("Error fetching episodes:", err);

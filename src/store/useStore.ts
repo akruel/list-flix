@@ -7,7 +7,6 @@ import type {
   ContentItem,
   Episode,
   List,
-  SeasonDetails,
   SeriesMetadata,
   WatchedEpisodeMetadata,
 } from "../types";
@@ -46,14 +45,6 @@ interface ListStore {
   saveSeriesMetadata: (showId: number, metadata: SeriesMetadata) => void;
   getSeriesMetadata: (showId: number) => SeriesMetadata | undefined;
 
-  seasonCache: Record<string, SeasonDetails>;
-  getCachedSeason: (tvId: number, seasonNumber: number) => SeasonDetails | null;
-  setCachedSeason: (
-    tvId: number,
-    seasonNumber: number,
-    data: SeasonDetails,
-  ) => void;
-
   syncWithSupabase: () => Promise<void>;
 
   // Shared Lists
@@ -71,7 +62,6 @@ export const useStore = create<ListStore>()(
       watchedIds: [],
       watchedEpisodes: {},
       seriesMetadata: {},
-      seasonCache: {},
       lists: [],
 
       addToList: (item) => {
@@ -279,18 +269,6 @@ export const useStore = create<ListStore>()(
 
       getSeriesMetadata: (showId) => {
         return get().seriesMetadata[showId];
-      },
-
-      getCachedSeason: (tvId, seasonNumber) => {
-        const key = `${tvId}-${seasonNumber}`;
-        return get().seasonCache[key] || null;
-      },
-
-      setCachedSeason: (tvId, seasonNumber, data) => {
-        const key = `${tvId}-${seasonNumber}`;
-        set((state) => ({
-          seasonCache: { ...state.seasonCache, [key]: data },
-        }));
       },
 
       syncWithSupabase: async () => {
