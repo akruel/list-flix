@@ -28,8 +28,7 @@ interface WeekEpisode {
 }
 
 function ThisWeekComponent() {
-  const { myList, isEpisodeWatched, getCachedSeason, setCachedSeason } =
-    useStore();
+  const { myList, isEpisodeWatched } = useStore();
   const [episodes, setEpisodes] = useState<WeekEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,18 +126,15 @@ function ThisWeekComponent() {
 
             if (activeSeason == null) continue;
 
-            let seasonData = getCachedSeason(details.id, activeSeason);
-            if (!seasonData) {
-              try {
-                seasonData = await tmdb.getSeasonDetails(
-                  details.id,
-                  activeSeason,
-                );
-                setCachedSeason(details.id, activeSeason, seasonData);
-              } catch {
-                failCount++;
-                continue;
-              }
+            let seasonData;
+            try {
+              seasonData = await tmdb.getSeasonDetails(
+                details.id,
+                activeSeason,
+              );
+            } catch {
+              failCount++;
+              continue;
             }
 
             for (const episode of seasonData.episodes) {
@@ -183,7 +179,7 @@ function ThisWeekComponent() {
     return () => {
       cancelled = true;
     };
-  }, [allTvShows, isEpisodeWatched, getCachedSeason, setCachedSeason]);
+  }, [allTvShows, isEpisodeWatched]);
 
   const groupedEpisodes = episodes.reduce<Record<string, WeekEpisode[]>>(
     (acc, ep) => {

@@ -14,8 +14,6 @@ const mocks = vi.hoisted(() => ({
     markSeasonAsWatched: vi.fn(),
     markSeasonAsUnwatched: vi.fn(),
     getSeasonProgress: vi.fn(),
-    getCachedSeason: vi.fn(),
-    setCachedSeason: vi.fn(),
   },
   useSeasonProgress: vi.fn(),
 }));
@@ -69,7 +67,7 @@ describe("SeasonList", () => {
     vi.clearAllMocks();
     mocks.useStoreValue.isEpisodeWatched.mockReturnValue(false);
     mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
-    mocks.useStoreValue.getCachedSeason.mockReturnValue(null);
+
     mocks.useSeasonProgress.mockReturnValue({
       watchedCount: 0,
       totalCount: 2,
@@ -174,7 +172,7 @@ describe("SeasonList", () => {
     expect(screen.queryByText("Episode 1")).not.toBeInTheDocument();
   });
 
-  it("uses cached episodes on re-expand", async () => {
+  it("re-fetches episodes on re-expand", async () => {
     render(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
@@ -182,35 +180,12 @@ describe("SeasonList", () => {
     expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(1);
 
     await userEvent.click(screen.getByText("Season 1"));
-
-    mocks.useStoreValue.getCachedSeason.mockReturnValue({
-      _id: "1",
-      air_date: "2020-01-01",
-      episodes: [
-        {
-          id: 301,
-          name: "Cached Episode",
-          season_number: 1,
-          episode_number: 1,
-          air_date: "2020-01-10",
-          vote_average: 8.0,
-          overview: "Cached overview",
-          still_path: null,
-          runtime: 45,
-          show_id: 100,
-          vote_count: 0,
-        },
-      ],
-      name: "Season 1",
-      overview: "",
-      id: 1,
-      poster_path: null,
-      season_number: 1,
-    });
-
     await userEvent.click(screen.getByText("Season 1"));
-    expect(await screen.findByText("Cached Episode")).toBeInTheDocument();
-    expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(1);
+
+    await waitFor(() => {
+      expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(2);
+    });
+    expect(await screen.findByText("Episode 1")).toBeInTheDocument();
   });
 
   it("renders watched season with green styling and Eye icon", () => {
@@ -227,32 +202,8 @@ describe("SeasonList", () => {
     expect(button.className).toContain("text-green-500");
   });
 
-  it("marks season as watched using cached episodes when not expanded", async () => {
+  it("fetches season details when marking as watched without expanding", async () => {
     mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
-    mocks.useStoreValue.getCachedSeason.mockReturnValue({
-      _id: "1",
-      air_date: "2020-01-01",
-      episodes: [
-        {
-          id: 501,
-          name: "Cached Toggle Episode",
-          season_number: 1,
-          episode_number: 1,
-          air_date: "2020-01-10",
-          vote_average: 8.0,
-          overview: "From cache",
-          still_path: null,
-          runtime: 45,
-          show_id: 100,
-          vote_count: 0,
-        },
-      ],
-      name: "Season 1",
-      overview: "",
-      id: 1,
-      poster_path: null,
-      season_number: 1,
-    });
 
     render(<SeasonList tvId={100} seasons={seasons} />);
 
@@ -262,15 +213,17 @@ describe("SeasonList", () => {
     await userEvent.click(seasonToggleButtons[0]);
 
     await waitFor(() => {
+      expect(mocks.getSeasonDetails).toHaveBeenCalledWith(100, 1);
+    });
+    await waitFor(() => {
       expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledWith(
         100,
         1,
         expect.arrayContaining([
-          expect.objectContaining({ id: 501, name: "Cached Toggle Episode" }),
+          expect.objectContaining({ id: 101, name: "Episode 1" }),
         ]),
       );
     });
-    expect(mocks.getSeasonDetails).not.toHaveBeenCalled();
   });
 
   it.each([
