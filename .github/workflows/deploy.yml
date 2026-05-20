@@ -28,16 +28,7 @@ jobs:
       - name: Run database migrations
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          DB_HOST=$(echo "$SUPABASE_DB_URL" | awk -F'[@:]' '{print $4}')
-          DB_IP=$(getent ahosts "$DB_HOST" | awk '!/:/{print $1; exit}')
-          if [ -z "$DB_IP" ]; then
-            echo "Failed to resolve IPv4 for $DB_HOST"
-            exit 1
-          fi
-          DB_URL_IPV4="${SUPABASE_DB_URL/$DB_HOST/$DB_IP}"
-          echo "Resolved $DB_HOST to $DB_IP"
-          supabase db push --db-url "$DB_URL_IPV4"
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
 
       - name: Trigger Vercel deploy
         env:
