@@ -99,7 +99,7 @@ The body is auto-populated by GitHub with the list of commits. Just ensure the t
 
 ### Via CLI
 
-Use `--body` to populate the body with the commit list automatically:
+Present the proposed title and body to the user. Only run the command after receiving explicit approval.
 
 ```bash
 gh pr merge --squash --subject "<type>: <description> (#NN)" --body "$(git log main...HEAD --oneline | sed 's/^/* /')"
