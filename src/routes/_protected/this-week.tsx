@@ -96,11 +96,14 @@ function ThisWeekComponent() {
   }, []);
 
   useEffect(() => {
-    if (allTvShows.length === 0) return;
-
     let cancelled = false;
 
     const fetchEpisodes = async () => {
+      if (allTvShows.length === 0) {
+        if (!cancelled) setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
 
