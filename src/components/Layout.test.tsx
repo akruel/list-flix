@@ -36,8 +36,16 @@ vi.mock("./NotificationToggle", () => ({
 }));
 
 vi.mock("./SearchModal", () => ({
-  SearchModal: ({ isOpen }: { isOpen: boolean }) => (
-    <div data-testid="search-modal" data-open={isOpen} />
+  SearchModal: ({
+    isOpen,
+    onClose,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+  }) => (
+    <button data-testid="search-modal" data-open={isOpen} onClick={onClose}>
+      search-modal-content
+    </button>
   ),
 }));
 
@@ -68,6 +76,27 @@ describe("Layout", () => {
     });
   });
 
+  it.each([
+    {
+      caseName: "activity route",
+      pathname: "/activity",
+      activeLabel: "Atividades",
+    },
+  ])(
+    "marks $activeLabel as active on $caseName",
+    ({ pathname, activeLabel }) => {
+      mocks.pathname = pathname;
+
+      render(<Layout />);
+
+      const links = screen.getAllByRole("link", { name: activeLabel });
+      expect(links.length).toBeGreaterThan(0);
+      links.forEach((link) => {
+        expect(link.className).toContain("text-primary");
+      });
+    },
+  );
+
   it("keeps non-active links muted", () => {
     mocks.pathname = "/search";
 
@@ -89,7 +118,30 @@ describe("Layout", () => {
     await user.click(buttons[0]);
 
     const modal = screen.getByTestId("search-modal");
-    expect(modal).toBeInTheDocument();
     expect(modal).toHaveAttribute("data-open", "true");
+  });
+
+  it("opens search modal when mobile + button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Layout />);
+
+    await user.click(screen.getByTestId("search-open-button-mobile"));
+
+    const modal = screen.getByTestId("search-modal");
+    expect(modal).toHaveAttribute("data-open", "true");
+  });
+
+  it("closes search modal when onClose is triggered", async () => {
+    const user = userEvent.setup();
+    render(<Layout />);
+
+    await user.click(screen.getByTestId("search-open-button"));
+
+    const modal = screen.getByTestId("search-modal");
+    expect(modal).toHaveAttribute("data-open", "true");
+
+    await user.click(modal);
+
+    expect(modal).toHaveAttribute("data-open", "false");
   });
 });

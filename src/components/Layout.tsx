@@ -106,10 +106,8 @@ export function Layout() {
           </button>
           {navItems.slice(2).map((item) => {
             const isActive =
-              item.path === "/"
-                ? location.pathname === "/"
-                : location.pathname === item.path ||
-                  location.pathname.startsWith(`${item.path}/`);
+              location.pathname === item.path ||
+              location.pathname.startsWith(`${item.path}/`);
 
             return (
               <Link

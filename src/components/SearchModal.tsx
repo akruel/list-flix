@@ -77,6 +77,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
       <div className="flex items-center gap-3 border-b border-gray-800 px-4 py-4">
         <button
           onClick={handleClose}
+          aria-label="Fechar busca"
           className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 hover:bg-gray-800 hover:text-white"
         >
           <X size={20} />
