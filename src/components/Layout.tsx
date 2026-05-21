@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
-import { CalendarDays, Home, List, Plus } from "lucide-react";
+import { Bell, CalendarDays, Home, List, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { LoginButton } from "./LoginButton";
@@ -15,6 +15,7 @@ export function Layout() {
     { icon: Home, label: "Início", path: "/" },
     { icon: CalendarDays, label: "Semana", path: "/this-week" },
     { icon: List, label: "Minhas Listas", path: "/lists" },
+    { icon: Bell, label: "Atividades", path: "/activity" },
   ];
 
   return (
@@ -27,7 +28,7 @@ export function Layout() {
           >
             ListFlix
           </Link>
-          <nav className="hidden gap-6 md:flex">
+          <nav className="hidden items-center gap-6 md:flex">
             {navItems.map((item) => {
               const isActive =
                 item.path === "/"
@@ -51,15 +52,15 @@ export function Layout() {
                 </Link>
               );
             })}
-            <button
-              data-testid="search-open-button"
-              onClick={() => setIsSearchOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
-              title="Buscar"
-            >
-              <Plus size={18} />
-            </button>
           </nav>
+          <button
+            data-testid="search-open-button"
+            onClick={() => setIsSearchOpen(true)}
+            className="hidden h-9 w-9 items-center justify-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500 md:flex"
+            title="Buscar"
+          >
+            <Plus size={18} />
+          </button>
           <div className="flex items-center gap-2">
             <NotificationToggle />
             <LoginButton />
@@ -72,8 +73,8 @@ export function Layout() {
       </main>
 
       <nav className="pb-safe fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden">
-        <div className="flex h-16 items-center justify-around">
-          {navItems.map((item) => {
+        <div className="grid h-16 grid-cols-5 items-center">
+          {navItems.slice(0, 2).map((item) => {
             const isActive =
               item.path === "/"
                 ? location.pathname === "/"
@@ -97,11 +98,32 @@ export function Layout() {
           <button
             data-testid="search-open-button-mobile"
             onClick={() => setIsSearchOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
+            className="flex h-11 w-11 items-center justify-center justify-self-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
             title="Buscar"
           >
             <Plus size={22} />
           </button>
+          {navItems.slice(2).map((item) => {
+            const isActive =
+              item.path === "/"
+                ? location.pathname === "/"
+                : location.pathname === item.path ||
+                  location.pathname.startsWith(`${item.path}/`);
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={clsx(
+                  "flex flex-col items-center gap-1 text-xs",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <item.icon size={24} />
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       </nav>
 

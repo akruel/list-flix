@@ -223,6 +223,12 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     scenarioId: SCENARIO_IDS.HOME_MOOD_DECADE_SECONDARY,
     expectation: "render",
   },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER,
+    expectation: "render",
+  },
 ];
 
 function normalizeRoutePath(routePath: string): string {

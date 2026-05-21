@@ -103,6 +103,7 @@ test(`[${SCENARIO_IDS.HOME_MOOD_SELECT_FILTERS}] mood chip changes displayed con
 
   await expect(page.getByRole("heading", { name: "Suspense" })).toBeVisible();
   await expect(page.getByText("Em Alta")).not.toBeVisible();
+  // "Para Você" visível apenas se o usuário tem itens na watchlist (não seedado no E2E)
 });
 
 test(`[${SCENARIO_IDS.HOME_MOOD_DECADE_SECONDARY}] decade chips appear when mood selected`, async ({
@@ -118,6 +119,17 @@ test(`[${SCENARIO_IDS.HOME_MOOD_DECADE_SECONDARY}] decade chips appear when mood
     "button:has-text('2020'), button:has-text('1990'), button:has-text('2010')",
   );
   await expect(decadeChip.first()).toBeVisible();
+});
+
+test(`[${SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER}] renders activity route with placeholder`, async ({
+  page,
+}) => {
+  await signIn(page);
+
+  await page.goto("/activity");
+
+  await expect(page.getByTestId(ROUTE_TEST_IDS.activity)).toBeVisible();
+  await expect(page.getByText("Em breve")).toBeVisible();
 });
 
 test(`[${SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA}] renders shared route using encoded data payload`, async ({

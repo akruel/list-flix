@@ -88,6 +88,32 @@ describe("tasteService", () => {
       expect(profile.genreNames).toEqual([]);
       expect(profile.recentTitles).toEqual([]);
     });
+
+    it("handles aborted signal", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        tasteService.getProfile([mockMovieItem], controller.signal),
+      ).rejects.toThrow("Aborted");
+    });
+
+    it("handles missing title in details", async () => {
+      const { tmdb } = await import("./tmdb");
+
+      vi.mocked(tmdb.getDetails).mockResolvedValue({
+        id: 1,
+        genres: [{ id: 28, name: "Action" }],
+        title: null,
+        name: undefined,
+        media_type: "movie",
+        vote_average: 7.5,
+      } as never);
+
+      const profile = await tasteService.getProfile([mockMovieItem]);
+
+      expect(profile.recentTitles).toEqual([]);
+    });
   });
 
   describe("getAiSuggestions", () => {
@@ -229,6 +255,61 @@ describe("tasteService", () => {
       expect(callArgs).toContain("mood for suspense");
     });
 
+    it("uses sessionStorage cache for mood context", async () => {
+      const { ai } = await import("./ai");
+      const { tmdb } = await import("./tmdb");
+
+      const cachedItems = [
+        { id: 301, title: "Cached Mood Item", media_type: "movie" },
+      ] as ContentItem[];
+
+      sessionStorage.setItem(
+        "ai_suggestions_suspense",
+        JSON.stringify({ items: cachedItems, ts: Date.now() }),
+      );
+
+      const result = await tasteService.getAiSuggestions(
+        [mockMovieItem],
+        [],
+        [],
+        undefined,
+        "suspense",
+      );
+
+      expect(ai.getSuggestions).not.toHaveBeenCalled();
+      expect(tmdb.getDetails).not.toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(301);
+      expect(mockStore.setTasteSuggestions).toHaveBeenCalledWith(cachedItems);
+    });
+
+    it("works with empty recent titles", async () => {
+      const { tmdb } = await import("./tmdb");
+      const { ai } = await import("./ai");
+
+      vi.mocked(tmdb.getDetails).mockResolvedValue({
+        id: 1,
+        genres: [{ id: 28, name: "Action" }],
+        title: "",
+        name: "",
+        media_type: "movie",
+        vote_average: 7.5,
+      } as never);
+
+      vi.mocked(ai.getSuggestions).mockResolvedValue({
+        suggested_list_name: "For You",
+        items: [],
+      });
+
+      const result = await tasteService.getAiSuggestions(
+        [mockMovieItem],
+        [],
+        [],
+      );
+
+      expect(result).toEqual([]);
+    });
+
     it("handles AI errors gracefully", async () => {
       const { tmdb } = await import("./tmdb");
       const { ai } = await import("./ai");
@@ -247,6 +328,24 @@ describe("tasteService", () => {
       );
 
       expect(result).toEqual([]);
+    });
+
+    it("re-throws AbortError from AI call", async () => {
+      const { tmdb } = await import("./tmdb");
+      const { ai } = await import("./ai");
+
+      vi.mocked(tmdb.getDetails).mockResolvedValue({
+        ...mockMovieItem,
+        genres: [{ id: 28, name: "Action" }],
+      } as never);
+
+      vi.mocked(ai.getSuggestions).mockRejectedValue(
+        new DOMException("Aborted", "AbortError"),
+      );
+
+      await expect(
+        tasteService.getAiSuggestions([mockMovieItem], [], []),
+      ).rejects.toThrow("Aborted");
     });
   });
 
@@ -318,6 +417,41 @@ describe("tasteService", () => {
       expect(result[0].id).toBe(101);
     });
 
+    it("aggregates genre counts across multiple items", async () => {
+      const { tmdb } = await import("./tmdb");
+
+      vi.mocked(tmdb.getDetails)
+        .mockResolvedValueOnce({
+          ...mockMovieItem,
+          genres: [{ id: 28, name: "Action" }],
+        } as never)
+        .mockResolvedValueOnce({
+          id: 2,
+          title: "Another",
+          media_type: "movie",
+          genres: [
+            { id: 28, name: "Action" },
+            { id: 12, name: "Adventure" },
+          ],
+          vote_average: 7.0,
+        } as never);
+
+      vi.mocked(tmdb.discover).mockResolvedValue([
+        { id: 101, title: "Recommended", media_type: "movie" },
+      ] as ContentItem[]);
+
+      const result = await tasteService.getPersonalizedSuggestions(
+        [
+          mockMovieItem,
+          { id: 2, title: "Another", media_type: "movie" } as ContentItem,
+        ],
+        [],
+        [],
+      );
+
+      expect(result).toHaveLength(1);
+    });
+
     it("uses cached suggestions within TTL", async () => {
       mockStore.tasteSuggestions = [
         { id: 101, title: "Cached", media_type: "movie" } as ContentItem,
@@ -337,7 +471,7 @@ describe("tasteService", () => {
       expect(cachedResult[0].id).toBe(101);
     });
 
-    it("handles errors gracefully", async () => {
+    it("handles getDetails errors gracefully", async () => {
       const { tmdb } = await import("./tmdb");
 
       vi.mocked(tmdb.getDetails).mockRejectedValue(new Error("API error"));
@@ -349,6 +483,42 @@ describe("tasteService", () => {
       );
 
       expect(result).toEqual([]);
+    });
+
+    it("handles discovery errors gracefully", async () => {
+      const { tmdb } = await import("./tmdb");
+
+      vi.mocked(tmdb.getDetails).mockResolvedValue({
+        ...mockMovieItem,
+        genres: [{ id: 28, name: "Action" }],
+      } as never);
+
+      vi.mocked(tmdb.discover).mockRejectedValue(new Error("Discover failed"));
+
+      const result = await tasteService.getPersonalizedSuggestions(
+        [mockMovieItem],
+        [],
+        [],
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it("re-throws AbortError from discover call", async () => {
+      const { tmdb } = await import("./tmdb");
+
+      vi.mocked(tmdb.getDetails).mockResolvedValue({
+        ...mockMovieItem,
+        genres: [{ id: 28, name: "Action" }],
+      } as never);
+
+      vi.mocked(tmdb.discover).mockRejectedValue(
+        new DOMException("Aborted", "AbortError"),
+      );
+
+      await expect(
+        tasteService.getPersonalizedSuggestions([mockMovieItem], [], []),
+      ).rejects.toThrow("Aborted");
     });
   });
 

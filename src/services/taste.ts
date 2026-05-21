@@ -76,6 +76,7 @@ export const tasteService = {
           ts: number;
         };
         if (Date.now() - parsed.ts < SUGGESTIONS_CACHE_TTL) {
+          useStore.getState().setTasteSuggestions(parsed.items);
           return parsed.items;
         }
       }

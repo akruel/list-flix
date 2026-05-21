@@ -51,7 +51,7 @@ function HomeRouteComponent() {
 
   useEffect(() => {
     if (myList.length === 0 && watchedIds.length === 0) return;
-    if (tasteSuggestions && !selectedMood) return;
+    if (!selectedMood && useStore.getState().tasteSuggestions) return;
 
     const loadSuggestions = async () => {
       setSuggestionsLoading(true);
@@ -71,7 +71,7 @@ function HomeRouteComponent() {
     };
 
     void loadSuggestions();
-  }, [myList, watchedIds, selectedMood, tasteSuggestions]);
+  }, [myList, watchedIds, selectedMood]);
 
   const dataYears = useMemo(() => {
     const years = new Set<number>();
@@ -104,9 +104,8 @@ function HomeRouteComponent() {
       })
     : trending;
 
-  const showParaVoce =
-    !selectedMood &&
-    (suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0));
+  const showForYou =
+    suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0);
   const showInitialLoading = trendingLoading && trending.length === 0;
 
   return (
@@ -115,9 +114,11 @@ function HomeRouteComponent() {
         {MOODS.map((mood) => (
           <button
             key={mood.key}
-            onClick={() =>
-              setSelectedMood(selectedMood === mood.key ? null : mood.key)
-            }
+            onClick={() => {
+              const newMood = selectedMood === mood.key ? null : mood.key;
+              if (newMood) useStore.getState().clearTasteSuggestions();
+              setSelectedMood(newMood);
+            }}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               selectedMood === mood.key
                 ? "bg-purple-600 text-white"
@@ -149,7 +150,7 @@ function HomeRouteComponent() {
         </div>
       ) : null}
 
-      {showParaVoce ? (
+      {showForYou ? (
         <div className="mb-8">
           <h2 className="mb-6 text-3xl font-bold text-white">Para Você</h2>
           {suggestionsLoading ? (
