@@ -139,8 +139,9 @@ export const tasteService = {
           cacheKey,
           JSON.stringify({ items: mediaFiltered, ts: Date.now() }),
         );
+      } else {
+        useStore.getState().setTasteSuggestions(mediaFiltered);
       }
-      useStore.getState().setTasteSuggestions(mediaFiltered);
 
       return mediaFiltered;
     } catch (err) {

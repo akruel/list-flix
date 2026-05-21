@@ -34,7 +34,10 @@ function HomeRouteComponent() {
   const prevMediaTypeRef = useRef(selectedMediaType);
 
   useEffect(() => {
-    if (myList.length === 0 && watchedIds.length === 0) return;
+    if (myList.length === 0 && watchedIds.length === 0) {
+      useStore.getState().clearTasteSuggestions();
+      return;
+    }
 
     const moodChanged = prevMoodRef.current !== selectedMood;
     prevMoodRef.current = selectedMood;
