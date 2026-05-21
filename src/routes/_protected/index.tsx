@@ -175,11 +175,12 @@ function HomeRouteComponent() {
         ).map((option) => (
           <button
             key={option.label}
-            onClick={() =>
+            onClick={() => {
+              setDecadeFilter(null);
               setSelectedMediaType(
                 selectedMediaType === option.key ? null : option.key,
-              )
-            }
+              );
+            }}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               selectedMediaType === option.key
                 ? "bg-purple-600 text-white"
@@ -198,6 +199,7 @@ function HomeRouteComponent() {
             onClick={() => {
               const newMood = selectedMood === mood.key ? null : mood.key;
               if (newMood) useStore.getState().clearTasteSuggestions();
+              setDecadeFilter(null);
               setSelectedMood(newMood);
             }}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -270,7 +272,7 @@ function HomeRouteComponent() {
       ) : displayedResults.length === 0 ? (
         <div className="py-12 text-center">
           <p className="text-sm text-gray-500">Nenhum resultado encontrado.</p>
-          {decadeFilter && (
+          {decadeFilter !== null && (
             <button
               onClick={() => setDecadeFilter(null)}
               className="mt-2 text-xs text-purple-400 hover:text-purple-300"

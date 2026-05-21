@@ -12,6 +12,7 @@ import {
 
 import { supabase } from "../lib/supabase";
 import { authService } from "../services/auth";
+import { useStore } from "../store/useStore";
 import type { UserProfile } from "../types";
 
 export type AuthStatus = "loading" | "none" | "authenticated";
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!session) {
       setUser(null);
       setStatus("none");
+      useStore.getState().clearTasteSuggestions();
       Object.keys(sessionStorage)
         .filter((k) => k.startsWith("ai_suggestions_"))
         .forEach((k) => sessionStorage.removeItem(k));

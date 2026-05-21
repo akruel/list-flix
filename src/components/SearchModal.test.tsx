@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => (
@@ -50,6 +50,10 @@ describe("SearchModal", () => {
     mockSearchFn.mockReset();
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("does not render when isOpen is false", () => {
     const { container } = render(
       <SearchModal isOpen={false} onClose={vi.fn()} />,
@@ -69,6 +73,23 @@ describe("SearchModal", () => {
 
     await user.click(screen.getByRole("button", { name: /Fechar/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a pending debounce when closing", async () => {
+    vi.useFakeTimers();
+    const onClose = vi.fn();
+
+    render(<SearchModal isOpen={true} onClose={onClose} />);
+
+    fireEvent.change(screen.getByTestId("search-modal-input"), {
+      target: { value: "test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Fechar/i }));
+
+    vi.advanceTimersByTime(500);
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(mockSearchFn).not.toHaveBeenCalled();
   });
 
   it("shows loading skeletons while searching", async () => {
@@ -167,6 +188,69 @@ describe("SearchModal", () => {
       expect(
         screen.getByText("Nenhum resultado encontrado."),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("ignores stale results from an older request", async () => {
+    let resolveFirst:
+      | ((value: {
+          results: Array<{ id: number; title: string; media_type: string }>;
+        }) => void)
+      | undefined;
+    let resolveSecond:
+      | ((value: {
+          results: Array<{ id: number; title: string; media_type: string }>;
+        }) => void)
+      | undefined;
+
+    mockSearchFn
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          }),
+      );
+
+    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+
+    const user = userEvent.setup();
+    const input = screen.getByTestId("search-modal-input");
+
+    await user.type(input, "a");
+
+    await waitFor(() => {
+      expect(mockSearchFn).toHaveBeenCalledTimes(1);
+    });
+
+    await user.clear(input);
+    await user.type(input, "ab");
+
+    await waitFor(() => {
+      expect(mockSearchFn).toHaveBeenCalledTimes(2);
+    });
+
+    resolveSecond?.({
+      results: [{ id: 202, title: "New Result", media_type: "movie" }],
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId("search-result-item")).toHaveLength(1);
+    });
+
+    resolveFirst?.({
+      results: [{ id: 101, title: "Old Result", media_type: "movie" }],
+    });
+
+    await waitFor(() => {
+      const items = screen.getAllByTestId("search-result-item");
+      expect(items).toHaveLength(1);
+      expect(items[0]).toHaveAttribute("data-item-title", "New Result");
     });
   });
 });

@@ -1,5 +1,5 @@
 import { Search, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
@@ -20,6 +20,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [hasSearched, setHasSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const requestIdRef = useRef(0);
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -27,51 +28,62 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }
   }, [isOpen]);
 
-  const cancelledRef = useRef(false);
+  const handleClose = useCallback(() => {
+    requestIdRef.current += 1;
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    setLoading(false);
+    setQuery("");
+    setResults([]);
+    setHasSearched(false);
+    onClose();
+  }, [onClose]);
 
   useEffect(() => {
-    if (!query.trim()) {
-      cancelledRef.current = false;
+    const trimmedQuery = query.trim();
+
+    if (!trimmedQuery) {
+      requestIdRef.current += 1;
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
       return;
     }
-
-    cancelledRef.current = false;
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
+
+    const requestId = ++requestIdRef.current;
 
     debounceRef.current = setTimeout(async () => {
       setLoading(true);
       setHasSearched(true);
 
       try {
-        const response = await tmdb.search(query.trim(), { page: 1 });
-        if (!cancelledRef.current) setResults(response.results);
+        const response = await tmdb.search(trimmedQuery, { page: 1 });
+        if (requestIdRef.current === requestId) {
+          setResults(response.results);
+        }
       } catch (err) {
-        if (!cancelledRef.current) {
+        if (requestIdRef.current === requestId) {
           logger.error("Search error:", err);
           setResults([]);
         }
       } finally {
-        if (!cancelledRef.current) setLoading(false);
+        if (requestIdRef.current === requestId) {
+          setLoading(false);
+        }
       }
     }, 500);
 
     return () => {
-      cancelledRef.current = true;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
     };
   }, [query]);
-
-  const handleClose = () => {
-    setQuery("");
-    setResults([]);
-    setHasSearched(false);
-    onClose();
-  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -82,7 +94,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isOpen]);
+  }, [handleClose, isOpen]);
 
   if (!isOpen) return null;
 
@@ -108,6 +120,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
               const value = e.target.value;
               setQuery(value);
               if (!value.trim()) {
+                setLoading(false);
                 setResults([]);
                 setHasSearched(false);
               }
