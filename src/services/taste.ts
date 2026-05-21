@@ -52,15 +52,21 @@ export const tasteService = {
     listItemIds: { id: number; mediaType: "movie" | "tv" }[],
     signal?: AbortSignal,
     moodContext?: string,
+    mediaTypeContext?: "movie" | "tv",
   ): Promise<ContentItem[]> {
-    const cacheKey = moodContext
-      ? `ai_suggestions_${moodContext}`
-      : "tasteSuggestions";
+    const cacheKey = [
+      "ai_suggestions",
+      moodContext ?? "",
+      mediaTypeContext ?? "",
+    ]
+      .filter(Boolean)
+      .join("_");
 
     const { tasteSuggestions, tasteSuggestionsTimestamp } = useStore.getState();
 
     if (
       !moodContext &&
+      !mediaTypeContext &&
       tasteSuggestions &&
       tasteSuggestionsTimestamp &&
       Date.now() - tasteSuggestionsTimestamp < SUGGESTIONS_CACHE_TTL
@@ -68,7 +74,7 @@ export const tasteService = {
       return tasteSuggestions;
     }
 
-    if (moodContext) {
+    if (moodContext || mediaTypeContext) {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
         const parsed = JSON.parse(cached) as {
@@ -95,7 +101,7 @@ export const tasteService = {
       ? `. I'm in the mood for ${moodContext} content`
       : "";
 
-    const prompt = `I enjoy ${genreNames.join(", ")} movies and TV shows${titlesStr}${moodStr}. Based on these preferences, suggest 8 to 10 popular and well-rated movies and TV shows I would enjoy.`;
+    const prompt = `I enjoy ${genreNames.join(", ")} movies and TV shows${titlesStr}${moodStr}. Based on these preferences, suggest 8 to 10 popular and well-rated${mediaTypeContext === "movie" ? " movies" : mediaTypeContext === "tv" ? " TV shows" : " movies and TV shows"} I would enjoy.`;
 
     try {
       const suggestion = await ai.getSuggestions(prompt);
@@ -120,15 +126,19 @@ export const tasteService = {
 
       const filtered = uniqueItems.filter((item) => !knownIds.has(item.id));
 
-      if (moodContext) {
+      const mediaFiltered = mediaTypeContext
+        ? filtered.filter((item) => item.media_type === mediaTypeContext)
+        : filtered;
+
+      if (moodContext || mediaTypeContext) {
         sessionStorage.setItem(
           cacheKey,
-          JSON.stringify({ items: filtered, ts: Date.now() }),
+          JSON.stringify({ items: mediaFiltered, ts: Date.now() }),
         );
       }
-      useStore.getState().setTasteSuggestions(filtered);
+      useStore.getState().setTasteSuggestions(mediaFiltered);
 
-      return filtered;
+      return mediaFiltered;
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       logger.error("Error fetching AI suggestions:", err);

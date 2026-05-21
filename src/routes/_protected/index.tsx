@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
@@ -19,6 +20,9 @@ function HomeRouteComponent() {
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [selectedMediaType, setSelectedMediaType] = useState<
+    "movie" | "tv" | null
+  >(null);
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
   const { myList, watchedIds, tasteSuggestions } = useStore();
 
@@ -27,6 +31,7 @@ function HomeRouteComponent() {
     : undefined;
 
   const prevMoodRef = useRef(selectedMood);
+  const prevMediaTypeRef = useRef(selectedMediaType);
 
   useEffect(() => {
     if (myList.length === 0 && watchedIds.length === 0) return;
@@ -34,11 +39,19 @@ function HomeRouteComponent() {
     const moodChanged = prevMoodRef.current !== selectedMood;
     prevMoodRef.current = selectedMood;
 
-    if (moodChanged) {
+    const mediaTypeChanged = prevMediaTypeRef.current !== selectedMediaType;
+    prevMediaTypeRef.current = selectedMediaType;
+
+    if (moodChanged || mediaTypeChanged) {
       useStore.getState().clearTasteSuggestions();
     }
 
-    if (!selectedMood && useStore.getState().tasteSuggestions) return;
+    if (
+      !selectedMood &&
+      !selectedMediaType &&
+      useStore.getState().tasteSuggestions
+    )
+      return;
 
     const loadSuggestions = async () => {
       setSuggestionsLoading(true);
@@ -49,6 +62,7 @@ function HomeRouteComponent() {
           [],
           undefined,
           selectedMood ?? undefined,
+          selectedMediaType ?? undefined,
         );
       } catch {
         // handled by tasteService
@@ -58,7 +72,7 @@ function HomeRouteComponent() {
     };
 
     void loadSuggestions();
-  }, [myList, watchedIds, selectedMood]);
+  }, [myList, watchedIds, selectedMood, selectedMediaType]);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -66,22 +80,46 @@ function HomeRouteComponent() {
 
       try {
         if (selectedMood) {
-          const params = getMoodDiscoverParams(selectedMood);
-          const data = await tmdb.discover(params);
-          setTrending(data.slice(0, 20));
+          if (selectedMediaType) {
+            const params = getMoodDiscoverParams(
+              selectedMood,
+              selectedMediaType,
+            );
+            const data = await tmdb.discover(params);
+            setTrending(data.slice(0, 20));
+          } else {
+            const [movies, tvShows] = await Promise.all([
+              tmdb.discover(getMoodDiscoverParams(selectedMood, "movie")),
+              tmdb.discover(getMoodDiscoverParams(selectedMood, "tv")),
+            ]);
+            const merged: ContentItem[] = [];
+            const maxLen = Math.max(movies.length, tvShows.length);
+            for (let i = 0; i < maxLen && merged.length < 20; i++) {
+              if (i < movies.length) merged.push(movies[i]);
+              if (i < tvShows.length) merged.push(tvShows[i]);
+            }
+            setTrending(merged);
+          }
         } else {
           const data = await tmdb.getTrending("week");
-          setTrending(data);
+          if (selectedMediaType) {
+            setTrending(
+              data.filter((item) => item.media_type === selectedMediaType),
+            );
+          } else {
+            setTrending(data);
+          }
         }
       } catch (error) {
         logger.error("Error fetching content:", error);
+        toast.error("Erro ao carregar conteúdo.");
       } finally {
         setTrendingLoading(false);
       }
     };
 
     void fetchContent();
-  }, [selectedMood]);
+  }, [selectedMood, selectedMediaType]);
 
   const dataYears = useMemo(() => {
     const years = new Set<number>();
@@ -115,11 +153,38 @@ function HomeRouteComponent() {
     : trending;
 
   const showForYou =
-    suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0);
+    !decadeFilter &&
+    (suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0));
   const showInitialLoading = trendingLoading && trending.length === 0;
 
   return (
     <div data-testid="route-home">
+      <div className="mb-6 flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {(
+          [
+            { key: null, label: "Todos" },
+            { key: "movie" as const, label: "Filmes" },
+            { key: "tv" as const, label: "Séries" },
+          ] as const
+        ).map((option) => (
+          <button
+            key={option.label}
+            onClick={() =>
+              setSelectedMediaType(
+                selectedMediaType === option.key ? null : option.key,
+              )
+            }
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              selectedMediaType === option.key
+                ? "bg-purple-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:text-white"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
       <div className="mb-6 flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {MOODS.map((mood) => (
           <button

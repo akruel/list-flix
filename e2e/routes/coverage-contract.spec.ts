@@ -224,6 +224,12 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     expectation: "render",
   },
   {
+    routePath: "/",
+    routeFile: "src/routes/_protected/index.tsx",
+    scenarioId: SCENARIO_IDS.HOME_MEDIA_TYPE_FILTERS,
+    expectation: "render",
+  },
+  {
     routePath: "/activity",
     routeFile: "src/routes/_protected/activity/route.tsx",
     scenarioId: SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER,

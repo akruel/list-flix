@@ -28,14 +28,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   }, [isOpen]);
 
   useEffect(() => {
-    if (!query.trim()) {
-      const reset = async () => {
-        setResults([]);
-        setHasSearched(false);
-      };
-      void reset();
-      return;
-    }
+    if (!query.trim()) return;
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -90,7 +83,14 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             data-testid="search-modal-input"
             type="text"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value;
+              setQuery(value);
+              if (!value.trim()) {
+                setResults([]);
+                setHasSearched(false);
+              }
+            }}
             placeholder="Buscar filmes ou séries..."
             className="w-full rounded-xl bg-gray-800 py-3 pl-10 pr-4 text-base text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500"
           />

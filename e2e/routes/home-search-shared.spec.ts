@@ -121,6 +121,23 @@ test(`[${SCENARIO_IDS.HOME_MOOD_DECADE_SECONDARY}] decade chips appear when mood
   await expect(decadeChip.first()).toBeVisible();
 });
 
+test(`[${SCENARIO_IDS.HOME_MEDIA_TYPE_FILTERS}] media type chips filter mood discover results`, async ({
+  page,
+}) => {
+  await signIn(page);
+  await page.goto("/");
+
+  await page.getByRole("button", { name: "Séries" }).click();
+  await page.getByRole("button", { name: "Suspense" }).click();
+  await expect(page.getByText("Mock Discover TV 305")).toBeVisible();
+  await expect(page.getByText("Mock Discover Movie 303")).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Séries" }).click();
+  await page.getByRole("button", { name: "Filmes" }).click();
+  await expect(page.getByText("Mock Discover Movie 303")).toBeVisible();
+  await expect(page.getByText("Mock Discover TV 305")).not.toBeVisible();
+});
+
 test(`[${SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER}] renders activity route with placeholder`, async ({
   page,
 }) => {

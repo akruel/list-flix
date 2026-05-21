@@ -47,6 +47,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     if (!session) {
       setUser(null);
       setStatus("none");
+      Object.keys(sessionStorage)
+        .filter((k) => k.startsWith("ai_suggestions_"))
+        .forEach((k) => sessionStorage.removeItem(k));
       return;
     }
 

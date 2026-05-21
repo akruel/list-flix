@@ -139,7 +139,7 @@ const searchResponse = {
   total_results: 2,
 };
 
-const discoverResponse = {
+const discoverMovieResponse = {
   page: 1,
   results: [
     {
@@ -162,6 +162,14 @@ const discoverResponse = {
       vote_average: 6.5,
       release_date: "1994-03-15",
     },
+  ],
+  total_pages: 1,
+  total_results: 2,
+};
+
+const discoverTvResponse = {
+  page: 1,
+  results: [
     {
       id: 305,
       media_type: "tv",
@@ -174,7 +182,7 @@ const discoverResponse = {
     },
   ],
   total_pages: 1,
-  total_results: 3,
+  total_results: 1,
 };
 
 const searchPersonResponse = {
@@ -224,11 +232,20 @@ export async function mockTmdbApi(page: Page) {
       return;
     }
 
-    if (path.endsWith("/discover/movie") || path.endsWith("/discover/tv")) {
+    if (path.endsWith("/discover/movie")) {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify(discoverResponse),
+        body: JSON.stringify(discoverMovieResponse),
+      });
+      return;
+    }
+
+    if (path.endsWith("/discover/tv")) {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(discoverTvResponse),
       });
       return;
     }
