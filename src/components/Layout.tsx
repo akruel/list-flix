@@ -53,20 +53,21 @@ export function Layout() {
               );
             })}
           </nav>
-          <button
-            data-testid="search-open-button"
-            onClick={() => setIsSearchOpen(true)}
-            className="hidden h-9 w-9 items-center justify-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500 md:flex"
-            title="Buscar"
-          >
-            <Plus size={18} />
-          </button>
           <div className="flex items-center gap-2">
             <NotificationToggle />
             <LoginButton />
           </div>
         </div>
       </header>
+
+      <button
+        data-testid="search-open-button"
+        onClick={() => setIsSearchOpen(true)}
+        className="fixed bottom-6 right-6 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg transition-colors hover:bg-purple-500 md:flex"
+        title="Buscar"
+      >
+        <Plus size={24} />
+      </button>
 
       <main className="container mx-auto px-4 py-6">
         <Outlet />

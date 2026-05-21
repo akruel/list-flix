@@ -14,6 +14,7 @@ export const MOODS: Mood[] = [
   { key: "plot-twist", label: "Plot Twist", genreIds: [9648, 53] },
   { key: "animacao", label: "Animação", genreIds: [16] },
   { key: "violento", label: "Violento", genreIds: [28, 10752, 27] },
+  { key: "divertido", label: "Divertido", genreIds: [35, 10751, 10749] },
   {
     key: "curtos",
     label: "Filmes curtos",

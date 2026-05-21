@@ -102,7 +102,7 @@ test(`[${SCENARIO_IDS.HOME_MOOD_SELECT_FILTERS}] mood chip changes displayed con
   await page.getByRole("button", { name: "Suspense" }).click();
 
   await expect(page.getByRole("heading", { name: "Suspense" })).toBeVisible();
-  await expect(page.getByText("Em Alta")).not.toBeVisible();
+  await expect(page.getByText("Em Alta · Suspense")).toBeVisible();
   // "Para Você" visível apenas se o usuário tem itens na watchlist (não seedado no E2E)
 });
 

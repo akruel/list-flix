@@ -152,7 +152,9 @@ function HomeRouteComponent() {
 
       {showForYou ? (
         <div className="mb-8">
-          <h2 className="mb-6 text-3xl font-bold text-white">Para Você</h2>
+          <h2 className="mb-6 text-3xl font-bold text-white">
+            Para Você{selectedMood && mood ? ` · ${mood.label}` : ""}
+          </h2>
           {suggestionsLoading ? (
             <div className="flex gap-4 overflow-x-auto pb-2">
               {Array.from({ length: 5 }).map((_, i) => (
@@ -176,7 +178,7 @@ function HomeRouteComponent() {
       ) : null}
 
       <h1 className="mb-6 text-3xl font-bold text-white">
-        {selectedMood ? (mood?.label ?? "Explorar") : "Em Alta"}
+        {selectedMood && mood ? `Em Alta · ${mood.label}` : "Em Alta"}
       </h1>
 
       {showInitialLoading ? (
