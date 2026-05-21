@@ -53,6 +53,8 @@ function HomeRouteComponent() {
     )
       return;
 
+    let cancelled = false;
+
     const loadSuggestions = async () => {
       setSuggestionsLoading(true);
       try {
@@ -67,14 +69,19 @@ function HomeRouteComponent() {
       } catch {
         // handled by tasteService
       } finally {
-        setSuggestionsLoading(false);
+        if (!cancelled) setSuggestionsLoading(false);
       }
     };
 
     void loadSuggestions();
+    return () => {
+      cancelled = true;
+    };
   }, [myList, watchedIds, selectedMood, selectedMediaType]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchContent = async () => {
       setTrendingLoading(true);
 
@@ -86,7 +93,7 @@ function HomeRouteComponent() {
               selectedMediaType,
             );
             const data = await tmdb.discover(params);
-            setTrending(data.slice(0, 20));
+            if (!cancelled) setTrending(data.slice(0, 20));
           } else {
             const [movies, tvShows] = await Promise.all([
               tmdb.discover(getMoodDiscoverParams(selectedMood, "movie")),
@@ -98,27 +105,33 @@ function HomeRouteComponent() {
               if (i < movies.length) merged.push(movies[i]);
               if (i < tvShows.length) merged.push(tvShows[i]);
             }
-            setTrending(merged);
+            if (!cancelled) setTrending(merged);
           }
         } else {
           const data = await tmdb.getTrending("week");
           if (selectedMediaType) {
-            setTrending(
-              data.filter((item) => item.media_type === selectedMediaType),
-            );
+            if (!cancelled)
+              setTrending(
+                data.filter((item) => item.media_type === selectedMediaType),
+              );
           } else {
-            setTrending(data);
+            if (!cancelled) setTrending(data);
           }
         }
       } catch (error) {
-        logger.error("Error fetching content:", error);
-        toast.error("Erro ao carregar conteúdo.");
+        if (!cancelled) {
+          logger.error("Error fetching content:", error);
+          toast.error("Erro ao carregar conteúdo.");
+        }
       } finally {
-        setTrendingLoading(false);
+        if (!cancelled) setTrendingLoading(false);
       }
     };
 
     void fetchContent();
+    return () => {
+      cancelled = true;
+    };
   }, [selectedMood, selectedMediaType]);
 
   const dataYears = useMemo(() => {
