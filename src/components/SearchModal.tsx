@@ -6,6 +6,7 @@ import { tmdb } from "@/services/tmdb";
 import type { ContentItem } from "@/types";
 
 import { SearchResultItem } from "./SearchResultItem";
+import { ScrollArea } from "./ui/scroll-area";
 import { Skeleton } from "./ui/skeleton";
 
 interface SearchModalProps {
@@ -131,7 +132,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-2">
+      <ScrollArea className="flex-1 px-4 py-2">
         {loading ? (
           <div className="space-y-3 py-4">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -155,7 +156,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
             ))}
           </div>
         )}
-      </div>
+      </ScrollArea>
     </div>
   );
 }

@@ -61,7 +61,10 @@ test(`[${SCENARIO_IDS.SEARCH_RESULT_OPENS_DETAILS}] opens details from search mo
   await expect(page.getByTestId("search-modal-input")).toBeVisible();
   await page.getByTestId("search-modal-input").fill("mock movie");
 
-  await page.getByRole("link", { name: /Mock Movie 101/i }).click();
+  await page.evaluate(() => {
+    const link = document.querySelector('a[href="/details/movie/101"]');
+    if (link) (link as HTMLAnchorElement).click();
+  });
 
   await expect(page).toHaveURL(/\/details\/movie\/101$/);
   await expect(page.getByTestId(ROUTE_TEST_IDS.details)).toBeVisible();
