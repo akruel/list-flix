@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listService } from "../services/listService";
 import { userContentService } from "../services/userContent";
+import type { ContentItem } from "../types";
 import { useStore } from "./useStore";
 
 vi.mock("../services/listService", () => ({
