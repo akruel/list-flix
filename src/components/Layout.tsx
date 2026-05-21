@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Bell, CalendarDays, Home, List, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { LoginButton } from "./LoginButton";
 import { NotificationToggle } from "./NotificationToggle";
@@ -10,6 +10,11 @@ import { SearchModal } from "./SearchModal";
 export function Layout() {
   const location = useLocation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsSearchOpen(false);
+  }, [location.pathname]);
 
   const navItems = [
     { icon: Home, label: "Início", path: "/" },

@@ -66,13 +66,18 @@ export const tasteService = {
       .filter(Boolean)
       .join("_");
 
-    const { tasteSuggestions, tasteSuggestionsTimestamp } = useStore.getState();
+    const {
+      tasteSuggestions,
+      tasteSuggestionsTimestamp,
+      tasteSuggestionsScope,
+    } = useStore.getState();
 
     if (
       !moodContext &&
       !mediaTypeContext &&
       tasteSuggestions &&
       tasteSuggestionsTimestamp &&
+      !tasteSuggestionsScope &&
       Date.now() - tasteSuggestionsTimestamp < SUGGESTIONS_CACHE_TTL
     ) {
       return tasteSuggestions;
@@ -139,9 +144,13 @@ export const tasteService = {
           cacheKey,
           JSON.stringify({ items: mediaFiltered, ts: Date.now() }),
         );
-      } else {
-        useStore.getState().setTasteSuggestions(mediaFiltered);
       }
+      useStore
+        .getState()
+        .setTasteSuggestions(
+          mediaFiltered,
+          moodContext || mediaTypeContext ? cacheKey : undefined,
+        );
 
       return mediaFiltered;
     } catch (err) {

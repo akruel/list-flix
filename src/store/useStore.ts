@@ -57,7 +57,8 @@ interface ListStore {
   // Taste suggestions cache
   tasteSuggestions: ContentItem[] | null;
   tasteSuggestionsTimestamp: number | null;
-  setTasteSuggestions: (suggestions: ContentItem[]) => void;
+  tasteSuggestionsScope: string | null;
+  setTasteSuggestions: (suggestions: ContentItem[], scope?: string) => void;
   clearTasteSuggestions: () => void;
 }
 
@@ -71,16 +72,22 @@ export const useStore = create<ListStore>()(
       lists: [],
       tasteSuggestions: null,
       tasteSuggestionsTimestamp: null,
+      tasteSuggestionsScope: null,
 
-      setTasteSuggestions: (suggestions) => {
+      setTasteSuggestions: (suggestions, scope) => {
         set({
           tasteSuggestions: suggestions,
           tasteSuggestionsTimestamp: Date.now(),
+          tasteSuggestionsScope: scope ?? null,
         });
       },
 
       clearTasteSuggestions: () => {
-        set({ tasteSuggestions: null, tasteSuggestionsTimestamp: null });
+        set({
+          tasteSuggestions: null,
+          tasteSuggestionsTimestamp: null,
+          tasteSuggestionsScope: null,
+        });
       },
 
       addToList: (item) => {

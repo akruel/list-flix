@@ -36,6 +36,8 @@ function HomeRouteComponent() {
   useEffect(() => {
     if (myList.length === 0 && watchedIds.length === 0) {
       useStore.getState().clearTasteSuggestions();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSuggestionsLoading(false);
       return;
     }
 
