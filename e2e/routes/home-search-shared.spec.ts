@@ -133,7 +133,7 @@ test(`[${SCENARIO_IDS.HOME_MEDIA_TYPE_FILTERS}] media type chips filter mood dis
   await expect(page.getByText("Mock Discover Movie 303")).not.toBeVisible();
 
   await page.getByRole("button", { name: "Séries" }).click();
-  await page.getByRole("button", { name: "Filmes" }).click();
+  await page.getByRole("button", { name: "Filmes", exact: true }).click();
   await expect(page.getByText("Mock Discover Movie 303")).toBeVisible();
   await expect(page.getByText("Mock Discover TV 305")).not.toBeVisible();
 });
