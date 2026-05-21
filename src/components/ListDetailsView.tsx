@@ -9,7 +9,7 @@ import {
   Users,
   X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -76,6 +76,13 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   const [isRemovingMember, setIsRemovingMember] = useState(false);
   const [itemToRemove, setItemToRemove] = useState<ListItem | null>(null);
   const [isRemovingItem, setIsRemovingItem] = useState(false);
+  const copiedTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    return () => {
+      if (copiedTimerRef.current) clearTimeout(copiedTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -193,7 +200,7 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
     const url = listService.getShareUrl(list.id, role);
     await navigator.clipboard.writeText(url);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
   };
 
   const handleEditorShareClick = () => {
