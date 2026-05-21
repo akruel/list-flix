@@ -98,7 +98,7 @@ describe("Layout", () => {
   );
 
   it("keeps non-active links muted", () => {
-    mocks.pathname = "/search";
+    mocks.pathname = "/activity";
 
     render(<Layout />);
 

@@ -106,6 +106,18 @@ describe("tmdb service", () => {
     expect(result).toMatchObject({ id, media_type: type });
   });
 
+  it("getDetails passes signal to axios", async () => {
+    mocks.get.mockResolvedValue({ data: { id: 1, title: "Test" } });
+    const controller = new AbortController();
+
+    await tmdb.getDetails(1, "movie", controller.signal);
+
+    expect(mocks.get).toHaveBeenCalledWith(
+      "/movie/1",
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
+
   it("getSeasonDetails loads tv season endpoint", async () => {
     mocks.get.mockResolvedValue({
       data: { id: 1, episodes: [] },

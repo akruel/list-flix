@@ -19,7 +19,11 @@ export const tasteService = {
     const results = await Promise.allSettled(
       itemsToAnalyze.map((item) => {
         if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        return tmdb.getDetails(item.id, item.media_type as "movie" | "tv");
+        return tmdb.getDetails(
+          item.id,
+          item.media_type as "movie" | "tv",
+          signal,
+        );
       }),
     );
 

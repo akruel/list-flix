@@ -19,7 +19,7 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   useEffect(() => {
     if (isOpen && inputRef.current) {
@@ -29,6 +29,8 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   useEffect(() => {
     if (!query.trim()) return;
+
+    let cancelled = false;
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -40,16 +42,19 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
       try {
         const response = await tmdb.search(query.trim(), { page: 1 });
-        setResults(response.results);
+        if (!cancelled) setResults(response.results);
       } catch (err) {
-        logger.error("Search error:", err);
-        setResults([]);
+        if (!cancelled) {
+          logger.error("Search error:", err);
+          setResults([]);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }, 500);
 
     return () => {
+      cancelled = true;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }

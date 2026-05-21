@@ -91,11 +91,13 @@ export const tmdb = {
   getDetails: async (
     id: number,
     type: "movie" | "tv",
+    signal?: AbortSignal,
   ): Promise<ContentDetails> => {
     const response = await tmdbClient.get<ContentDetails>(`/${type}/${id}`, {
       params: {
         append_to_response: "credits,videos,watch/providers",
       },
+      ...(signal ? { signal } : {}),
     });
     return { ...response.data, media_type: type } as ContentDetails;
   },
