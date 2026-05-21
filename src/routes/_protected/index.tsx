@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
@@ -26,6 +26,40 @@ function HomeRouteComponent() {
     ? MOODS.find((m) => m.key === selectedMood)
     : undefined;
 
+  const prevMoodRef = useRef(selectedMood);
+
+  useEffect(() => {
+    if (myList.length === 0 && watchedIds.length === 0) return;
+
+    const moodChanged = prevMoodRef.current !== selectedMood;
+    prevMoodRef.current = selectedMood;
+
+    if (moodChanged) {
+      useStore.getState().clearTasteSuggestions();
+    }
+
+    if (!selectedMood && useStore.getState().tasteSuggestions) return;
+
+    const loadSuggestions = async () => {
+      setSuggestionsLoading(true);
+      try {
+        await tasteService.getAiSuggestions(
+          myList,
+          watchedIds,
+          [],
+          undefined,
+          selectedMood ?? undefined,
+        );
+      } catch {
+        // handled by tasteService
+      } finally {
+        setSuggestionsLoading(false);
+      }
+    };
+
+    void loadSuggestions();
+  }, [myList, watchedIds, selectedMood]);
+
   useEffect(() => {
     const fetchContent = async () => {
       setTrendingLoading(true);
@@ -48,30 +82,6 @@ function HomeRouteComponent() {
 
     void fetchContent();
   }, [selectedMood]);
-
-  useEffect(() => {
-    if (myList.length === 0 && watchedIds.length === 0) return;
-    if (!selectedMood && useStore.getState().tasteSuggestions) return;
-
-    const loadSuggestions = async () => {
-      setSuggestionsLoading(true);
-      try {
-        await tasteService.getAiSuggestions(
-          myList,
-          watchedIds,
-          [],
-          undefined,
-          selectedMood ?? undefined,
-        );
-      } catch {
-        // handled by tasteService
-      } finally {
-        setSuggestionsLoading(false);
-      }
-    };
-
-    void loadSuggestions();
-  }, [myList, watchedIds, selectedMood]);
 
   const dataYears = useMemo(() => {
     const years = new Set<number>();
