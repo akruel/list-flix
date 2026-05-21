@@ -16,6 +16,7 @@ describe("moods", () => {
     { key: "plot-twist", label: "Plot Twist" },
     { key: "animacao", label: "Animação" },
     { key: "violento", label: "Violento" },
+    { key: "divertido", label: "Divertido" },
     { key: "curtos", label: "Filmes curtos" },
   ])("mood $key has label $label", ({ key, label }) => {
     const mood = MOODS.find((m) => m.key === key);

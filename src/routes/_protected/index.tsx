@@ -268,9 +268,17 @@ function HomeRouteComponent() {
       {showInitialLoading ? (
         <ContentGridSkeleton />
       ) : displayedResults.length === 0 ? (
-        <p className="py-12 text-center text-sm text-gray-500">
-          Nenhum resultado encontrado.
-        </p>
+        <div className="py-12 text-center">
+          <p className="text-sm text-gray-500">Nenhum resultado encontrado.</p>
+          {decadeFilter && (
+            <button
+              onClick={() => setDecadeFilter(null)}
+              className="mt-2 text-xs text-purple-400 hover:text-purple-300"
+            >
+              Limpar filtro de década
+            </button>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {displayedResults.map((item) => (

@@ -27,10 +27,15 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     }
   }, [isOpen]);
 
-  useEffect(() => {
-    if (!query.trim()) return;
+  const cancelledRef = useRef(false);
 
-    let cancelled = false;
+  useEffect(() => {
+    if (!query.trim()) {
+      cancelledRef.current = false;
+      return;
+    }
+
+    cancelledRef.current = false;
 
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -42,19 +47,19 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
       try {
         const response = await tmdb.search(query.trim(), { page: 1 });
-        if (!cancelled) setResults(response.results);
+        if (!cancelledRef.current) setResults(response.results);
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelledRef.current) {
           logger.error("Search error:", err);
           setResults([]);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelledRef.current) setLoading(false);
       }
     }, 500);
 
     return () => {
-      cancelled = true;
+      cancelledRef.current = true;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
@@ -72,15 +77,12 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
     if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setQuery("");
-        setResults([]);
-        setHasSearched(false);
-        onClose();
+        handleClose();
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
