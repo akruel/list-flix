@@ -1,17 +1,19 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
-import { CalendarDays, Home, List, Search } from "lucide-react";
+import { CalendarDays, Home, List, Plus } from "lucide-react";
+import { useState } from "react";
 
 import { LoginButton } from "./LoginButton";
 import { NotificationToggle } from "./NotificationToggle";
+import { SearchModal } from "./SearchModal";
 
 export function Layout() {
   const location = useLocation();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
 
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
     { icon: CalendarDays, label: "Semana", path: "/this-week" },
-    { icon: Search, label: "Buscar", path: "/search" },
     { icon: List, label: "Minhas Listas", path: "/lists" },
   ];
 
@@ -49,6 +51,14 @@ export function Layout() {
                 </Link>
               );
             })}
+            <button
+              data-testid="search-open-button"
+              onClick={() => setIsSearchOpen(true)}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
+              title="Buscar"
+            >
+              <Plus size={18} />
+            </button>
           </nav>
           <div className="flex items-center gap-2">
             <NotificationToggle />
@@ -61,7 +71,6 @@ export function Layout() {
         <Outlet />
       </main>
 
-      {/* Mobile Bottom Nav */}
       <nav className="pb-safe fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden">
         <div className="flex h-16 items-center justify-around">
           {navItems.map((item) => {
@@ -85,8 +94,21 @@ export function Layout() {
               </Link>
             );
           })}
+          <button
+            data-testid="search-open-button-mobile"
+            onClick={() => setIsSearchOpen(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
+            title="Buscar"
+          >
+            <Plus size={22} />
+          </button>
         </div>
       </nav>
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
     </div>
   );
 }

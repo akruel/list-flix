@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { ContentItem } from "../types";
 
@@ -37,6 +37,20 @@ beforeEach(() => {
     setTasteSuggestions: vi.fn(),
     clearTasteSuggestions: vi.fn(),
   };
+
+  const mockStorage: Record<string, string> = {};
+  vi.stubGlobal("sessionStorage", {
+    getItem: (key: string) => mockStorage[key] ?? null,
+    setItem: (key: string, value: string) => {
+      mockStorage[key] = value;
+    },
+    removeItem: (key: string) => {
+      delete mockStorage[key];
+    },
+    clear: () => {
+      Object.keys(mockStorage).forEach((k) => delete mockStorage[k]);
+    },
+  });
 });
 
 import { tasteService } from "./taste";
@@ -181,6 +195,40 @@ describe("tasteService", () => {
       expect(cachedResult[0].id).toBe(101);
     });
 
+    it("passes mood context to AI prompt", async () => {
+      const { tmdb } = await import("./tmdb");
+      const { ai } = await import("./ai");
+
+      vi.mocked(tmdb.getDetails).mockResolvedValue({
+        ...mockMovieItem,
+        genres: [{ id: 28, name: "Action" }],
+      } as never);
+
+      vi.mocked(ai.getSuggestions).mockResolvedValue({
+        suggested_list_name: "Mood List",
+        items: [
+          { title: "Mood Item", year: 2022, media_type: "movie" as const },
+        ],
+      });
+
+      vi.mocked(tmdb.findBestMatch).mockResolvedValue({
+        id: 201,
+        title: "Mood Item",
+        media_type: "movie",
+      } as ContentItem);
+
+      await tasteService.getAiSuggestions(
+        [mockMovieItem],
+        [],
+        [],
+        undefined,
+        "suspense",
+      );
+
+      const callArgs = vi.mocked(ai.getSuggestions).mock.calls[0][0];
+      expect(callArgs).toContain("mood for suspense");
+    });
+
     it("handles AI errors gracefully", async () => {
       const { tmdb } = await import("./tmdb");
       const { ai } = await import("./ai");
@@ -311,4 +359,8 @@ describe("tasteService", () => {
       expect(mockStore.clearTasteSuggestions).toHaveBeenCalled();
     });
   });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });

@@ -50,9 +50,15 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     expectation: "render",
   },
   {
-    routePath: "/search",
-    routeFile: "src/routes/_protected/search/route.tsx",
+    routePath: "/",
+    routeFile: "src/routes/_protected/index.tsx",
     scenarioId: SCENARIO_IDS.SEARCH_QUERY_RESULTS,
+    expectation: "render",
+  },
+  {
+    routePath: "/",
+    routeFile: "src/routes/_protected/index.tsx",
+    scenarioId: SCENARIO_IDS.SEARCH_RESULT_OPENS_DETAILS,
     expectation: "render",
   },
   {
@@ -197,6 +203,24 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     routePath: "/lists/$id/join",
     routeFile: "src/routes/_protected/lists/$id.join.tsx",
     scenarioId: SCENARIO_IDS.LISTS_JOIN_INVALID_ROLE_FALLBACK,
+    expectation: "render",
+  },
+  {
+    routePath: "/",
+    routeFile: "src/routes/_protected/index.tsx",
+    scenarioId: SCENARIO_IDS.SEARCH_MODAL_ADD_ITEM,
+    expectation: "render",
+  },
+  {
+    routePath: "/",
+    routeFile: "src/routes/_protected/index.tsx",
+    scenarioId: SCENARIO_IDS.HOME_MOOD_SELECT_FILTERS,
+    expectation: "render",
+  },
+  {
+    routePath: "/",
+    routeFile: "src/routes/_protected/index.tsx",
+    scenarioId: SCENARIO_IDS.HOME_MOOD_DECADE_SECONDARY,
     expectation: "render",
   },
 ];

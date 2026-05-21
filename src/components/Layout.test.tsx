@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,6 +35,12 @@ vi.mock("./NotificationToggle", () => ({
   NotificationToggle: () => <div data-testid="notification-toggle" />,
 }));
 
+vi.mock("./SearchModal", () => ({
+  SearchModal: ({ isOpen }: { isOpen: boolean }) => (
+    <div data-testid="search-modal" data-open={isOpen} />
+  ),
+}));
+
 describe("Layout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,7 +48,6 @@ describe("Layout", () => {
 
   it.each([
     { caseName: "home route", pathname: "/", activeLabel: "Início" },
-    { caseName: "search route", pathname: "/search", activeLabel: "Buscar" },
     {
       caseName: "nested lists route",
       pathname: "/lists/abc",
@@ -71,5 +77,19 @@ describe("Layout", () => {
     homeLinks.forEach((link) => {
       expect(link.className).toContain("text-muted-foreground");
     });
+  });
+
+  it("opens search modal when + button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Layout />);
+
+    const buttons = screen.getAllByTestId(/search-open-button/);
+    expect(buttons.length).toBe(2);
+
+    await user.click(buttons[0]);
+
+    const modal = screen.getByTestId("search-modal");
+    expect(modal).toBeInTheDocument();
+    expect(modal).toHaveAttribute("data-open", "true");
   });
 });

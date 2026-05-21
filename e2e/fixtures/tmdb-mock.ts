@@ -124,9 +124,19 @@ const searchResponse = {
       vote_average: 7.8,
       release_date: "2025-01-01",
     },
+    {
+      id: 201,
+      media_type: "tv",
+      name: "Mock TV 201",
+      poster_path: null,
+      backdrop_path: null,
+      overview: "Mock tv overview",
+      vote_average: 8.1,
+      first_air_date: "2023-06-15",
+    },
   ],
   total_pages: 1,
-  total_results: 1,
+  total_results: 2,
 };
 
 const discoverResponse = {
@@ -142,9 +152,29 @@ const discoverResponse = {
       vote_average: 7.2,
       release_date: "2023-09-20",
     },
+    {
+      id: 304,
+      media_type: "movie",
+      title: "Mock Discover Movie 304",
+      poster_path: null,
+      backdrop_path: null,
+      overview: "Mock older movie",
+      vote_average: 6.5,
+      release_date: "1994-03-15",
+    },
+    {
+      id: 305,
+      media_type: "tv",
+      name: "Mock Discover TV 305",
+      poster_path: null,
+      backdrop_path: null,
+      overview: "Mock older series",
+      vote_average: 8.0,
+      first_air_date: "2011-07-01",
+    },
   ],
   total_pages: 1,
-  total_results: 1,
+  total_results: 3,
 };
 
 const searchPersonResponse = {

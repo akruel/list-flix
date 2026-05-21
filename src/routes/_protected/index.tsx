@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
 import { logger } from "@/lib/logger";
+import { getMoodDiscoverParams, MOODS } from "@/services/moods";
 import { tasteService } from "@/services/taste";
 import { tmdb } from "@/services/tmdb";
 import { useStore } from "@/store/useStore";
@@ -17,32 +18,51 @@ function HomeRouteComponent() {
   const [trending, setTrending] = useState<ContentItem[]>([]);
   const [trendingLoading, setTrendingLoading] = useState(true);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
   const { myList, watchedIds, tasteSuggestions } = useStore();
 
+  const mood = selectedMood
+    ? MOODS.find((m) => m.key === selectedMood)
+    : undefined;
+
   useEffect(() => {
-    const fetchTrending = async () => {
+    const fetchContent = async () => {
+      setTrendingLoading(true);
+
       try {
-        const data = await tmdb.getTrending("week");
-        setTrending(data);
+        if (selectedMood) {
+          const params = getMoodDiscoverParams(selectedMood);
+          const data = await tmdb.discover(params);
+          setTrending(data.slice(0, 20));
+        } else {
+          const data = await tmdb.getTrending("week");
+          setTrending(data);
+        }
       } catch (error) {
-        logger.error("Error fetching trending:", error);
+        logger.error("Error fetching content:", error);
       } finally {
         setTrendingLoading(false);
       }
     };
 
-    void fetchTrending();
-  }, []);
+    void fetchContent();
+  }, [selectedMood]);
 
   useEffect(() => {
     if (myList.length === 0 && watchedIds.length === 0) return;
-    if (tasteSuggestions) return;
+    if (tasteSuggestions && !selectedMood) return;
 
     const loadSuggestions = async () => {
       setSuggestionsLoading(true);
       try {
-        if (tasteSuggestions) return;
-        await tasteService.getAiSuggestions(myList, watchedIds, []);
+        await tasteService.getAiSuggestions(
+          myList,
+          watchedIds,
+          [],
+          undefined,
+          selectedMood ?? undefined,
+        );
       } catch {
         // handled by tasteService
       } finally {
@@ -51,14 +71,84 @@ function HomeRouteComponent() {
     };
 
     void loadSuggestions();
-  }, [myList, watchedIds, tasteSuggestions]);
+  }, [myList, watchedIds, selectedMood, tasteSuggestions]);
+
+  const dataYears = useMemo(() => {
+    const years = new Set<number>();
+    for (const item of trending) {
+      const date = item.release_date ?? item.first_air_date;
+      if (date) years.add(new Date(date).getFullYear());
+    }
+    return years;
+  }, [trending]);
+
+  const decadeCounts = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const year of dataYears) {
+      const decade = Math.floor(year / 10) * 10;
+      counts.set(decade, (counts.get(decade) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[0] - a[0]);
+  }, [dataYears]);
+
+  const displayDecades =
+    selectedMood && decadeCounts.length >= 2 ? decadeCounts : [];
+
+  const displayedResults = decadeFilter
+    ? trending.filter((item) => {
+        const date = item.release_date ?? item.first_air_date;
+        const year = date ? new Date(date).getFullYear() : null;
+        return (
+          year !== null && year >= decadeFilter && year < decadeFilter + 10
+        );
+      })
+    : trending;
 
   const showParaVoce =
-    suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0);
+    !selectedMood &&
+    (suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0));
   const showInitialLoading = trendingLoading && trending.length === 0;
 
   return (
     <div data-testid="route-home">
+      <div className="mb-6 flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {MOODS.map((mood) => (
+          <button
+            key={mood.key}
+            onClick={() =>
+              setSelectedMood(selectedMood === mood.key ? null : mood.key)
+            }
+            className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+              selectedMood === mood.key
+                ? "bg-purple-600 text-white"
+                : "bg-gray-800 text-gray-400 hover:text-white"
+            }`}
+          >
+            {mood.label}
+          </button>
+        ))}
+      </div>
+
+      {displayDecades.length > 0 ? (
+        <div className="mb-6 flex gap-1 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {displayDecades.map(([decade, count]) => (
+            <button
+              key={decade}
+              onClick={() =>
+                setDecadeFilter(decadeFilter === decade ? null : decade)
+              }
+              className={`shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                decadeFilter === decade
+                  ? "bg-purple-600 text-white"
+                  : "bg-gray-800 text-gray-400 hover:text-white"
+              }`}
+            >
+              {decade}&rsquo;s ({count})
+            </button>
+          ))}
+        </div>
+      ) : null}
+
       {showParaVoce ? (
         <div className="mb-8">
           <h2 className="mb-6 text-3xl font-bold text-white">Para Você</h2>
@@ -84,13 +174,15 @@ function HomeRouteComponent() {
         </div>
       ) : null}
 
-      <h1 className="mb-6 text-3xl font-bold">Em Alta</h1>
+      <h1 className="mb-6 text-3xl font-bold text-white">
+        {selectedMood ? (mood?.label ?? "Explorar") : "Em Alta"}
+      </h1>
 
       {showInitialLoading ? (
         <ContentGridSkeleton />
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {trending.map((item) => (
+          {displayedResults.map((item) => (
             <MovieCard key={item.id} item={item} />
           ))}
         </div>

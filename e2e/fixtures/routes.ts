@@ -9,6 +9,9 @@ export const ROUTE_TEST_IDS = {
   listJoin: "route-list-join",
   listDetails: "route-list-details",
   thisWeek: "route-this-week",
+  searchModal: "search-modal",
+  searchModalInput: "search-modal-input",
+  searchOpenButton: "search-open-button",
 } as const;
 
 export const SCENARIO_IDS = {
@@ -20,6 +23,9 @@ export const SCENARIO_IDS = {
   SEARCH_QUERY_RESULTS: "SEARCH_QUERY_RESULTS",
   THIS_WEEK_RENDER: "THIS_WEEK_RENDER",
   SEARCH_RESULT_OPENS_DETAILS: "SEARCH_RESULT_OPENS_DETAILS",
+  SEARCH_MODAL_ADD_ITEM: "SEARCH_MODAL_ADD_ITEM",
+  HOME_MOOD_SELECT_FILTERS: "HOME_MOOD_SELECT_FILTERS",
+  HOME_MOOD_DECADE_SECONDARY: "HOME_MOOD_DECADE_SECONDARY",
   SHARED_ROUTE_RENDER_FROM_DATA: "SHARED_ROUTE_RENDER_FROM_DATA",
   SHARED_ROUTE_INVALID_LINK: "SHARED_ROUTE_INVALID_LINK",
   LISTS_INDEX_RENDER: "LISTS_INDEX_RENDER",

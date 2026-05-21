@@ -51,15 +51,34 @@ export const tasteService = {
     watchedIds: number[],
     listItemIds: { id: number; mediaType: "movie" | "tv" }[],
     signal?: AbortSignal,
+    moodContext?: string,
   ): Promise<ContentItem[]> {
+    const cacheKey = moodContext
+      ? `ai_suggestions_${moodContext}`
+      : "tasteSuggestions";
+
     const { tasteSuggestions, tasteSuggestionsTimestamp } = useStore.getState();
 
     if (
+      !moodContext &&
       tasteSuggestions &&
       tasteSuggestionsTimestamp &&
       Date.now() - tasteSuggestionsTimestamp < SUGGESTIONS_CACHE_TTL
     ) {
       return tasteSuggestions;
+    }
+
+    if (moodContext) {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached) as {
+          items: ContentItem[];
+          ts: number;
+        };
+        if (Date.now() - parsed.ts < SUGGESTIONS_CACHE_TTL) {
+          return parsed.items;
+        }
+      }
     }
 
     const { genreNames, recentTitles } = await this.getProfile(myList, signal);
@@ -71,7 +90,11 @@ export const tasteService = {
         ? `. Some of my favorites include ${recentTitles.join(", ")}`
         : "";
 
-    const prompt = `I enjoy ${genreNames.join(", ")} movies and TV shows${titlesStr}. Based on these preferences, suggest 8 to 10 popular and well-rated movies and TV shows I would enjoy.`;
+    const moodStr = moodContext
+      ? `. I'm in the mood for ${moodContext} content`
+      : "";
+
+    const prompt = `I enjoy ${genreNames.join(", ")} movies and TV shows${titlesStr}${moodStr}. Based on these preferences, suggest 8 to 10 popular and well-rated movies and TV shows I would enjoy.`;
 
     try {
       const suggestion = await ai.getSuggestions(prompt);
@@ -96,6 +119,12 @@ export const tasteService = {
 
       const filtered = uniqueItems.filter((item) => !knownIds.has(item.id));
 
+      if (moodContext) {
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ items: filtered, ts: Date.now() }),
+        );
+      }
       useStore.getState().setTasteSuggestions(filtered);
 
       return filtered;
