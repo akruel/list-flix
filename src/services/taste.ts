@@ -4,7 +4,7 @@ import type { ContentItem } from "../types";
 import { ai } from "./ai";
 import { tmdb } from "./tmdb";
 
-const SUGGESTIONS_CACHE_TTL = 30 * 60 * 1000;
+const SUGGESTIONS_CACHE_TTL = 12 * 60 * 60 * 1000;
 
 export const tasteService = {
   async getProfile(
@@ -185,7 +185,10 @@ export const tasteService = {
     const genreCounts = new Map<number, { name: string; count: number }>();
 
     const results = await Promise.allSettled(
-      itemsToAnalyze.map((item) => tmdb.getDetails(item.id, item.mediaType)),
+      itemsToAnalyze.map((item) => {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        return tmdb.getDetails(item.id, item.mediaType, signal);
+      }),
     );
 
     for (const result of results) {

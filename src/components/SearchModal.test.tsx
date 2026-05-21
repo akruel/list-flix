@@ -145,6 +145,16 @@ describe("SearchModal", () => {
     });
   });
 
+  it("closes on Escape key press", async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+
+    render(<SearchModal isOpen={true} onClose={onClose} />);
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("handles search error gracefully", async () => {
     mockSearchFn.mockRejectedValue(new Error("network error"));
 

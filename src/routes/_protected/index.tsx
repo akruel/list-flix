@@ -26,7 +26,7 @@ function HomeRouteComponent() {
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
   const { myList, watchedIds, tasteSuggestions } = useStore();
 
-  const mood = selectedMood
+  const currentMood = selectedMood
     ? MOODS.find((m) => m.key === selectedMood)
     : undefined;
 
@@ -45,13 +45,6 @@ function HomeRouteComponent() {
     if (moodChanged || mediaTypeChanged) {
       useStore.getState().clearTasteSuggestions();
     }
-
-    if (
-      !selectedMood &&
-      !selectedMediaType &&
-      useStore.getState().tasteSuggestions
-    )
-      return;
 
     let cancelled = false;
 
@@ -241,7 +234,8 @@ function HomeRouteComponent() {
       {showForYou ? (
         <div className="mb-8">
           <h2 className="mb-6 text-3xl font-bold text-white">
-            Para Você{selectedMood && mood ? ` · ${mood.label}` : ""}
+            Para Você
+            {selectedMood && currentMood ? ` · ${currentMood.label}` : ""}
           </h2>
           {suggestionsLoading ? (
             <div className="flex gap-4 overflow-x-auto pb-2">
@@ -266,11 +260,17 @@ function HomeRouteComponent() {
       ) : null}
 
       <h1 className="mb-6 text-3xl font-bold text-white">
-        {selectedMood && mood ? `Em Alta · ${mood.label}` : "Em Alta"}
+        {selectedMood && currentMood
+          ? `Em Alta · ${currentMood.label}`
+          : "Em Alta"}
       </h1>
 
       {showInitialLoading ? (
         <ContentGridSkeleton />
+      ) : displayedResults.length === 0 ? (
+        <p className="py-12 text-center text-sm text-gray-500">
+          Nenhum resultado encontrado.
+        </p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {displayedResults.map((item) => (

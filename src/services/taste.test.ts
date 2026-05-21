@@ -585,6 +585,20 @@ describe("tasteService", () => {
       expect(result).toEqual([]);
     });
 
+    it("handles aborted signal before getDetails", async () => {
+      const controller = new AbortController();
+      controller.abort();
+
+      await expect(
+        tasteService.getPersonalizedSuggestions(
+          [mockMovieItem],
+          [],
+          [],
+          controller.signal,
+        ),
+      ).rejects.toThrow("Aborted");
+    });
+
     it("re-throws AbortError from discover call", async () => {
       const { tmdb } = await import("./tmdb");
 
