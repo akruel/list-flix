@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-// Mock supabase so env vars are not required in unit tests
 export const mockRpc = vi.fn();
 vi.mock("@/lib/supabase", () => ({
   supabase: {
@@ -110,7 +109,7 @@ describe("groupActivities", () => {
     expect(result[0]?.type).toBe("episode_batch");
 
     const group = result[0];
-    // Narrow type for further assertions without conditional expect
+
     if (group?.type !== "episode_batch")
       throw new Error("Expected episode_batch");
     expect(group.content_id).toBe(101);

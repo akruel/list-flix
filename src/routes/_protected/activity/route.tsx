@@ -22,7 +22,7 @@ function ActivityRouteComponent() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const offsetRef = useRef(0);
-  // Incrementing this triggers a re-fetch; reset=true means start from page 0
+
   const [fetchTrigger, setFetchTrigger] = useState<{
     reset: boolean;
     tick: number;
@@ -75,7 +75,6 @@ function ActivityRouteComponent() {
     setFetchTrigger((prev) => ({ reset: false, tick: prev.tick + 1 }));
   };
 
-  // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div data-testid="route-activity" className="mx-auto max-w-lg">
@@ -85,7 +84,6 @@ function ActivityRouteComponent() {
     );
   }
 
-  // ── Error state ────────────────────────────────────────────────────────────
   if (error) {
     return (
       <div data-testid="route-activity" className="mx-auto max-w-lg">
@@ -101,7 +99,6 @@ function ActivityRouteComponent() {
     );
   }
 
-  // ── Empty state ────────────────────────────────────────────────────────────
   if (items.length === 0) {
     return (
       <div data-testid="route-activity" className="mx-auto max-w-lg">
@@ -111,7 +108,6 @@ function ActivityRouteComponent() {
     );
   }
 
-  // ── Feed ───────────────────────────────────────────────────────────────────
   const grouped = groupByDay(items);
 
   return (
@@ -154,8 +150,6 @@ function ActivityRouteComponent() {
     </div>
   );
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function ActivityHeader({
   onRefresh,
@@ -201,8 +195,6 @@ function EmptyState() {
     </div>
   );
 }
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getItemKey(item: GroupedActivity): string {
   if (item.type === "episode_batch") {

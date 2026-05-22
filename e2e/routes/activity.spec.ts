@@ -31,7 +31,7 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_EMPTY_STATE}] shows empty state when user ha
 
   await expect(page.getByTestId(ROUTE_TEST_IDS.activity)).toBeVisible();
   await expect(page.getByText("Nenhuma atividade ainda")).toBeVisible();
-  // CTA button to /lists
+
   await expect(
     page.getByRole("link", { name: /Ver minhas listas/i }),
   ).toBeVisible();
@@ -51,7 +51,6 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT}] shows member_joined activ
   );
 
   try {
-    // Sign in as the owner and navigate to the activity feed
     await page.goto("/auth");
     await page.evaluate(
       async ({ email, password }) => {
@@ -68,11 +67,8 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT}] shows member_joined activ
     await page.goto("/activity");
     await expect(page.getByTestId(ROUTE_TEST_IDS.activity)).toBeVisible();
 
-    // The member_joined activity should appear in the feed
-    // The activity text contains "entrou na lista"
     await expect(page.getByText(/entrou na lista/i)).toBeVisible();
 
-    // The member's name should be referenced (may fall back to email prefix)
     const memberPrefix = member.email.split("@")[0] ?? "";
     await expect(page.getByText(memberPrefix, { exact: false })).toBeVisible();
   } finally {

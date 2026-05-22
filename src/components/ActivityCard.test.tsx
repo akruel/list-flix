@@ -5,7 +5,6 @@ import type { Activity, GroupedActivity } from "@/types";
 
 import { ActivityCard } from "./ActivityCard";
 
-// Freeze time so getRelativeTime is deterministic
 vi.useFakeTimers();
 vi.setSystemTime(new Date("2026-05-22T12:00:00Z"));
 
@@ -349,7 +348,7 @@ describe("ActivityCard", () => {
         content_id: 101,
         metadata: activity.metadata,
         actors: [{ actor_id: "actor-1", name: "Alice" }],
-        episodes: [], // Empty array triggers firstEpisode fallback
+        episodes: [],
         latest_at: activity.created_at,
       };
       render(<ActivityCard item={item} />);

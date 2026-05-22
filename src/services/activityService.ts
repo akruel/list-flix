@@ -21,7 +21,6 @@ export const activityService = {
  * Input must be sorted by created_at DESC.
  */
 export function groupActivities(activities: Activity[]): GroupedActivity[] {
-  // Map key: `${content_id}:${dayKey}` → batch index in result array
   const episodeBatchIndex = new Map<string, number>();
   const result: GroupedActivity[] = [];
 
@@ -39,7 +38,6 @@ export function groupActivities(activities: Activity[]): GroupedActivity[] {
         if (existing.type === "episode_batch") {
           existing.episodes.push(activity);
 
-          // Add actor if not already present
           const alreadyHasActor = existing.actors.some(
             (a) => a.actor_id === activity.actor_id,
           );

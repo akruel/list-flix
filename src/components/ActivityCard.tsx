@@ -5,8 +5,6 @@ import type { Activity, GroupedActivity } from "@/types";
 
 const TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w92";
 
-// ─── Avatar ──────────────────────────────────────────────────────────────────
-
 interface AvatarProps {
   name?: string;
   avatarUrl?: string;
@@ -48,8 +46,6 @@ function Avatar({ name, avatarUrl }: AvatarProps) {
   );
 }
 
-// ─── Stacked avatars for episode batches ─────────────────────────────────────
-
 interface StackedAvatarsProps {
   actors: { actor_id: string; name?: string; avatar_url?: string }[];
 }
@@ -74,8 +70,6 @@ function StackedAvatars({ actors }: StackedAvatarsProps) {
   );
 }
 
-// ─── Poster thumbnail ─────────────────────────────────────────────────────────
-
 function PosterThumbnail({
   posterPath,
   title,
@@ -92,8 +86,6 @@ function PosterThumbnail({
     />
   );
 }
-
-// ─── Activity text builders ───────────────────────────────────────────────────
 
 function buildEpisodeBatchText(
   actors: { name?: string }[],
@@ -196,8 +188,6 @@ function buildSingleText(activity: Activity): React.ReactNode {
   }
 }
 
-// ─── Card layouts ─────────────────────────────────────────────────────────────
-
 function CardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-muted/50">
@@ -270,8 +260,6 @@ function EpisodeBatchCard({
     </CardShell>
   );
 }
-
-// ─── Public component ─────────────────────────────────────────────────────────
 
 interface ActivityCardProps {
   item: GroupedActivity;
