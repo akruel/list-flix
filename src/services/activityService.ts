@@ -14,12 +14,6 @@ export const activityService = {
   },
 };
 
-/**
- * Groups episode_watched activities by (content_id, day).
- * Multiple actors watching the same show on the same day are consolidated.
- * All other activity types remain as singles.
- * Input must be sorted by created_at DESC.
- */
 export function groupActivities(activities: Activity[]): GroupedActivity[] {
   const episodeBatchIndex = new Map<string, number>();
   const result: GroupedActivity[] = [];

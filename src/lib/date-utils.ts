@@ -73,10 +73,6 @@ export function getDateKey(dateString: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/**
- * Returns a relative time string in pt-BR for activity feed timestamps.
- * e.g. "há 2h", "há 5min", "há 3 dias"
- */
 export function getRelativeTime(isoString: string): string {
   const date = new Date(isoString);
   const now = new Date();
@@ -93,10 +89,6 @@ export function getRelativeTime(isoString: string): string {
   return date.toLocaleDateString("pt-BR", { day: "numeric", month: "short" });
 }
 
-/**
- * Returns a day section label in pt-BR for activity feed grouping headers.
- * e.g. "Hoje", "Ontem", "20 de maio"
- */
 export function getDayGroupLabel(isoString: string): string {
   const date = new Date(isoString);
   const now = new Date();
@@ -113,9 +105,6 @@ export function getDayGroupLabel(isoString: string): string {
   return date.toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
 }
 
-/**
- * Returns a YYYY-MM-DD day key from an ISO timestamp (uses local date).
- */
 export function getDayKeyFromIso(isoString: string): string {
   const date = new Date(isoString);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;

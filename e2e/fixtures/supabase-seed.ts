@@ -173,11 +173,6 @@ export async function seedListOwnedByNewUser(
   };
 }
 
-/**
- * Creates a second user who joins an existing list as an editor.
- * This triggers the member_joined activity for the list owner's feed.
- * Returns the new member and a cleanup function.
- */
 export async function seedMemberJoinsList(
   list: SeededList,
   label: string,
