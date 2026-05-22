@@ -1,18 +1,26 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
-import { CalendarDays, Home, List, Search } from "lucide-react";
+import { Bell, CalendarDays, Home, List, Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { LoginButton } from "./LoginButton";
 import { NotificationToggle } from "./NotificationToggle";
+import { SearchModal } from "./SearchModal";
 
 export function Layout() {
   const location = useLocation();
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsSearchOpen(false);
+  }, [location.pathname]);
 
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
     { icon: CalendarDays, label: "Semana", path: "/this-week" },
-    { icon: Search, label: "Buscar", path: "/search" },
     { icon: List, label: "Minhas Listas", path: "/lists" },
+    { icon: Bell, label: "Atividades", path: "/activity" },
   ];
 
   return (
@@ -25,7 +33,7 @@ export function Layout() {
           >
             ListFlix
           </Link>
-          <nav className="hidden gap-6 md:flex">
+          <nav className="hidden items-center gap-6 md:flex">
             {navItems.map((item) => {
               const isActive =
                 item.path === "/"
@@ -57,14 +65,22 @@ export function Layout() {
         </div>
       </header>
 
+      <button
+        data-testid="search-open-button"
+        onClick={() => setIsSearchOpen(true)}
+        className="fixed bottom-6 right-6 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg transition-colors hover:bg-purple-500 md:flex"
+        title="Buscar"
+      >
+        <Plus size={24} />
+      </button>
+
       <main className="container mx-auto px-4 py-6">
         <Outlet />
       </main>
 
-      {/* Mobile Bottom Nav */}
       <nav className="pb-safe fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background md:hidden">
-        <div className="flex h-16 items-center justify-around">
-          {navItems.map((item) => {
+        <div className="grid h-16 grid-cols-5 items-center">
+          {navItems.slice(0, 2).map((item) => {
             const isActive =
               item.path === "/"
                 ? location.pathname === "/"
@@ -85,8 +101,40 @@ export function Layout() {
               </Link>
             );
           })}
+          <button
+            data-testid="search-open-button-mobile"
+            onClick={() => setIsSearchOpen(true)}
+            className="flex h-11 w-11 items-center justify-center justify-self-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
+            title="Buscar"
+          >
+            <Plus size={22} />
+          </button>
+          {navItems.slice(2).map((item) => {
+            const isActive =
+              location.pathname === item.path ||
+              location.pathname.startsWith(`${item.path}/`);
+
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={clsx(
+                  "flex flex-col items-center gap-1 text-xs",
+                  isActive ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <item.icon size={24} />
+                {item.label}
+              </Link>
+            );
+          })}
         </div>
       </nav>
+
+      <SearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
     </div>
   );
 }

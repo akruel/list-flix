@@ -47,15 +47,24 @@ export const tmdb = {
 
   search: async (
     query: string,
-    mediaType?: "movie" | "tv",
-  ): Promise<ContentItem[]> => {
+    options?: {
+      mediaType?: "movie" | "tv";
+      page?: number;
+      signal?: AbortSignal;
+    },
+  ): Promise<SearchResponse> => {
     const response = await tmdbClient.get<SearchResponse>("/search/multi", {
-      params: { query },
+      params: { query, page: options?.page ?? 1 },
+      ...(options?.signal ? { signal: options.signal } : {}),
     });
-    return response.data.results.filter((item) => {
-      if (mediaType) return item.media_type === mediaType;
+    const filteredResults = response.data.results.filter((item) => {
+      if (options?.mediaType) return item.media_type === options.mediaType;
       return item.media_type === "movie" || item.media_type === "tv";
     });
+    return {
+      ...response.data,
+      results: filteredResults,
+    };
   },
 
   findBestMatch: async (
@@ -63,8 +72,7 @@ export const tmdb = {
     mediaType: "movie" | "tv",
     year?: number,
   ): Promise<ContentItem | null> => {
-    const query = year ? `${title} ${year}` : title;
-    const results = await tmdb.search(query, mediaType);
+    const { results } = await tmdb.search(title, { mediaType });
 
     if (results.length === 0) return null;
 
@@ -83,11 +91,13 @@ export const tmdb = {
   getDetails: async (
     id: number,
     type: "movie" | "tv",
+    signal?: AbortSignal,
   ): Promise<ContentDetails> => {
     const response = await tmdbClient.get<ContentDetails>(`/${type}/${id}`, {
       params: {
         append_to_response: "credits,videos,watch/providers",
       },
+      ...(signal ? { signal } : {}),
     });
     return { ...response.data, media_type: type } as ContentDetails;
   },
@@ -135,6 +145,7 @@ export const tmdb = {
 
   discover: async (
     filters: Record<string, unknown>,
+    signal?: AbortSignal,
   ): Promise<ContentItem[]> => {
     // Determine if we are searching for movies or tv shows based on filters or default to movie
     // Ideally the AI should tell us which endpoint to use, but for now let's assume we might need to query both or just one.
@@ -154,6 +165,7 @@ export const tmdb = {
         ...params,
         sort_by: params.sort_by || "popularity.desc",
       },
+      ...(signal ? { signal } : {}),
     });
 
     return response.data.results.map((item) => ({

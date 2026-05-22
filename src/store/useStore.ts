@@ -53,6 +53,13 @@ interface ListStore {
   createList: (name: string) => Promise<List>;
   deleteList: (id: string) => Promise<void>;
   updateList: (id: string, name: string) => Promise<void>;
+
+  // Taste suggestions cache
+  tasteSuggestions: ContentItem[] | null;
+  tasteSuggestionsTimestamp: number | null;
+  tasteSuggestionsScope: string | null;
+  setTasteSuggestions: (suggestions: ContentItem[], scope?: string) => void;
+  clearTasteSuggestions: () => void;
 }
 
 export const useStore = create<ListStore>()(
@@ -63,6 +70,25 @@ export const useStore = create<ListStore>()(
       watchedEpisodes: {},
       seriesMetadata: {},
       lists: [],
+      tasteSuggestions: null,
+      tasteSuggestionsTimestamp: null,
+      tasteSuggestionsScope: null,
+
+      setTasteSuggestions: (suggestions, scope) => {
+        set({
+          tasteSuggestions: suggestions,
+          tasteSuggestionsTimestamp: Date.now(),
+          tasteSuggestionsScope: scope ?? null,
+        });
+      },
+
+      clearTasteSuggestions: () => {
+        set({
+          tasteSuggestions: null,
+          tasteSuggestionsTimestamp: null,
+          tasteSuggestionsScope: null,
+        });
+      },
 
       addToList: (item) => {
         set((state) => {

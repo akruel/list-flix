@@ -16,6 +16,7 @@ import { Route as AuthCallbackRouteImport } from './routes/auth_/callback'
 import { Route as ProtectedThisWeekRouteImport } from './routes/_protected/this-week'
 import { Route as ProtectedSharedRouteRouteImport } from './routes/_protected/shared/route'
 import { Route as ProtectedSearchRouteRouteImport } from './routes/_protected/search/route'
+import { Route as ProtectedActivityRouteRouteImport } from './routes/_protected/activity/route'
 import { Route as ProtectedListsIndexRouteImport } from './routes/_protected/lists/index'
 import { Route as ProtectedListsIdRouteImport } from './routes/_protected/lists/$id'
 import { Route as ProtectedListsIdJoinRouteImport } from './routes/_protected/lists/$id.join'
@@ -55,6 +56,11 @@ const ProtectedSearchRouteRoute = ProtectedSearchRouteRouteImport.update({
   path: '/search',
   getParentRoute: () => ProtectedRouteRoute,
 } as any)
+const ProtectedActivityRouteRoute = ProtectedActivityRouteRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => ProtectedRouteRoute,
+} as any)
 const ProtectedListsIndexRoute = ProtectedListsIndexRouteImport.update({
   id: '/lists/',
   path: '/lists/',
@@ -79,6 +85,7 @@ const ProtectedDetailsTypeIdRoute = ProtectedDetailsTypeIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof ProtectedIndexRoute
   '/auth': typeof AuthRouteRoute
+  '/activity': typeof ProtectedActivityRouteRoute
   '/search': typeof ProtectedSearchRouteRoute
   '/shared': typeof ProtectedSharedRouteRoute
   '/this-week': typeof ProtectedThisWeekRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRoute
+  '/activity': typeof ProtectedActivityRouteRoute
   '/search': typeof ProtectedSearchRouteRoute
   '/shared': typeof ProtectedSharedRouteRoute
   '/this-week': typeof ProtectedThisWeekRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_protected': typeof ProtectedRouteRouteWithChildren
   '/auth': typeof AuthRouteRoute
+  '/_protected/activity': typeof ProtectedActivityRouteRoute
   '/_protected/search': typeof ProtectedSearchRouteRoute
   '/_protected/shared': typeof ProtectedSharedRouteRoute
   '/_protected/this-week': typeof ProtectedThisWeekRoute
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/activity'
     | '/search'
     | '/shared'
     | '/this-week'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
+    | '/activity'
     | '/search'
     | '/shared'
     | '/this-week'
@@ -143,6 +154,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_protected'
     | '/auth'
+    | '/_protected/activity'
     | '/_protected/search'
     | '/_protected/shared'
     | '/_protected/this-week'
@@ -211,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedSearchRouteRouteImport
       parentRoute: typeof ProtectedRouteRoute
     }
+    '/_protected/activity': {
+      id: '/_protected/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ProtectedActivityRouteRouteImport
+      parentRoute: typeof ProtectedRouteRoute
+    }
     '/_protected/lists/': {
       id: '/_protected/lists/'
       path: '/lists'
@@ -254,6 +273,7 @@ const ProtectedListsIdRouteWithChildren =
   ProtectedListsIdRoute._addFileChildren(ProtectedListsIdRouteChildren)
 
 interface ProtectedRouteRouteChildren {
+  ProtectedActivityRouteRoute: typeof ProtectedActivityRouteRoute
   ProtectedSearchRouteRoute: typeof ProtectedSearchRouteRoute
   ProtectedSharedRouteRoute: typeof ProtectedSharedRouteRoute
   ProtectedThisWeekRoute: typeof ProtectedThisWeekRoute
@@ -264,6 +284,7 @@ interface ProtectedRouteRouteChildren {
 }
 
 const ProtectedRouteRouteChildren: ProtectedRouteRouteChildren = {
+  ProtectedActivityRouteRoute: ProtectedActivityRouteRoute,
   ProtectedSearchRouteRoute: ProtectedSearchRouteRoute,
   ProtectedSharedRouteRoute: ProtectedSharedRouteRoute,
   ProtectedThisWeekRoute: ProtectedThisWeekRoute,

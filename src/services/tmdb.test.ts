@@ -80,9 +80,9 @@ describe("tmdb service", () => {
       },
     });
 
-    const result = await tmdb.search("matrix");
+    const response = await tmdb.search("matrix");
 
-    expect(result).toEqual([
+    expect(response.results).toEqual([
       { id: 1, media_type: "movie" },
       { id: 2, media_type: "tv" },
     ]);
@@ -104,6 +104,18 @@ describe("tmdb service", () => {
       },
     });
     expect(result).toMatchObject({ id, media_type: type });
+  });
+
+  it("getDetails passes signal to axios", async () => {
+    mocks.get.mockResolvedValue({ data: { id: 1, title: "Test" } });
+    const controller = new AbortController();
+
+    await tmdb.getDetails(1, "movie", controller.signal);
+
+    expect(mocks.get).toHaveBeenCalledWith(
+      "/movie/1",
+      expect.objectContaining({ signal: controller.signal }),
+    );
   });
 
   it("getSeasonDetails loads tv season endpoint", async () => {
@@ -179,9 +191,21 @@ describe("tmdb service", () => {
       },
     });
 
-    const result = await tmdb.search("matrix", "movie");
+    const response = await tmdb.search("matrix", { mediaType: "movie" });
 
-    expect(result).toEqual([{ id: 1, media_type: "movie" }]);
+    expect(response.results).toEqual([{ id: 1, media_type: "movie" }]);
+  });
+
+  it("search passes signal to axios", async () => {
+    mocks.get.mockResolvedValue({ data: { results: [] } });
+    const controller = new AbortController();
+
+    await tmdb.search("test", { signal: controller.signal });
+
+    expect(mocks.get).toHaveBeenCalledWith(
+      "/search/multi",
+      expect.objectContaining({ signal: controller.signal }),
+    );
   });
 
   describe("findBestMatch", () => {
@@ -199,15 +223,18 @@ describe("tmdb service", () => {
       expect(result).toEqual({ id: 1, title: "Matrix", media_type: "movie" });
     });
 
-    it("appends year to search query when provided", async () => {
+    it("searches by title only, then matches year from results", async () => {
       mocks.get.mockResolvedValue({
         data: { results: [{ id: 1, title: "Matrix", media_type: "movie" }] },
       });
 
       await tmdb.findBestMatch("Matrix", "movie", 1999);
-      expect(mocks.get).toHaveBeenCalledWith("/search/multi", {
-        params: { query: "Matrix 1999" },
-      });
+      expect(mocks.get).toHaveBeenCalledWith(
+        "/search/multi",
+        expect.objectContaining({
+          params: expect.objectContaining({ query: "Matrix" }),
+        }),
+      );
     });
 
     it("returns matching result by year from results", async () => {
@@ -343,4 +370,16 @@ describe("tmdb service", () => {
       ]);
     },
   );
+
+  it("discover passes signal to axios", async () => {
+    mocks.get.mockResolvedValue({ data: { results: [] } });
+    const controller = new AbortController();
+
+    await tmdb.discover({}, controller.signal);
+
+    expect(mocks.get).toHaveBeenCalledWith(
+      "/discover/movie",
+      expect.objectContaining({ signal: controller.signal }),
+    );
+  });
 });

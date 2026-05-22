@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { listService } from "../services/listService";
 import { userContentService } from "../services/userContent";
+import type { ContentItem } from "../types";
 import { useStore } from "./useStore";
 
 vi.mock("../services/listService", () => ({
@@ -572,5 +573,28 @@ describe("useStore shared lists actions", () => {
       expect.objectContaining({ id: "list-1", name: "New Name" }),
       expect.objectContaining({ id: "list-2", name: "Keep Me" }),
     ]);
+  });
+
+  it("setTasteSuggestions updates state with suggestions and timestamp", () => {
+    const suggestions = [
+      { id: 1, title: "A", media_type: "movie" } as ContentItem,
+    ];
+
+    useStore.getState().setTasteSuggestions(suggestions);
+
+    expect(useStore.getState().tasteSuggestions).toEqual(suggestions);
+    expect(useStore.getState().tasteSuggestionsTimestamp).toBeGreaterThan(0);
+  });
+
+  it("clearTasteSuggestions resets state to null", () => {
+    useStore
+      .getState()
+      .setTasteSuggestions([
+        { id: 1, title: "A", media_type: "movie" } as ContentItem,
+      ]);
+    useStore.getState().clearTasteSuggestions();
+
+    expect(useStore.getState().tasteSuggestions).toBeNull();
+    expect(useStore.getState().tasteSuggestionsTimestamp).toBeNull();
   });
 });
