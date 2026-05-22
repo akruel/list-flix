@@ -5,8 +5,11 @@ import {
   formatDateLong,
   getCountdownText,
   getDateKey,
+  getDayGroupLabel,
+  getDayKeyFromIso,
   getDayLabel,
   getFormattedDate,
+  getRelativeTime,
   isDateInCurrentWeek,
   parseLocalDate,
 } from "./date-utils";
@@ -135,5 +138,86 @@ describe("getDateKey", () => {
   it("returns YYYY-MM-DD format", () => {
     const result = getDateKey("2025-05-10");
     expect(result).toBe("2025-05-10");
+  });
+});
+
+describe("getRelativeTime", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns "agora" for timestamps less than 1 minute ago', () => {
+    vi.setSystemTime(new Date("2026-05-22T10:00:30Z"));
+    expect(getRelativeTime("2026-05-22T10:00:00Z")).toBe("agora");
+  });
+
+  it('returns "há Xmin" for timestamps within the last hour', () => {
+    vi.setSystemTime(new Date("2026-05-22T10:15:00Z"));
+    expect(getRelativeTime("2026-05-22T10:00:00Z")).toBe("há 15min");
+  });
+
+  it('returns "há Xh" for timestamps within the last 24 hours', () => {
+    vi.setSystemTime(new Date("2026-05-22T12:00:00Z"));
+    expect(getRelativeTime("2026-05-22T10:00:00Z")).toBe("há 2h");
+  });
+
+  it('returns "ontem" for timestamps exactly 1 day ago', () => {
+    vi.setSystemTime(new Date("2026-05-22T10:00:00Z"));
+    expect(getRelativeTime("2026-05-21T10:00:00Z")).toBe("ontem");
+  });
+
+  it('returns "há X dias" for timestamps 2–6 days ago', () => {
+    vi.setSystemTime(new Date("2026-05-22T10:00:00Z"));
+    expect(getRelativeTime("2026-05-19T10:00:00Z")).toBe("há 3 dias");
+  });
+
+  it("returns a formatted date for timestamps older than 7 days", () => {
+    vi.setSystemTime(new Date("2026-05-22T10:00:00Z"));
+    const result = getRelativeTime("2026-05-01T10:00:00Z");
+    expect(result).toMatch(/\d+ de mai/i);
+  });
+});
+
+describe("getDayGroupLabel", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-22T14:00:00Z"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns "Hoje" for today', () => {
+    expect(getDayGroupLabel("2026-05-22T08:00:00Z")).toBe("Hoje");
+  });
+
+  it('returns "Ontem" for yesterday', () => {
+    expect(getDayGroupLabel("2026-05-21T20:00:00Z")).toBe("Ontem");
+  });
+
+  it("returns formatted date for older dates", () => {
+    const result = getDayGroupLabel("2026-05-19T10:00:00Z");
+    expect(result).toMatch(/\d+ de mai/i);
+  });
+});
+
+describe("getDayKeyFromIso", () => {
+  it("returns YYYY-MM-DD from an ISO timestamp", () => {
+    expect(getDayKeyFromIso("2026-05-22T14:30:00Z")).toMatch(
+      /^\d{4}-\d{2}-\d{2}$/,
+    );
+  });
+
+  it("returns consistent key for same day regardless of time", () => {
+    const t1 = new Date("2026-05-22T00:00:00");
+    const t2 = new Date("2026-05-22T23:59:59");
+    expect(getDayKeyFromIso(t1.toISOString())).toBe(
+      getDayKeyFromIso(t2.toISOString()),
+    );
   });
 });

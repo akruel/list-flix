@@ -172,3 +172,37 @@ export async function seedListOwnedByNewUser(
     cleanup,
   };
 }
+
+/**
+ * Creates a second user who joins an existing list as an editor.
+ * This triggers the member_joined activity for the list owner's feed.
+ * Returns the new member and a cleanup function.
+ */
+export async function seedMemberJoinsList(
+  list: SeededList,
+  label: string,
+): Promise<{ member: SeededUser; cleanup: SeedCleanup }> {
+  const cleanup = createSeedCleanup();
+  const member = await createSeededUser(label);
+  cleanup.users.push(member);
+
+  const memberClient = createAnonClient();
+  const signInResult = await memberClient.auth.signInWithPassword({
+    email: member.email,
+    password: member.password,
+  });
+
+  if (signInResult.error) {
+    throw signInResult.error;
+  }
+
+  const joinResult = await memberClient
+    .from("list_members")
+    .insert({ list_id: list.id, user_id: member.id, role: "editor" });
+
+  if (joinResult.error) {
+    throw joinResult.error;
+  }
+
+  return { member, cleanup };
+}

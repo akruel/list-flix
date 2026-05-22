@@ -164,3 +164,47 @@ export interface UserProfile {
   avatarUrl?: string;
   provider: AuthProvider;
 }
+
+type ActivityType =
+  | "episode_watched"
+  | "movie_watched"
+  | "item_added"
+  | "item_removed"
+  | "member_joined";
+
+interface ActivityMetadata {
+  actor_name?: string;
+  actor_avatar_url?: string;
+  content_title?: string;
+  poster_path?: string;
+  season_number?: number;
+  episode_number?: number;
+  list_name?: string;
+  member_name?: string;
+}
+
+export interface Activity {
+  id: string;
+  actor_id: string;
+  activity_type: ActivityType;
+  list_id: string | null;
+  content_id: number | null;
+  content_type: "movie" | "tv" | null;
+  metadata: ActivityMetadata;
+  created_at: string;
+}
+
+export type GroupedActivity =
+  | {
+      type: "single";
+      activity: Activity;
+    }
+  | {
+      type: "episode_batch";
+      content_id: number;
+      metadata: ActivityMetadata;
+      /** All actors involved in this batch, with name and avatar */
+      actors: { actor_id: string; name?: string; avatar_url?: string }[];
+      episodes: Activity[];
+      latest_at: string;
+    };
