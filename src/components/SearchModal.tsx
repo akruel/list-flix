@@ -152,7 +152,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
         ) : (
           <div>
             {results.map((item) => (
-              <SearchResultItem key={item.id} item={item} />
+              <SearchResultItem
+                key={`${item.media_type}:${item.id}`}
+                item={item}
+              />
             ))}
           </div>
         )}

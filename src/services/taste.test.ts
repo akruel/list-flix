@@ -280,7 +280,10 @@ describe("tasteService", () => {
       expect(tmdb.getDetails).not.toHaveBeenCalled();
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(301);
-      expect(mockStore.setTasteSuggestions).toHaveBeenCalledWith(cachedItems);
+      expect(mockStore.setTasteSuggestions).toHaveBeenCalledWith(
+        cachedItems,
+        "ai_suggestions_suspense",
+      );
     });
 
     it("works with empty recent titles", async () => {

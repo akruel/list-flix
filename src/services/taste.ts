@@ -91,7 +91,7 @@ export const tasteService = {
           ts: number;
         };
         if (Date.now() - parsed.ts < SUGGESTIONS_CACHE_TTL) {
-          useStore.getState().setTasteSuggestions(parsed.items);
+          useStore.getState().setTasteSuggestions(parsed.items, cacheKey);
           return parsed.items;
         }
       }
