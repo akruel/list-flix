@@ -356,4 +356,20 @@ describe("MovieCard", () => {
     expect(screen.getByText("Amanda, João")).toBeInTheDocument();
     expect(screen.queryByText("Amanda, Amanda, João")).not.toBeInTheDocument();
   });
+
+  it("handles empty memberNames gracefully", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 10,
+          media_type: "movie",
+          title: "Test Movie",
+        }}
+        watchingWith={[
+          { listName: "Amigos", memberNames: null as unknown as string[] },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Test Movie")).toBeInTheDocument();
+  });
 });

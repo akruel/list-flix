@@ -298,6 +298,8 @@ export const userContentService = {
     if (contentType === "movie") {
       const { error } = await supabase.from("watched_movies").insert({
         tmdb_id: contentId,
+        title: metadata.title,
+        poster_path: metadata.poster_path,
       });
       if (error) logger.error("Error marking movie as watched:", error);
     } else if (contentType === "episode") {
@@ -306,6 +308,8 @@ export const userContentService = {
         tmdb_show_id: metadata.show_id,
         season_number: metadata.season_number,
         episode_number: metadata.episode_number,
+        show_title: metadata.show_title,
+        poster_path: metadata.poster_path,
       });
       if (error) logger.error("Error marking episode as watched:", error);
     }
@@ -343,6 +347,8 @@ export const userContentService = {
     seriesId: number,
     seasonNumber: number,
     episodes: Episode[],
+    showTitle?: string,
+    posterPath?: string,
   ) {
     // Prepare payload for RPC
     const payload = episodes.map((ep) => ({
@@ -350,6 +356,8 @@ export const userContentService = {
       tmdb_show_id: seriesId,
       season_number: seasonNumber,
       episode_number: ep.episode_number,
+      show_title: showTitle,
+      poster_path: posterPath,
     }));
 
     const { error } = await supabase.rpc("mark_season_watched", {

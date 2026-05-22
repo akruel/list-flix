@@ -493,9 +493,13 @@ describe("userContentService", () => {
     {
       caseName: "mark season watched rpc error",
       run: () =>
-        userContentService.markSeasonAsWatched(1, 2, [
-          { id: 101, episode_number: 1 },
-        ] as never),
+        userContentService.markSeasonAsWatched(
+          1,
+          2,
+          [{ id: 101, episode_number: 1 }] as never,
+          undefined,
+          undefined,
+        ),
     },
     {
       caseName: "mark season unwatched rpc error",

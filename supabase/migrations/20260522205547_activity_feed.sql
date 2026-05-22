@@ -39,7 +39,18 @@ CREATE POLICY "No direct access" ON activities
   TO authenticated
   USING (false);
 
--- ── 2. Helper: get actor metadata ────────────────────────────
+-- ── 2. Add metadata columns to interaction tables ─────────────
+
+ALTER TABLE list_items ADD COLUMN title text;
+ALTER TABLE list_items ADD COLUMN poster_path text;
+
+ALTER TABLE watched_movies ADD COLUMN title text;
+ALTER TABLE watched_movies ADD COLUMN poster_path text;
+
+ALTER TABLE watched_episodes ADD COLUMN show_title text;
+ALTER TABLE watched_episodes ADD COLUMN poster_path text;
+
+-- ── 3. Helper: get actor metadata ────────────────────────────
 
 CREATE OR REPLACE FUNCTION _get_actor_metadata(p_actor_id uuid)
 RETURNS jsonb
@@ -67,31 +78,6 @@ BEGIN
 END;
 $$;
 
--- ── 3. Helper: get content metadata (best-effort from watchlists) ─────────────
-
-CREATE OR REPLACE FUNCTION _get_content_metadata(p_content_id integer, p_content_type text)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_meta jsonb;
-BEGIN
-  SELECT jsonb_build_object(
-    'content_title', COALESCE(w.title, w.name),
-    'poster_path',   w.poster_path
-  )
-  INTO v_meta
-  FROM watchlists w
-  WHERE w.tmdb_id   = p_content_id
-    AND w.media_type = p_content_type
-  LIMIT 1;
-
-  RETURN COALESCE(v_meta, jsonb_build_object('content_title', null, 'poster_path', null));
-END;
-$$;
-
 -- ── 4. Trigger: episode_watched ───────────────────────────────
 
 CREATE OR REPLACE FUNCTION trg_fn_activity_episode_watched()
@@ -116,7 +102,10 @@ BEGIN
   END IF;
 
   v_actor_meta   := _get_actor_metadata(NEW.user_id);
-  v_content_meta := _get_content_metadata(NEW.tmdb_show_id, 'tv');
+  v_content_meta := jsonb_build_object(
+    'content_title', NEW.show_title,
+    'poster_path',   NEW.poster_path
+  );
 
   INSERT INTO activities (actor_id, activity_type, content_id, content_type, metadata)
   VALUES (
@@ -162,7 +151,10 @@ BEGIN
   END IF;
 
   v_actor_meta   := _get_actor_metadata(NEW.user_id);
-  v_content_meta := _get_content_metadata(NEW.tmdb_id, 'movie');
+  v_content_meta := jsonb_build_object(
+    'content_title', NEW.title,
+    'poster_path',   NEW.poster_path
+  );
 
   INSERT INTO activities (actor_id, activity_type, content_id, content_type, metadata)
   VALUES (
@@ -200,7 +192,10 @@ BEGIN
   END IF;
 
   v_actor_meta   := _get_actor_metadata(NEW.added_by);
-  v_content_meta := _get_content_metadata(NEW.content_id, NEW.content_type);
+  v_content_meta := jsonb_build_object(
+    'content_title', NEW.title,
+    'poster_path',   NEW.poster_path
+  );
 
   SELECT name INTO v_list_name FROM lists WHERE id = NEW.list_id;
 
@@ -243,7 +238,10 @@ BEGIN
   END IF;
 
   v_actor_meta   := _get_actor_metadata(v_current_user);
-  v_content_meta := _get_content_metadata(OLD.content_id, OLD.content_type);
+  v_content_meta := jsonb_build_object(
+    'content_title', OLD.title,
+    'poster_path',   OLD.poster_path
+  );
 
   SELECT name INTO v_list_name FROM lists WHERE id = OLD.list_id;
 
@@ -374,7 +372,53 @@ BEGIN
 END;
 $$;
 
--- ── 10. 7-day retention via pg_cron ──────────────────────────
+-- ── 10. Update mark_season_watched RPC to insert metadata ─────
+
+CREATE OR REPLACE FUNCTION public.mark_season_watched(
+  episodes jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  episode record;
+BEGIN
+  FOR episode IN SELECT * FROM jsonb_to_recordset(episodes) AS x(
+    tmdb_id int,
+    tmdb_show_id int,
+    season_number int,
+    episode_number int,
+    show_title text,
+    poster_path text
+  )
+  LOOP
+    INSERT INTO public.watched_episodes (
+      user_id,
+      tmdb_episode_id,
+      tmdb_show_id,
+      season_number,
+      episode_number,
+      show_title,
+      poster_path,
+      watched_at
+    )
+    VALUES (
+      auth.uid(),
+      episode.tmdb_id,
+      episode.tmdb_show_id,
+      episode.season_number,
+      episode.episode_number,
+      episode.show_title,
+      episode.poster_path,
+      now()
+    )
+    ON CONFLICT (user_id, tmdb_episode_id) DO NOTHING;
+  END LOOP;
+END;
+$$;
+
+-- ── 11. 7-day retention via pg_cron ──────────────────────────
 
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
 

@@ -1024,4 +1024,42 @@ describe("listService", () => {
       "update failed",
     );
   });
+
+  it("addListItem uses name if title is undefined", async () => {
+    const builder = createThenableBuilder({ data: null, error: null });
+    const chain = { insert: vi.fn().mockReturnValue(builder) };
+    mockedSupabase.from.mockReturnValue(chain);
+
+    await listService.addListItem("list-1", {
+      id: 100,
+      media_type: "tv",
+      title: undefined as unknown as string,
+      name: "Test TV",
+    });
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("list_items");
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ title: "Test TV" })]),
+    );
+  });
+
+  it("addListItems uses name if title is undefined", async () => {
+    const builder = createThenableBuilder({ data: null, error: null });
+    const chain = { insert: vi.fn().mockReturnValue(builder) };
+    mockedSupabase.from.mockReturnValue(chain);
+
+    await listService.addListItems("list-1", [
+      {
+        id: 100,
+        media_type: "tv",
+        title: undefined as unknown as string,
+        name: "Test TV",
+      },
+    ]);
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("list_items");
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ title: "Test TV" })]),
+    );
+  });
 });

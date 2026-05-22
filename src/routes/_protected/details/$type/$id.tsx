@@ -99,7 +99,7 @@ function DetailsRouteComponent() {
     if (watched) {
       markAsUnwatched(details.id);
     } else {
-      markAsWatched(details.id);
+      markAsWatched(details.id, title, details.poster_path);
     }
   };
 
@@ -297,7 +297,12 @@ function DetailsRouteComponent() {
           )}
 
           {!!details.seasons && (
-            <SeasonList tvId={details.id} seasons={details.seasons} />
+            <SeasonList
+              tvId={details.id}
+              tvTitle={title}
+              tvPosterPath={details.poster_path || undefined}
+              seasons={details.seasons}
+            />
           )}
         </div>
 

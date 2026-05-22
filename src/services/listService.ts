@@ -129,11 +129,18 @@ export const listService = {
   },
 
   async addListItem(listId: string, item: ContentItem): Promise<void> {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const { error } = await supabase.from("list_items").insert([
       {
         list_id: listId,
         content_id: item.id,
         content_type: item.media_type,
+        title: item.title || item.name,
+        poster_path: item.poster_path,
+        added_by: user?.id,
       },
     ]);
 
@@ -143,10 +150,17 @@ export const listService = {
   async addListItems(listId: string, items: ContentItem[]): Promise<void> {
     if (items.length === 0) return;
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     const rows = items.map((item) => ({
       list_id: listId,
       content_id: item.id,
       content_type: item.media_type,
+      title: item.title || item.name,
+      poster_path: item.poster_path,
+      added_by: user?.id,
     }));
 
     const { error } = await supabase.from("list_items").insert(rows);
