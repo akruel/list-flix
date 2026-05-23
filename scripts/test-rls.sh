@@ -33,10 +33,10 @@ while IFS= read -r line; do
 done <<< "${status_output}"
 
 export SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
-export SUPABASE_ANON_KEY="${ANON_KEY:-}"
-export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-}"
+export SUPABASE_PUBLISHABLE_KEY="${ANON_KEY:-}"
+export SUPABASE_SECRET_KEY="${SERVICE_ROLE_KEY:-}"
 
-if [[ -z "${SUPABASE_ANON_KEY}" || -z "${SUPABASE_SERVICE_ROLE_KEY}" ]]; then
+if [[ -z "${SUPABASE_PUBLISHABLE_KEY}" || -z "${SUPABASE_SECRET_KEY}" ]]; then
   echo "Missing Supabase keys from local status output." >&2
   exit 1
 fi

@@ -8,13 +8,13 @@ const VAPID_SUBJECT =
   Deno.env.get("VAPID_SUBJECT") || "mailto:notifications@listflix.app";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
-const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+const supabaseSecretKey = Deno.env.get("SB_SECRET_KEY");
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
+if (!supabaseUrl || !supabaseSecretKey) {
   throw new Error("Missing Supabase environment variables");
 }
 
-const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+const supabase = createClient(supabaseUrl, supabaseSecretKey);
 
 if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
   throw new Error("Missing VAPID environment variables");

@@ -21,6 +21,5 @@ jobs:
             --retry 3 \
             --retry-all-errors \
             --retry-delay 10 \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
             -H "Accept: application/json" \
             "${{ secrets.SUPABASE_URL }}/functions/v1/check-episodes"

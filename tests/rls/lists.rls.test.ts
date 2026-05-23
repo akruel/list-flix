@@ -4,9 +4,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   addMemberWithAdmin,
-  createAnonClient,
   createAuthenticatedUser,
   createOwnedList,
+  createPublicClient,
   deleteListWithAdmin,
   deleteUsers,
   type TestUser,
@@ -96,7 +96,7 @@ describe.sequential("RLS: lists policies", () => {
   });
 
   it("prevents anonymous users from creating lists", async () => {
-    const anonClient = createAnonClient();
+    const anonClient = createPublicClient();
     const insertResult = await anonClient
       .from("lists")
       .insert({ name: `anon-${randomUUID()}` })

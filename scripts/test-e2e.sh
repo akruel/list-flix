@@ -33,14 +33,14 @@ while IFS= read -r line; do
 done <<< "${status_output}"
 
 export VITE_SUPABASE_URL="${API_URL:-http://127.0.0.1:54321}"
-export VITE_SUPABASE_ANON_KEY="${ANON_KEY:-}"
-export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY:-}"
+export VITE_SUPABASE_PUBLISHABLE_KEY="${ANON_KEY:-}"
+export SUPABASE_SECRET_KEY="${SERVICE_ROLE_KEY:-}"
 export VITE_TMDB_ACCESS_TOKEN="${VITE_TMDB_ACCESS_TOKEN:-test-token}"
 export VITE_GROQ_API_KEY="${VITE_GROQ_API_KEY:-test-groq-key}"
 export PLAYWRIGHT_TEST_BASE_URL="${PLAYWRIGHT_TEST_BASE_URL:-http://127.0.0.1:4173}"
 
-if [[ -z "${VITE_SUPABASE_ANON_KEY}" ]]; then
-  echo "Missing local Supabase anon key from status output." >&2
+if [[ -z "${VITE_SUPABASE_PUBLISHABLE_KEY}" ]]; then
+  echo "Missing local Supabase publishable key from status output." >&2
   exit 1
 fi
 
