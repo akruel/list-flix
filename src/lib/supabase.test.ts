@@ -13,7 +13,7 @@ describe("lib/supabase", () => {
 
   it("throws when required supabase env vars are missing", async () => {
     vi.stubEnv("VITE_SUPABASE_URL", "");
-    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "");
 
     await expect(import("./supabase")).rejects.toThrow(
       "Missing Supabase environment variables",
@@ -27,13 +27,13 @@ describe("lib/supabase", () => {
     }));
 
     vi.stubEnv("VITE_SUPABASE_URL", "https://supabase.local");
-    vi.stubEnv("VITE_SUPABASE_ANON_KEY", "anon-key");
+    vi.stubEnv("VITE_SUPABASE_PUBLISHABLE_KEY", "publishable-key");
 
     const module = await import("./supabase");
 
     expect(createClient).toHaveBeenCalledWith(
       "https://supabase.local",
-      "anon-key",
+      "publishable-key",
     );
     expect(module.supabase).toEqual({ __client: true });
   });

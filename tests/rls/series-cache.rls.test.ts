@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  createAnonClient,
   createAuthenticatedUser,
+  createPublicClient,
   deleteUsers,
 } from "./helpers/supabaseTestClients";
 
 describe.sequential("RLS: series_cache policies", () => {
   it("allows anyone (including anonymous) to read series_cache", async () => {
-    const anonClient = createAnonClient();
+    const anonClient = createPublicClient();
     const selectResult = await anonClient
       .from("series_cache")
       .select("tmdb_id")
@@ -36,7 +36,7 @@ describe.sequential("RLS: series_cache policies", () => {
   });
 
   it("prevents anonymous users from inserting into series_cache", async () => {
-    const anonClient = createAnonClient();
+    const anonClient = createPublicClient();
     const insertResult = await anonClient.from("series_cache").insert({
       tmdb_id: Math.floor(Math.random() * 100000) + 1,
       total_episodes: 10,
@@ -85,7 +85,7 @@ describe.sequential("RLS: series_cache policies", () => {
 
       expect(insertResult.error).toBeNull();
 
-      const anonClient = createAnonClient();
+      const anonClient = createPublicClient();
       const anonUpdate = await anonClient
         .from("series_cache")
         .update({ total_episodes: 99 })

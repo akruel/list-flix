@@ -9,7 +9,7 @@ import {
 
 interface SeedClients {
   supabaseUrl: string;
-  anonKey: string;
+  publishableKey: string;
   adminClient: SupabaseClient;
 }
 
@@ -21,32 +21,24 @@ function getSeedClients(): SeedClients {
   }
 
   const supabaseUrl = getRequiredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
-  const anonKey = getRequiredEnv([
-    "SUPABASE_ANON_KEY",
-    "VITE_SUPABASE_ANON_KEY",
-    "ANON_KEY",
+  const publishableKey = getRequiredEnv([
+    "SUPABASE_PUBLISHABLE_KEY",
+    "VITE_SUPABASE_PUBLISHABLE_KEY",
   ]);
-  const serviceRoleKey = getRequiredEnv([
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "SERVICE_ROLE_KEY",
-  ]);
+  const secretKey = getRequiredEnv(["SUPABASE_SECRET_KEY"]);
 
   cachedSeedClients = {
     supabaseUrl,
-    anonKey,
-    adminClient: createClient(
-      supabaseUrl,
-      serviceRoleKey,
-      SUPABASE_AUTH_OPTIONS,
-    ),
+    publishableKey,
+    adminClient: createClient(supabaseUrl, secretKey, SUPABASE_AUTH_OPTIONS),
   };
 
   return cachedSeedClients;
 }
 
-function createAnonClient(): SupabaseClient {
-  const { supabaseUrl, anonKey } = getSeedClients();
-  return createClient(supabaseUrl, anonKey, SUPABASE_AUTH_OPTIONS);
+function createPublicClient(): SupabaseClient {
+  const { supabaseUrl, publishableKey } = getSeedClients();
+  return createClient(supabaseUrl, publishableKey, SUPABASE_AUTH_OPTIONS);
 }
 
 export interface SeededUser {
@@ -125,7 +117,7 @@ export async function createSeededListForOwner(
   owner: SeededUser,
   name?: string,
 ): Promise<SeededList> {
-  const ownerClient = createAnonClient();
+  const ownerClient = createPublicClient();
 
   const signInResult = await ownerClient.auth.signInWithPassword({
     email: owner.email,
@@ -181,7 +173,7 @@ export async function seedMemberJoinsList(
   const member = await createSeededUser(label);
   cleanup.users.push(member);
 
-  const memberClient = createAnonClient();
+  const memberClient = createPublicClient();
   const signInResult = await memberClient.auth.signInWithPassword({
     email: member.email,
     password: member.password,

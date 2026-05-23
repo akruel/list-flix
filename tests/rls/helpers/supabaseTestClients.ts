@@ -8,15 +8,11 @@ import {
 } from "../../helpers/shared-clients";
 
 const supabaseUrl = getRequiredEnv(["SUPABASE_URL", "VITE_SUPABASE_URL"]);
-const anonKey = getRequiredEnv([
-  "SUPABASE_ANON_KEY",
-  "VITE_SUPABASE_ANON_KEY",
-  "ANON_KEY",
+const publishableKey = getRequiredEnv([
+  "SUPABASE_PUBLISHABLE_KEY",
+  "VITE_SUPABASE_PUBLISHABLE_KEY",
 ]);
-const serviceRoleKey = getRequiredEnv([
-  "SUPABASE_SERVICE_ROLE_KEY",
-  "SERVICE_ROLE_KEY",
-]);
+const secretKey = getRequiredEnv(["SUPABASE_SECRET_KEY"]);
 
 export interface TestUser {
   id: string;
@@ -27,12 +23,12 @@ export interface TestUser {
 
 export const adminClient = createClient(
   supabaseUrl,
-  serviceRoleKey,
+  secretKey,
   SUPABASE_AUTH_OPTIONS,
 );
 
-export function createAnonClient(): SupabaseClient {
-  return createClient(supabaseUrl, anonKey, SUPABASE_AUTH_OPTIONS);
+export function createPublicClient(): SupabaseClient {
+  return createClient(supabaseUrl, publishableKey, SUPABASE_AUTH_OPTIONS);
 }
 
 export async function createAuthenticatedUser(
@@ -51,7 +47,7 @@ export async function createAuthenticatedUser(
     throw createResult.error ?? new Error("Failed to create test user");
   }
 
-  const client = createAnonClient();
+  const client = createPublicClient();
   const signInResult = await client.auth.signInWithPassword({
     email,
     password,

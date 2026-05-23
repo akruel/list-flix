@@ -25,7 +25,8 @@ export default defineConfig({
     env: {
       VITE_SUPABASE_URL:
         process.env.VITE_SUPABASE_URL ?? "http://127.0.0.1:54321",
-      VITE_SUPABASE_ANON_KEY: process.env.VITE_SUPABASE_ANON_KEY ?? "",
+      VITE_SUPABASE_PUBLISHABLE_KEY:
+        process.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? "",
       VITE_TMDB_ACCESS_TOKEN:
         process.env.VITE_TMDB_ACCESS_TOKEN ?? "test-token",
       VITE_GROQ_API_KEY: process.env.VITE_GROQ_API_KEY ?? "test-groq-key",
