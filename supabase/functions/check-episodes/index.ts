@@ -66,7 +66,7 @@ async function getShowDetails(showId: number): Promise<{
 }
 
 export default {
-  fetch: withSupabase({ auth: "secret" }, async (_req, ctx) => {
+  fetch: withSupabase({ auth: "secret:automations" }, async (_req, ctx) => {
     const supabase = ctx.supabaseAdmin;
 
     try {
