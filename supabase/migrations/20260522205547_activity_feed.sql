@@ -44,12 +44,6 @@ CREATE POLICY "No direct access" ON activities
 ALTER TABLE list_items ADD COLUMN title text;
 ALTER TABLE list_items ADD COLUMN poster_path text;
 
-ALTER TABLE watched_movies ADD COLUMN title text;
-ALTER TABLE watched_movies ADD COLUMN poster_path text;
-
-ALTER TABLE watched_episodes ADD COLUMN show_title text;
-ALTER TABLE watched_episodes ADD COLUMN poster_path text;
-
 -- ── 3. Helper: get actor metadata ────────────────────────────
 
 CREATE OR REPLACE FUNCTION _get_actor_metadata(p_actor_id uuid)
@@ -88,24 +82,23 @@ SET search_path = public
 AS $$
 DECLARE
   v_actor_meta   jsonb;
-  v_content_meta jsonb;
+  v_title        text;
+  v_poster       text;
 BEGIN
   -- Only fire if the show is in a shared list the actor belongs to
-  IF NOT EXISTS (
-    SELECT 1
-    FROM list_items li
-    JOIN list_members lm ON lm.list_id = li.list_id AND lm.user_id = NEW.user_id
-    WHERE li.content_id   = NEW.tmdb_show_id
-      AND li.content_type = 'tv'
-  ) THEN
+  SELECT li.title, li.poster_path
+  INTO v_title, v_poster
+  FROM list_items li
+  JOIN list_members lm ON lm.list_id = li.list_id AND lm.user_id = NEW.user_id
+  WHERE li.content_id   = NEW.tmdb_show_id
+    AND li.content_type = 'tv'
+  LIMIT 1;
+
+  IF NOT FOUND THEN
     RETURN NEW;
   END IF;
 
   v_actor_meta   := _get_actor_metadata(NEW.user_id);
-  v_content_meta := jsonb_build_object(
-    'content_title', NEW.show_title,
-    'poster_path',   NEW.poster_path
-  );
 
   INSERT INTO activities (actor_id, activity_type, content_id, content_type, metadata)
   VALUES (
@@ -113,7 +106,9 @@ BEGIN
     'episode_watched',
     NEW.tmdb_show_id,
     'tv',
-    v_actor_meta || v_content_meta || jsonb_build_object(
+    v_actor_meta || jsonb_build_object(
+      'content_title', v_title,
+      'poster_path',   v_poster,
       'season_number',  NEW.season_number,
       'episode_number', NEW.episode_number
     )
@@ -137,24 +132,23 @@ SET search_path = public
 AS $$
 DECLARE
   v_actor_meta   jsonb;
-  v_content_meta jsonb;
+  v_title        text;
+  v_poster       text;
 BEGIN
   -- Only fire if the movie is in a shared list the actor belongs to
-  IF NOT EXISTS (
-    SELECT 1
-    FROM list_items li
-    JOIN list_members lm ON lm.list_id = li.list_id AND lm.user_id = NEW.user_id
-    WHERE li.content_id   = NEW.tmdb_id
-      AND li.content_type = 'movie'
-  ) THEN
+  SELECT li.title, li.poster_path
+  INTO v_title, v_poster
+  FROM list_items li
+  JOIN list_members lm ON lm.list_id = li.list_id AND lm.user_id = NEW.user_id
+  WHERE li.content_id   = NEW.tmdb_id
+    AND li.content_type = 'movie'
+  LIMIT 1;
+
+  IF NOT FOUND THEN
     RETURN NEW;
   END IF;
 
   v_actor_meta   := _get_actor_metadata(NEW.user_id);
-  v_content_meta := jsonb_build_object(
-    'content_title', NEW.title,
-    'poster_path',   NEW.poster_path
-  );
 
   INSERT INTO activities (actor_id, activity_type, content_id, content_type, metadata)
   VALUES (
@@ -162,7 +156,10 @@ BEGIN
     'movie_watched',
     NEW.tmdb_id,
     'movie',
-    v_actor_meta || v_content_meta
+    v_actor_meta || jsonb_build_object(
+      'content_title', v_title,
+      'poster_path',   v_poster
+    )
   );
 
   RETURN NEW;
@@ -372,51 +369,6 @@ BEGIN
 END;
 $$;
 
--- ── 10. Update mark_season_watched RPC to insert metadata ─────
-
-CREATE OR REPLACE FUNCTION public.mark_season_watched(
-  episodes jsonb
-)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  episode record;
-BEGIN
-  FOR episode IN SELECT * FROM jsonb_to_recordset(episodes) AS x(
-    tmdb_id int,
-    tmdb_show_id int,
-    season_number int,
-    episode_number int,
-    show_title text,
-    poster_path text
-  )
-  LOOP
-    INSERT INTO public.watched_episodes (
-      user_id,
-      tmdb_episode_id,
-      tmdb_show_id,
-      season_number,
-      episode_number,
-      show_title,
-      poster_path,
-      watched_at
-    )
-    VALUES (
-      auth.uid(),
-      episode.tmdb_id,
-      episode.tmdb_show_id,
-      episode.season_number,
-      episode.episode_number,
-      episode.show_title,
-      episode.poster_path,
-      now()
-    )
-    ON CONFLICT (user_id, tmdb_episode_id) DO NOTHING;
-  END LOOP;
-END;
-$$;
 
 -- ── 11. 7-day retention via pg_cron ──────────────────────────
 

@@ -19,7 +19,7 @@ interface ListStore {
   addToList: (item: ContentItem) => void;
   removeFromList: (id: number) => void;
   isInList: (id: number) => boolean;
-  markAsWatched: (id: number, title?: string, posterPath?: string) => void;
+  markAsWatched: (id: number) => void;
   markAsUnwatched: (id: number) => void;
   isWatched: (id: number) => boolean;
 
@@ -28,16 +28,12 @@ interface ListStore {
     episodeId: number,
     seasonNumber: number,
     episodeNumber: number,
-    showTitle?: string,
-    posterPath?: string,
   ) => void;
   markEpisodeAsUnwatched: (showId: number, episodeId: number) => void;
   markSeasonAsWatched: (
     showId: number,
     seasonNumber: number,
     episodes: Episode[],
-    showTitle?: string,
-    posterPath?: string,
   ) => void;
   markSeasonAsUnwatched: (showId: number, seasonNumber: number) => void;
   isEpisodeWatched: (showId: number, episodeId: number) => boolean;
@@ -115,21 +111,13 @@ export const useStore = create<ListStore>()(
 
       isInList: (id) => get().myList.some((i) => i.id === id),
 
-      markAsWatched: (id, title, posterPath) => {
+      markAsWatched: (id) => {
         set((state) => {
           if (state.watchedIds.includes(id)) return state;
 
           // Try to find item metadata from myList if available
           const item = state.myList.find((i) => i.id === id);
-          const metadata = {
-            title: title || item?.title || item?.name,
-            poster_path: posterPath || item?.poster_path,
-          };
-          userContentService.markAsWatched(
-            id,
-            item?.media_type || "movie",
-            metadata,
-          );
+          userContentService.markAsWatched(id, item?.media_type || "movie");
 
           return { watchedIds: [...state.watchedIds, id] };
         });
@@ -153,8 +141,6 @@ export const useStore = create<ListStore>()(
         episodeId,
         seasonNumber,
         episodeNumber,
-        showTitle,
-        posterPath,
       ) => {
         set((state) => {
           const currentShowEpisodes = Object.hasOwn(
@@ -169,8 +155,6 @@ export const useStore = create<ListStore>()(
             show_id: showId,
             season_number: seasonNumber,
             episode_number: episodeNumber,
-            show_title: showTitle,
-            poster_path: posterPath,
           });
 
           return {
@@ -213,20 +197,12 @@ export const useStore = create<ListStore>()(
         });
       },
 
-      markSeasonAsWatched: (
-        showId,
-        seasonNumber,
-        episodes,
-        showTitle,
-        posterPath,
-      ) => {
+      markSeasonAsWatched: (showId, seasonNumber, episodes) => {
         set((state) => {
           userContentService.markSeasonAsWatched(
             showId,
             seasonNumber,
             episodes,
-            showTitle,
-            posterPath,
           );
 
           const currentShowEpisodes = Object.hasOwn(

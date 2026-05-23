@@ -32,6 +32,10 @@ export function groupActivities(activities: Activity[]): GroupedActivity[] {
         if (existing.type === "episode_batch") {
           existing.episodes.push(activity);
 
+          if (new Date(activity.created_at) > new Date(existing.latest_at)) {
+            existing.latest_at = activity.created_at;
+          }
+
           const alreadyHasActor = existing.actors.some(
             (a) => a.actor_id === activity.actor_id,
           );

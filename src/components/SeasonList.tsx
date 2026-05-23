@@ -21,8 +21,6 @@ import { EpisodeListSkeleton } from "./skeletons";
 
 interface SeasonListProps {
   tvId: number;
-  tvTitle: string;
-  tvPosterPath?: string;
   seasons: {
     id: number;
     name: string;
@@ -33,12 +31,7 @@ interface SeasonListProps {
   }[];
 }
 
-export function SeasonList({
-  tvId,
-  tvTitle,
-  tvPosterPath,
-  seasons,
-}: SeasonListProps) {
+export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -74,13 +67,7 @@ export function SeasonList({
           seasonEpisodes = data.episodes;
         }
 
-        markSeasonAsWatched(
-          tvId,
-          seasonNumber,
-          seasonEpisodes,
-          tvTitle,
-          tvPosterPath,
-        );
+        markSeasonAsWatched(tvId, seasonNumber, seasonEpisodes);
       } catch (error) {
         logger.error("Error fetching season details:", error);
         toast.error("Erro ao marcar temporada como assistida / não assistida");
@@ -118,8 +105,6 @@ export function SeasonList({
         episode.id,
         episode.season_number,
         episode.episode_number,
-        tvTitle,
-        tvPosterPath,
       );
     }
   };

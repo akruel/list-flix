@@ -163,7 +163,6 @@ describe("useStore shared lists actions", () => {
     expect(mockedUserContentService.markAsWatched).toHaveBeenCalledWith(
       id,
       expectedType,
-      expect.any(Object),
     );
   });
 
@@ -287,8 +286,6 @@ describe("useStore shared lists actions", () => {
       1,
       1,
       episodes,
-      undefined,
-      undefined,
     );
     expect(useStore.getState().watchedEpisodes[1]?.[101]).toEqual({
       season_number: 1,

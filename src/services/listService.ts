@@ -203,7 +203,7 @@ export const listService = {
       .select("role")
       .eq("list_id", listId)
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (existing) return;
 

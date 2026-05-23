@@ -32,6 +32,7 @@ function createThenableBuilder<T>(result: T) {
     delete: MockFn;
     match: MockFn;
     single: MockFn;
+    maybeSingle: MockFn;
     then: Promise<T>["then"];
   } = {
     eq: vi.fn(),
@@ -41,6 +42,7 @@ function createThenableBuilder<T>(result: T) {
     delete: vi.fn(),
     match: vi.fn(),
     single: vi.fn(),
+    maybeSingle: vi.fn(),
     then: vi.fn(),
   };
 
@@ -49,8 +51,9 @@ function createThenableBuilder<T>(result: T) {
   builder.insert.mockReturnValue(builder);
   builder.update.mockReturnValue(builder);
   builder.delete.mockReturnValue(builder);
-  builder.match.mockReturnValue(builder);
+  builder.match.mockReturnThis();
   builder.single.mockResolvedValue(result);
+  builder.maybeSingle.mockResolvedValue(result);
   builder.then = (onFulfilled, onRejected) =>
     Promise.resolve(result).then(onFulfilled, onRejected);
 

@@ -68,9 +68,12 @@ export function getFormattedDate(dateString: string, locale = "pt-BR"): string {
   });
 }
 
-export function getDateKey(dateString: string): string {
-  const d = parseLocalDate(dateString);
+function formatDateKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function getDateKey(dateString: string): string {
+  return formatDateKey(parseLocalDate(dateString));
 }
 
 export function getRelativeTime(isoString: string): string {
@@ -106,6 +109,5 @@ export function getDayGroupLabel(isoString: string): string {
 }
 
 export function getDayKeyFromIso(isoString: string): string {
-  const date = new Date(isoString);
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  return formatDateKey(new Date(isoString));
 }
