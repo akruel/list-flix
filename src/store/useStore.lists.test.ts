@@ -163,7 +163,6 @@ describe("useStore shared lists actions", () => {
     expect(mockedUserContentService.markAsWatched).toHaveBeenCalledWith(
       id,
       expectedType,
-      expect.any(Object),
     );
   });
 

@@ -100,7 +100,9 @@ describe("SeasonList", () => {
   });
 
   it("renders seasons sorted by number", () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    const renderComponent = () =>
+      render(<SeasonList tvId={100} seasons={seasons} />);
+    renderComponent();
 
     const seasonHeadings = screen
       .getAllByRole("heading", { level: 3 })

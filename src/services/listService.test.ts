@@ -32,6 +32,7 @@ function createThenableBuilder<T>(result: T) {
     delete: MockFn;
     match: MockFn;
     single: MockFn;
+    maybeSingle: MockFn;
     then: Promise<T>["then"];
   } = {
     eq: vi.fn(),
@@ -41,6 +42,7 @@ function createThenableBuilder<T>(result: T) {
     delete: vi.fn(),
     match: vi.fn(),
     single: vi.fn(),
+    maybeSingle: vi.fn(),
     then: vi.fn(),
   };
 
@@ -49,8 +51,9 @@ function createThenableBuilder<T>(result: T) {
   builder.insert.mockReturnValue(builder);
   builder.update.mockReturnValue(builder);
   builder.delete.mockReturnValue(builder);
-  builder.match.mockReturnValue(builder);
+  builder.match.mockReturnThis();
   builder.single.mockResolvedValue(result);
+  builder.maybeSingle.mockResolvedValue(result);
   builder.then = (onFulfilled, onRejected) =>
     Promise.resolve(result).then(onFulfilled, onRejected);
 
@@ -1022,6 +1025,44 @@ describe("listService", () => {
     });
     await expect(listService.updateList("list-1", "New")).rejects.toThrow(
       "update failed",
+    );
+  });
+
+  it("addListItem uses name if title is undefined", async () => {
+    const builder = createThenableBuilder({ data: null, error: null });
+    const chain = { insert: vi.fn().mockReturnValue(builder) };
+    mockedSupabase.from.mockReturnValue(chain);
+
+    await listService.addListItem("list-1", {
+      id: 100,
+      media_type: "tv",
+      title: undefined as unknown as string,
+      name: "Test TV",
+    });
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("list_items");
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ title: "Test TV" })]),
+    );
+  });
+
+  it("addListItems uses name if title is undefined", async () => {
+    const builder = createThenableBuilder({ data: null, error: null });
+    const chain = { insert: vi.fn().mockReturnValue(builder) };
+    mockedSupabase.from.mockReturnValue(chain);
+
+    await listService.addListItems("list-1", [
+      {
+        id: 100,
+        media_type: "tv",
+        title: undefined as unknown as string,
+        name: "Test TV",
+      },
+    ]);
+
+    expect(mockedSupabase.from).toHaveBeenCalledWith("list_items");
+    expect(chain.insert).toHaveBeenCalledWith(
+      expect.arrayContaining([expect.objectContaining({ title: "Test TV" })]),
     );
   });
 });

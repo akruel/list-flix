@@ -39,7 +39,11 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
   const allMembers = useMemo(() => {
     const names = new Set<string>();
     Object.values(watchingContextMap).forEach((contexts) =>
-      contexts.forEach((c) => c.memberNames.forEach((n) => names.add(n))),
+      contexts?.forEach((c) => {
+        c.memberNames?.forEach((n) => {
+          if (n) names.add(n);
+        });
+      }),
     );
     return Array.from(names).sort();
   }, [watchingContextMap]);
@@ -118,7 +122,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
     if (filter === "unwatched" && isWatched(item.id)) return false;
     if (memberFilter) {
       const contexts = watchingContextMap[item.id];
-      if (!contexts?.some((c) => c.memberNames.includes(memberFilter)))
+      if (!contexts?.some((c) => c.memberNames?.includes(memberFilter)))
         return false;
     }
     return true;

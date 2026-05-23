@@ -232,7 +232,19 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
   {
     routePath: "/activity",
     routeFile: "src/routes/_protected/activity/route.tsx",
-    scenarioId: SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER,
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_RENDER,
+    expectation: "render",
+  },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_EMPTY_STATE,
+    expectation: "render",
+  },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT,
     expectation: "render",
   },
 ];

@@ -77,7 +77,9 @@ export function MovieCard({
               <span className="max-w-[100px] truncate">
                 {[
                   ...new Set(
-                    watchingWith.flatMap((c) => c.memberNames).filter(Boolean),
+                    watchingWith
+                      .flatMap((c) => c.memberNames || [])
+                      .filter(Boolean),
                   ),
                 ].join(", ")}
               </span>

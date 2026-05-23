@@ -8,6 +8,7 @@ export const JOURNEY_IDS = {
   CREATE_SMART_LIST: "JOURNEY_CREATE_SMART_LIST",
   SHARE_LIST_END_TO_END: "JOURNEY_SHARE_LIST_END_TO_END",
   INVITE_ROLE_FALLBACK: "JOURNEY_INVITE_ROLE_FALLBACK",
+  ACTIVITY_FEED: "JOURNEY_ACTIVITY_FEED",
 } as const;
 
 export type JourneyId = (typeof JOURNEY_IDS)[keyof typeof JOURNEY_IDS];
@@ -38,7 +39,8 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
       SCENARIO_IDS.HOME_MOOD_SELECT_FILTERS,
       SCENARIO_IDS.HOME_MOOD_DECADE_SECONDARY,
       SCENARIO_IDS.HOME_MEDIA_TYPE_FILTERS,
-      SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER,
+      SCENARIO_IDS.ACTIVITY_FEED_RENDER,
+      SCENARIO_IDS.ACTIVITY_FEED_EMPTY_STATE,
       SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA,
       SCENARIO_IDS.SHARED_ROUTE_INVALID_LINK,
       SCENARIO_IDS.DETAILS_VALID_RENDER,
@@ -130,5 +132,14 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
     blocking: true,
     requiredScenarioIds: [SCENARIO_IDS.LISTS_JOIN_INVALID_ROLE_FALLBACK],
     touchedPaths: ["/auth", "/lists/$id/join"],
+  },
+  {
+    journeyId: JOURNEY_IDS.ACTIVITY_FEED,
+    persona: "owner→member",
+    objective:
+      "Ver atividade no feed quando um membro entra em uma lista compartilhada",
+    blocking: true,
+    requiredScenarioIds: [SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT],
+    touchedPaths: ["/auth", "/activity"],
   },
 ];

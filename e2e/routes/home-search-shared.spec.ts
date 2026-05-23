@@ -138,17 +138,6 @@ test(`[${SCENARIO_IDS.HOME_MEDIA_TYPE_FILTERS}] media type chips filter mood dis
   await expect(page.getByText("Mock Discover TV 305")).not.toBeVisible();
 });
 
-test(`[${SCENARIO_IDS.ACTIVITY_PLACEHOLDER_RENDER}] renders activity route with placeholder`, async ({
-  page,
-}) => {
-  await signIn(page);
-
-  await page.goto("/activity");
-
-  await expect(page.getByTestId(ROUTE_TEST_IDS.activity)).toBeVisible();
-  await expect(page.getByText("Em breve")).toBeVisible();
-});
-
 test(`[${SCENARIO_IDS.SHARED_ROUTE_RENDER_FROM_DATA}] renders shared route using encoded data payload`, async ({
   page,
 }) => {
