@@ -96,12 +96,12 @@ export function getDayGroupLabel(isoString: string): string {
   const date = new Date(isoString);
   const now = new Date();
 
-  const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-  const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  const dateKey = formatDateKey(date);
+  const todayKey = formatDateKey(now);
 
   const yesterday = new Date(now);
   yesterday.setDate(now.getDate() - 1);
-  const yesterdayKey = `${yesterday.getFullYear()}-${yesterday.getMonth()}-${yesterday.getDate()}`;
+  const yesterdayKey = formatDateKey(yesterday);
 
   if (dateKey === todayKey) return "Hoje";
   if (dateKey === yesterdayKey) return "Ontem";

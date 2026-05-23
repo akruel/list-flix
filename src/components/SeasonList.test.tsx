@@ -398,7 +398,7 @@ describe("SeasonList", () => {
 
       render(
         <SeasonList
-          tvId={1}
+          tvId={100}
           seasons={[
             {
               id: 1,

@@ -180,7 +180,6 @@ interface ActivityMetadata {
   season_number?: number;
   episode_number?: number;
   list_name?: string;
-  member_name?: string;
 }
 
 export interface Activity {
