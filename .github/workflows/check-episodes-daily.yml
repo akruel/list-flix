@@ -21,5 +21,6 @@ jobs:
             --retry 3 \
             --retry-all-errors \
             --retry-delay 10 \
+            -H "apikey: ${{ secrets.SUPABASE_SECRET_KEY }}" \
             -H "Accept: application/json" \
             "${{ secrets.SUPABASE_URL }}/functions/v1/check-episodes"
