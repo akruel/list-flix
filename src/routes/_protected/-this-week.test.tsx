@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ThisWeekComponent } from "./this-week";
+import { sharedTvItemsSafeQuery } from "./-this-week.queries";
+import { ThisWeekComponent, ThisWeekErrorComponent } from "./this-week";
 
 type MockQueryResult<T = unknown> = {
   data: T | undefined;
@@ -25,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   detailsResults: [] as MockQueryResult[],
   seasonResults: [] as MockQueryResult[],
   isDateInCurrentWeek: vi.fn<(date: string) => boolean>(() => true),
+  loggerError: vi.fn(),
+  getAllSharedTvItems: vi.fn(),
 }));
 
 vi.mock("@/store/useUserContentStore", () => ({
@@ -97,7 +100,15 @@ vi.mock("@/lib/date-utils", () => ({
 }));
 
 vi.mock("@/lib/logger", () => ({
-  logger: { error: vi.fn() },
+  logger: {
+    error: (...args: unknown[]) => mocks.loggerError(...args),
+  },
+}));
+
+vi.mock("@/services/listService", () => ({
+  listService: {
+    getAllSharedTvItems: () => mocks.getAllSharedTvItems(),
+  },
 }));
 
 vi.mock("@/services/listService.queries", () => ({
@@ -341,10 +352,15 @@ describe("ThisWeek route", () => {
 
   it("shows error UI when all details queries fail and refetches on retry", async () => {
     const user = userEvent.setup();
-    const refetch = vi.fn();
+    const detailsRefetch = vi.fn();
     mocks.myList = [{ id: 1, media_type: "tv" }];
     mocks.detailsResults = [
-      { data: undefined, isPending: false, isError: true, refetch },
+      {
+        data: undefined,
+        isPending: false,
+        isError: true,
+        refetch: detailsRefetch,
+      },
     ];
     mocks.seasonResults = [];
 
@@ -359,6 +375,146 @@ describe("ThisWeek route", () => {
 
     await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
 
-    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(detailsRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows error UI when all season queries fail and retries both stages", async () => {
+    const user = userEvent.setup();
+    const detailsRefetch = vi.fn();
+    const seasonRefetch = vi.fn();
+    mocks.myList = [{ id: 42, media_type: "tv" }];
+    mocks.detailsResults = [
+      {
+        data: {
+          id: 42,
+          name: "My Show",
+          poster_path: null,
+          next_episode_to_air: { season_number: 3 },
+        },
+        isPending: false,
+        isError: false,
+        refetch: detailsRefetch,
+      },
+    ];
+    mocks.seasonResults = [
+      {
+        data: undefined,
+        isPending: false,
+        isError: true,
+        refetch: seasonRefetch,
+      },
+    ];
+
+    render(<ThisWeekComponent />);
+
+    expect(
+      screen.getByText("Erro ao carregar episódios da semana."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(detailsRefetch).toHaveBeenCalledTimes(1);
+    expect(seasonRefetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("renders successful episodes and a partial-failure banner when some queries fail", () => {
+    mocks.isDateInCurrentWeek.mockReturnValue(true);
+    mocks.myList = [
+      { id: 42, media_type: "tv" },
+      { id: 99, media_type: "tv" },
+    ];
+    mocks.detailsResults = [
+      {
+        data: {
+          id: 42,
+          name: "Working Show",
+          poster_path: null,
+          next_episode_to_air: { season_number: 1 },
+        },
+        isPending: false,
+        isError: false,
+      },
+      {
+        data: undefined,
+        isPending: false,
+        isError: true,
+      },
+    ];
+    mocks.seasonResults = [
+      {
+        data: {
+          season_number: 1,
+          episodes: [
+            {
+              id: 501,
+              name: "Cool Episode",
+              air_date: "2026-05-28",
+              season_number: 1,
+              episode_number: 1,
+              overview: "",
+            },
+          ],
+        },
+        isPending: false,
+        isError: false,
+      },
+    ];
+
+    render(<ThisWeekComponent />);
+
+    expect(screen.getByText("Working Show")).toBeInTheDocument();
+    expect(screen.getByText("Cool Episode")).toBeInTheDocument();
+    expect(screen.getByTestId("partial-failure")).toBeInTheDocument();
+  });
+});
+
+describe("ThisWeekErrorComponent", () => {
+  beforeEach(() => {
+    mocks.loggerError.mockClear();
+  });
+
+  it("renders the failure message and the retry button", () => {
+    render(<ThisWeekErrorComponent error={new Error("boom")} />);
+
+    expect(
+      screen.getByText("Não foi possível carregar os episódios desta semana."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Tentar novamente" }),
+    ).toBeInTheDocument();
+    expect(mocks.loggerError).toHaveBeenCalledWith(
+      "This Week route error:",
+      expect.any(Error),
+    );
+  });
+});
+
+describe("sharedTvItemsSafeQuery", () => {
+  beforeEach(() => {
+    mocks.getAllSharedTvItems.mockReset();
+    mocks.loggerError.mockClear();
+  });
+
+  it("returns the shared items when listService resolves", async () => {
+    const items = [{ content_id: 1, content_type: "tv" }];
+    mocks.getAllSharedTvItems.mockResolvedValue(items);
+
+    const result = await sharedTvItemsSafeQuery().queryFn();
+
+    expect(result).toEqual(items);
+    expect(mocks.loggerError).not.toHaveBeenCalled();
+  });
+
+  it("resolves to an empty array and logs when listService rejects", async () => {
+    const err = new Error("network down");
+    mocks.getAllSharedTvItems.mockRejectedValue(err);
+
+    const result = await sharedTvItemsSafeQuery().queryFn();
+
+    expect(result).toEqual([]);
+    expect(mocks.loggerError).toHaveBeenCalledWith(
+      "Erro ao buscar séries de listas compartilhadas:",
+      err,
+    );
   });
 });

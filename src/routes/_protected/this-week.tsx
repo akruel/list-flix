@@ -12,20 +12,22 @@ import {
   isDateInCurrentWeek,
 } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import {
-  sharedTvItemsQuery,
-  watchingContextBatchQuery,
-} from "@/services/listService.queries";
+import { watchingContextBatchQuery } from "@/services/listService.queries";
 import { tmdb } from "@/services/tmdb";
 import { detailsQuery, seasonQuery } from "@/services/tmdb.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentDetails, ContentItem, Episode } from "@/types";
 
-// errorComponent catches sharedTvItemsQuery (loader/Suspense) failures only;
-// per-query TMDB errors are handled inline via detailsCombined.isError.
+import { sharedTvItemsSafeQuery } from "./-this-week.queries";
+
+// The route-level errorComponent is a safety net for unexpected loader failures
+// only. The tolerant sharedTvItemsSafeQuery means it should almost never
+// trigger. Per-query TMDB errors are handled inline via isError / partial
+// failure banner.
 export const Route = createFileRoute("/_protected/this-week")({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(sharedTvItemsQuery()),
+    context.queryClient.ensureQueryData(sharedTvItemsSafeQuery()),
+  pendingComponent: ThisWeekSkeleton,
   errorComponent: ThisWeekErrorComponent,
   component: ThisWeekComponent,
 });
@@ -37,7 +39,26 @@ interface WeekEpisode {
   episode: Episode;
 }
 
-function ThisWeekErrorComponent({ error }: { error: Error }) {
+function ThisWeekSkeleton() {
+  return (
+    <div data-testid="route-this-week" className="space-y-6">
+      <div className="flex items-center gap-3">
+        <CalendarDays className="h-6 w-6 text-purple-400" />
+        <h1 className="text-2xl font-bold">Esta Semana</h1>
+      </div>
+      <div data-testid="loading-skeleton" className="space-y-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="space-y-2">
+            <div className="h-5 w-40 animate-pulse rounded bg-muted" />
+            <Card className="h-24 animate-pulse bg-muted" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export function ThisWeekErrorComponent({ error }: { error: Error }) {
   logger.error("This Week route error:", error);
   return (
     <div
@@ -63,7 +84,7 @@ export function ThisWeekComponent() {
   const myList = useUserContentStore((s) => s.myList);
   const watchedEpisodes = useUserContentStore((s) => s.watchedEpisodes);
 
-  const { data: sharedItems } = useSuspenseQuery(sharedTvItemsQuery());
+  const { data: sharedItems } = useSuspenseQuery(sharedTvItemsSafeQuery());
 
   const personalTvShows = useMemo(
     () => myList.filter((item) => item.media_type === "tv"),
@@ -99,7 +120,8 @@ export function ThisWeekComponent() {
     combine: (results) => ({
       details: results.flatMap((r) => (r.data ? [r.data] : [])),
       isPending: results.some((r) => r.isPending),
-      isError: results.length > 0 && results.every((r) => r.isError),
+      allError: results.length > 0 && results.every((r) => r.isError),
+      anyError: results.some((r) => r.isError),
       refetch: () => {
         results.forEach((r) => {
           void r.refetch();
@@ -128,14 +150,19 @@ export function ThisWeekComponent() {
     combine: (results) => ({
       seasons: results.map((r) => r.data),
       isPending: results.some((r) => r.isPending),
+      allError: results.length > 0 && results.every((r) => r.isError),
+      anyError: results.some((r) => r.isError),
+      refetch: () => {
+        results.forEach((r) => {
+          void r.refetch();
+        });
+      },
     }),
   });
 
   const isLoading =
     detailsCombined.isPending ||
     (seasonInputs.length > 0 && seasonCombined.isPending);
-
-  const isError = !isLoading && detailsCombined.isError;
 
   const episodes = useMemo(() => {
     const weekEpisodes: WeekEpisode[] = [];
@@ -180,6 +207,26 @@ export function ThisWeekComponent() {
     watchedEpisodes,
   ]);
 
+  // Main-parity: surface the error UI when fetches collapsed entirely
+  // (no episodes derived AND either every detailsQuery failed OR every
+  // seasonQuery failed). Single-show successes with no current-week
+  // episode still show the empty state.
+  const isError =
+    !isLoading &&
+    episodes.length === 0 &&
+    (detailsCombined.allError ||
+      (seasonInputs.length > 0 && seasonCombined.allError));
+
+  const hasPartialFailure =
+    !isLoading &&
+    !isError &&
+    (detailsCombined.anyError || seasonCombined.anyError);
+
+  const handleRetry = () => {
+    detailsCombined.refetch();
+    seasonCombined.refetch();
+  };
+
   const groupedEpisodes = useMemo(
     () =>
       episodes.reduce<Record<string, WeekEpisode[]>>((acc, ep) => {
@@ -196,6 +243,10 @@ export function ThisWeekComponent() {
     [groupedEpisodes],
   );
 
+  if (isLoading) {
+    return <ThisWeekSkeleton />;
+  }
+
   return (
     <div data-testid="route-this-week" className="space-y-6">
       <div className="flex items-center gap-3">
@@ -203,29 +254,27 @@ export function ThisWeekComponent() {
         <h1 className="text-2xl font-bold">Esta Semana</h1>
       </div>
 
-      {isLoading ? (
-        <div data-testid="loading-skeleton" className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="space-y-2">
-              <div className="h-5 w-40 animate-pulse rounded bg-muted" />
-              <Card className="h-24 animate-pulse bg-muted" />
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       {isError ? (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <p className="text-muted-foreground">
             Erro ao carregar episódios da semana.
           </p>
-          <Button variant="outline" onClick={() => detailsCombined.refetch()}>
+          <Button variant="outline" onClick={handleRetry}>
             Tentar novamente
           </Button>
         </div>
       ) : null}
 
-      {!isLoading && !isError && allTvShows.length === 0 && (
+      {!isError && hasPartialFailure ? (
+        <p
+          data-testid="partial-failure"
+          className="text-sm text-muted-foreground"
+        >
+          Algumas séries não puderam ser carregadas.
+        </p>
+      ) : null}
+
+      {!isError && allTvShows.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <Tv className="h-12 w-12 text-muted-foreground" />
           <p className="text-muted-foreground">
@@ -237,19 +286,16 @@ export function ThisWeekComponent() {
         </div>
       )}
 
-      {!isLoading &&
-        !isError &&
-        allTvShows.length > 0 &&
-        sortedDays.length === 0 && (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <CalendarDays className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Nenhum episódio estreia esta semana.
-            </p>
-          </div>
-        )}
+      {!isError && allTvShows.length > 0 && sortedDays.length === 0 && (
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <CalendarDays className="h-12 w-12 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            Nenhum episódio estreia esta semana.
+          </p>
+        </div>
+      )}
 
-      {!isLoading && !isError && sortedDays.length > 0 && (
+      {!isError && sortedDays.length > 0 && (
         <div className="space-y-6">
           {sortedDays.map((dayKey) => (
             <section key={dayKey}>
