@@ -43,6 +43,12 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 - E2E tests clean DB automatically before each run
 - CI uses Supabase CLI v2.100.1
 
+## Knip Conventions
+
+- `ignore` in [knip.json](knip.json) is for files outside the module graph only (configs, edge functions, public assets, test folders). Never use it to silence unused exports inside `src/` — it also hides "unused file" detection (this is how `ui/toast.tsx` died unnoticed).
+- To suppress a legitimately-unused export (e.g. shadcn surface kept for future use), add `/** @public */` directly above an inline `export const X = ...` declaration. The tag is **not** picked up inside grouped `export { ... }` blocks — convert to inline export when needed.
+- Unused files in `src/` should be deleted, not ignored. If you really need to keep one temporarily, add it to `entry` instead of `ignore` so future regressions stay visible.
+
 ## Commit Message Convention
 
 Follow the project pattern (Conventional Commits):
