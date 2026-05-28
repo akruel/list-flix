@@ -1,9 +1,9 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useListsStore } from "../store/useListsStore";
 import { ListDetailsView } from "./ListDetailsView";
 
 const mocks = vi.hoisted(() => ({
@@ -25,30 +25,32 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 
-vi.mock("../store/useListsStore", () => ({
-  useListsStore: vi.fn(),
+vi.mock("@/services/userContent", () => ({
+  userContentService: {},
 }));
 
 vi.mock("../services/listService", () => ({
   listService: {
-    getListDetails: mocks.getListDetails,
-    removeListItem: mocks.removeListItem,
-    deleteList: mocks.deleteList,
-    removeListMember: mocks.removeListMember,
-    getShareUrl: mocks.getShareUrl,
+    getListDetails: (...args: unknown[]) => mocks.getListDetails(...args),
+    removeListItem: (...args: unknown[]) => mocks.removeListItem(...args),
+    deleteList: (...args: unknown[]) => mocks.deleteList(...args),
+    removeListMember: (...args: unknown[]) => mocks.removeListMember(...args),
+    updateList: (...args: unknown[]) => mocks.updateList(...args),
+    getShareUrl: (...args: unknown[]) =>
+      mocks.getShareUrl(...(args as [string, "editor" | "viewer"])),
   },
 }));
 
 vi.mock("../services/tmdb", () => ({
   tmdb: {
-    getDetails: mocks.tmdbGetDetails,
+    getDetails: (...args: unknown[]) => mocks.tmdbGetDetails(...args),
   },
 }));
 
 vi.mock("sonner", () => ({
   toast: {
-    success: mocks.toastSuccess,
-    error: mocks.toastError,
+    success: (...args: unknown[]) => mocks.toastSuccess(...args),
+    error: (...args: unknown[]) => mocks.toastError(...args),
   },
 }));
 
@@ -112,8 +114,21 @@ vi.mock("./DeleteConfirmationModal", () => ({
     ) : null,
 }));
 
-const mockedUseListsStore = vi.mocked(useListsStore);
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+
+function renderListDetails(id: string) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: 0 },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <ListDetailsView id={id} />
+    </QueryClientProvider>,
+  );
+}
 
 function createListDetails(overrides?: {
   role?: "owner" | "editor" | "viewer";
@@ -181,12 +196,6 @@ describe("ListDetailsView", () => {
       },
       configurable: true,
     });
-    mockedUseListsStore.mockImplementation(((
-      selector?: (state: { updateList: typeof mocks.updateList }) => unknown,
-    ) => {
-      const state = { updateList: mocks.updateList };
-      return selector ? selector(state) : state;
-    }) as unknown as typeof useListsStore);
   });
 
   afterEach(() => {
@@ -197,15 +206,27 @@ describe("ListDetailsView", () => {
   it("shows loading skeleton while list details are pending", () => {
     mocks.getListDetails.mockImplementation(() => new Promise(() => {}));
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(screen.getByTestId("list-details-skeleton")).toBeInTheDocument();
+  });
+
+  it("renders per-item skeletons while TMDB content is pending", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails());
+    mocks.tmdbGetDetails.mockImplementation(() => new Promise(() => {}));
+
+    renderListDetails("list-1");
+
+    expect(
+      await screen.findByTestId("list-item-content-skeleton"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Conteúdo indisponível")).not.toBeInTheDocument();
   });
 
   it("renders fallback error state when loading fails", async () => {
     mocks.getListDetails.mockRejectedValue(new Error("failed"));
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Failed to load list")).toBeInTheDocument();
 
@@ -220,10 +241,17 @@ describe("ListDetailsView", () => {
   });
 
   it("allows owner to edit, save and cancel list name changes", async () => {
-    mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
+    const initial = createListDetails({ items: [] });
+    const renamed = {
+      ...initial,
+      list: { ...initial.list, name: "Nova Lista" },
+    };
+    mocks.getListDetails
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValue(renamed);
     mocks.updateList.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Minha Lista")).toBeInTheDocument();
 
@@ -248,7 +276,11 @@ describe("ListDetailsView", () => {
   });
 
   it("removes list item after confirmation", async () => {
-    mocks.getListDetails.mockResolvedValue(createListDetails());
+    const initial = createListDetails();
+    const empty = { ...initial, items: [] };
+    mocks.getListDetails
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValue(empty);
     mocks.tmdbGetDetails.mockResolvedValue({
       id: 100,
       media_type: "movie",
@@ -256,7 +288,7 @@ describe("ListDetailsView", () => {
     });
     mocks.removeListItem.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Movie One")).toBeInTheDocument();
 
@@ -272,7 +304,9 @@ describe("ListDetailsView", () => {
       expect(mocks.removeListItem).toHaveBeenCalledWith("item-1");
     });
 
-    expect(screen.queryByText("Movie One")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Movie One")).not.toBeInTheDocument();
+    });
   });
 
   it("shows item name in remove-modal description for TV show", async () => {
@@ -297,7 +331,7 @@ describe("ListDetailsView", () => {
     });
     mocks.removeListItem.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("TV Show One")).toBeInTheDocument();
     await userEvent.click(screen.getByTitle("Remover item"));
@@ -314,7 +348,7 @@ describe("ListDetailsView", () => {
     mocks.tmdbGetDetails.mockRejectedValue(new Error("tmdb failed"));
     mocks.removeListItem.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(
       await screen.findByText("Conteúdo indisponível"),
@@ -335,7 +369,7 @@ describe("ListDetailsView", () => {
     });
     mocks.removeListItem.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("no title")).toBeInTheDocument();
 
@@ -360,7 +394,7 @@ describe("ListDetailsView", () => {
     });
     mocks.removeListItem.mockReturnValue(pendingRemoval);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Movie One")).toBeInTheDocument();
 
@@ -391,7 +425,7 @@ describe("ListDetailsView", () => {
     });
     mocks.removeListItem.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Movie One")).toBeInTheDocument();
 
@@ -408,10 +442,17 @@ describe("ListDetailsView", () => {
   });
 
   it("removes non-owner member after confirmation", async () => {
-    mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
+    const initial = createListDetails({ items: [] });
+    const withoutBob = {
+      ...initial,
+      members: initial.members.filter((m) => m.user_id !== "viewer-1"),
+    };
+    mocks.getListDetails
+      .mockResolvedValueOnce(initial)
+      .mockResolvedValue(withoutBob);
     mocks.removeListMember.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Bob")).toBeInTheDocument();
 
@@ -427,7 +468,9 @@ describe("ListDetailsView", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Membro removido com sucesso",
     );
-    expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByText("Bob")).not.toBeInTheDocument();
+    });
   });
 
   it.each([
@@ -453,7 +496,7 @@ describe("ListDetailsView", () => {
         createListDetails({ role, items: [] }),
       );
 
-      render(<ListDetailsView id="list-1" />);
+      renderListDetails("list-1");
 
       await screen.findByText("Minha Lista");
 
@@ -483,7 +526,7 @@ describe("ListDetailsView", () => {
         title: "Movie One",
       });
 
-      render(<ListDetailsView id="list-1" />);
+      renderListDetails("list-1");
 
       await screen.findByText("Movie One");
 
@@ -492,7 +535,7 @@ describe("ListDetailsView", () => {
   );
 
   it("does not load list when id is empty", () => {
-    render(<ListDetailsView id="" />);
+    renderListDetails("");
 
     expect(mocks.getListDetails).not.toHaveBeenCalled();
     expect(screen.getByTestId("list-details-skeleton")).toBeInTheDocument();
@@ -505,7 +548,7 @@ describe("ListDetailsView", () => {
       members: [],
     });
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("List not found")).toBeInTheDocument();
   });
@@ -514,7 +557,7 @@ describe("ListDetailsView", () => {
     mocks.getListDetails.mockResolvedValue(createListDetails());
     mocks.tmdbGetDetails.mockRejectedValue(new Error("tmdb failed"));
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(
       await screen.findByText("Conteúdo indisponível"),
@@ -524,7 +567,7 @@ describe("ListDetailsView", () => {
   it("navigates back from header back button", async () => {
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Minha Lista");
     await userEvent.click(screen.getByTitle("Voltar"));
@@ -546,7 +589,7 @@ describe("ListDetailsView", () => {
       },
     );
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Minha Lista");
     await userEvent.click(
@@ -565,6 +608,35 @@ describe("ListDetailsView", () => {
     expect(
       screen.getByRole("button", { name: /Copiado!/i }),
     ).toBeInTheDocument();
+  });
+
+  it("shows error toast when copying share URL fails", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
+    mocks.getShareUrl.mockReturnValue(
+      "https://listflix.local/lists/list-1/join?role=viewer",
+    );
+    Object.defineProperty(window.navigator, "clipboard", {
+      value: {
+        writeText: vi.fn().mockRejectedValue(new Error("denied")),
+      },
+      configurable: true,
+    });
+
+    renderListDetails("list-1");
+
+    await screen.findByText("Minha Lista");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Compartilhar como Visualizador/i }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Não foi possível copiar o link",
+      );
+    });
+    expect(
+      screen.queryByRole("button", { name: /Copiado!/i }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([
@@ -600,7 +672,7 @@ describe("ListDetailsView", () => {
         removeError ? Promise.reject(removeError) : Promise.resolve(undefined),
       );
 
-      render(<ListDetailsView id="list-1" />);
+      renderListDetails("list-1");
 
       await screen.findByText("Movie One");
       await userEvent.click(screen.getByTitle("Remover item"));
@@ -654,7 +726,7 @@ describe("ListDetailsView", () => {
       mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
       mocks.updateList.mockResolvedValue(undefined);
 
-      render(<ListDetailsView id="list-1" />);
+      renderListDetails("list-1");
 
       await screen.findByText("Minha Lista");
       await userEvent.click(screen.getByTitle("Editar nome"));
@@ -702,7 +774,7 @@ describe("ListDetailsView", () => {
         updateError ? Promise.reject(updateError) : Promise.resolve(undefined),
       );
 
-      render(<ListDetailsView id="list-1" />);
+      renderListDetails("list-1");
 
       await screen.findByText("Minha Lista");
       await userEvent.click(screen.getByTitle("Editar nome"));
@@ -748,7 +820,7 @@ describe("ListDetailsView", () => {
         deleteError ? Promise.reject(deleteError) : Promise.resolve(undefined),
       );
 
-      render(<ListDetailsView id="list-1" />);
+      renderListDetails("list-1");
 
       await screen.findByText("Minha Lista");
       await userEvent.click(screen.getByRole("button", { name: /Excluir/i }));
@@ -776,7 +848,7 @@ describe("ListDetailsView", () => {
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
     mocks.deleteList.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Minha Lista");
     await userEvent.click(screen.getByRole("button", { name: /Excluir/i }));
@@ -796,7 +868,7 @@ describe("ListDetailsView", () => {
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
     mocks.removeListMember.mockRejectedValue(new Error("remove member failed"));
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Bob");
     await userEvent.click(screen.getByTitle("Remover membro"));
@@ -818,7 +890,7 @@ describe("ListDetailsView", () => {
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
     mocks.removeListMember.mockReturnValue(pendingRemoval);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Bob");
     await userEvent.click(screen.getByTitle("Remover membro"));
@@ -843,7 +915,7 @@ describe("ListDetailsView", () => {
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
     mocks.removeListMember.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Bob");
     await userEvent.click(screen.getByTitle("Remover membro"));
@@ -887,7 +959,7 @@ describe("ListDetailsView", () => {
       }),
     );
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     expect(await screen.findByText("Owner")).toBeInTheDocument();
     expect(screen.getByText("Anonymous")).toBeInTheDocument();
@@ -901,7 +973,7 @@ describe("ListDetailsView", () => {
     mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
     mocks.removeListMember.mockResolvedValue(undefined);
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Bob");
     await userEvent.click(screen.getByTitle("Remover membro"));
@@ -933,7 +1005,7 @@ describe("ListDetailsView", () => {
       }),
     );
 
-    render(<ListDetailsView id="list-1" />);
+    renderListDetails("list-1");
 
     await screen.findByText("Owner");
     await userEvent.click(screen.getByTitle("Remover membro"));

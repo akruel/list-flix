@@ -188,7 +188,7 @@ export const userContentService = {
     return { watchlist, watchedIds, watchedEpisodes, seriesMetadata };
   },
 
-  async addToWatchlist(item: ContentItem) {
+  async addToWatchlist(item: ContentItem): Promise<boolean> {
     const { error } = await supabase.from("watchlists").insert({
       tmdb_id: item.id,
       media_type: item.media_type,
@@ -202,7 +202,11 @@ export const userContentService = {
       overview: item.overview,
     });
 
-    if (error) logger.error("Error adding to watchlist:", error);
+    if (error) {
+      logger.error("Error adding to watchlist:", error);
+      return false;
+    }
+    return true;
   },
 
   async removeFromWatchlist(contentId: number): Promise<boolean> {

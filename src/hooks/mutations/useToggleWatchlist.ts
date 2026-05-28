@@ -15,10 +15,12 @@ export function useToggleWatchlist() {
 
   return useMutation({
     mutationFn: async ({ item, action }: ToggleWatchlistInput) => {
-      if (action === "add") {
-        await userContentService.addToWatchlist(item);
-      } else {
-        await userContentService.removeFromWatchlist(item.id);
+      const ok =
+        action === "add"
+          ? await userContentService.addToWatchlist(item)
+          : await userContentService.removeFromWatchlist(item.id);
+      if (!ok) {
+        throw new Error(`Failed to ${action} watchlist item`);
       }
     },
     onMutate: async ({ item, action }) => {

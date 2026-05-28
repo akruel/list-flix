@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, LayoutGrid, List, Trash2, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -8,11 +9,11 @@ import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { ListDetailsView } from "@/components/ListDetailsView";
 import { MovieCard } from "@/components/MovieCard";
 import { Button } from "@/components/ui/button";
+import { useToggleWatchlist } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
-import { listService } from "@/services/listService";
-import { userContentService } from "@/services/userContent";
+import { watchingContextBatchQuery } from "@/services/listService.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
-import type { ContentItem, WatchingContext } from "@/types";
+import type { ContentItem } from "@/types";
 
 type FilterType = "all" | "watched" | "unwatched";
 type TabType = "watchlist" | "custom";
@@ -26,18 +27,33 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
   const navigate = useNavigate();
   const myList = useUserContentStore((s) => s.myList);
   const watchedIds = useUserContentStore((s) => s.watchedIds);
-  const removeFromList = useUserContentStore((s) => s.removeFromList);
+  const toggleWatchlist = useToggleWatchlist();
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [activeTab, setActiveTab] = useState<TabType>(
     initialTab || (listId ? "custom" : "watchlist"),
   );
-  const [watchingContextMap, setWatchingContextMap] = useState<
-    Record<number, WatchingContext[]>
-  >({});
   const [memberFilter, setMemberFilter] = useState<string | null>(null);
   const [itemToRemove, setItemToRemove] = useState<ContentItem | null>(null);
-  const [isRemoving, setIsRemoving] = useState(false);
+
+  const watchingContextItems = useMemo(
+    () =>
+      myList.map((item) => ({
+        contentId: item.id,
+        contentType: item.media_type as "movie" | "tv",
+      })),
+    [myList],
+  );
+
+  const watchingContextResult = useQuery({
+    ...watchingContextBatchQuery(watchingContextItems),
+    enabled: activeTab === "watchlist" && watchingContextItems.length > 0,
+  });
+  const watchingContextMap = useMemo(
+    () => watchingContextResult.data ?? {},
+    [watchingContextResult.data],
+  );
+
   const allMembers = useMemo(() => {
     const names = new Set<string>();
     Object.values(watchingContextMap).forEach((contexts) =>
@@ -59,36 +75,6 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
     });
   };
 
-  // Fetch watching contexts for all watchlist items
-  useEffect(() => {
-    if (activeTab !== "watchlist" || myList.length === 0) return;
-
-    let cancelled = false;
-
-    const fetchContexts = async () => {
-      const items = myList.map((item) => ({
-        contentId: item.id,
-        contentType: item.media_type as "movie" | "tv",
-      }));
-
-      const map = await listService
-        .getWatchingContextBatch(items)
-        .catch(() => ({}) as Record<number, WatchingContext[]>);
-
-      if (cancelled) return;
-      setWatchingContextMap(map);
-    };
-
-    fetchContexts().catch((err) =>
-      logger.error("Error fetching watching contexts:", err),
-    );
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab, myList]);
-
-  // Reset member filter when watchlist changes
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMemberFilter(null);
@@ -96,23 +82,16 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
 
   const handleRemoveFromWatchlist = async () => {
     if (!itemToRemove) return;
-    setIsRemoving(true);
     try {
-      const success = await userContentService.removeFromWatchlist(
-        itemToRemove.id,
-      );
-      if (!success) {
-        toast.error("Erro ao remover item da lista");
-        return;
-      }
-      removeFromList(itemToRemove.id);
+      await toggleWatchlist.mutateAsync({
+        item: itemToRemove,
+        action: "remove",
+      });
       toast.success("Item removido da lista");
       setItemToRemove(null);
     } catch (err) {
       logger.error(err);
       toast.error("Erro ao remover item da lista");
-    } finally {
-      setIsRemoving(false);
     }
   };
 
@@ -307,7 +286,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                 ? `Tem certeza que deseja remover "${itemToRemove.title || itemToRemove.name || "este item"}" da sua lista?`
                 : ""
             }
-            isDeleting={isRemoving}
+            isDeleting={toggleWatchlist.isPending}
           />
         </>
       ) : listId ? (

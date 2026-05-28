@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -6,34 +7,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { CustomLists } from "./CustomLists";
 
 const mocks = vi.hoisted(() => ({
-  storeValue: {
-    lists: [] as Array<{
-      id: string;
-      name: string;
-      owner_id: string;
-      created_at: string;
-      updated_at: string;
-      role: "owner" | "editor" | "viewer";
-    }>,
-    fetchLists: vi.fn(),
-    createList: vi.fn(),
-    deleteList: vi.fn(),
-  },
-  addListItem: vi.fn(),
+  lists: [] as Array<{
+    id: string;
+    name: string;
+    owner_id: string;
+    created_at: string;
+    updated_at: string;
+    role: "owner" | "editor" | "viewer";
+  }>,
+  getLists: vi.fn(),
+  createList: vi.fn(),
+  deleteList: vi.fn(),
   addListItems: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
 
-vi.mock("../store/useListsStore", () => ({
-  useListsStore: (selector: (state: typeof mocks.storeValue) => unknown) =>
-    selector(mocks.storeValue),
+vi.mock("@/hooks/mutations", () => ({
+  useCreateList: () => ({ mutateAsync: mocks.createList }),
+  useDeleteList: () => ({ mutateAsync: mocks.deleteList }),
+  useAddListItems: () => ({ mutateAsync: mocks.addListItems }),
 }));
 
 vi.mock("../services/listService", () => ({
   listService: {
-    addListItem: (...args: unknown[]) => mocks.addListItem(...args),
-    addListItems: (...args: unknown[]) => mocks.addListItems(...args),
+    getLists: (...args: unknown[]) => mocks.getLists(...args),
   },
 }));
 
@@ -127,12 +125,26 @@ vi.mock("./MagicSearchModal", () => ({
     ) : null,
 }));
 
+function renderCustomLists() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <CustomLists />
+    </QueryClientProvider>,
+  );
+}
+
 describe("CustomLists", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.storeValue.lists = [];
-    mocks.storeValue.fetchLists.mockResolvedValue(undefined);
-    mocks.storeValue.createList.mockResolvedValue({
+    mocks.lists = [];
+    mocks.getLists.mockImplementation(() => Promise.resolve(mocks.lists));
+    mocks.createList.mockResolvedValue({
       id: "list-1",
       name: "Created",
       owner_id: "owner-1",
@@ -140,15 +152,15 @@ describe("CustomLists", () => {
       updated_at: "2026-01-01",
       role: "owner",
     });
-    mocks.storeValue.deleteList.mockResolvedValue(undefined);
-    mocks.addListItem.mockResolvedValue(undefined);
+    mocks.deleteList.mockResolvedValue(undefined);
+    mocks.addListItems.mockResolvedValue(undefined);
   });
 
   it("loads lists on mount and shows empty state", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await waitFor(() => {
-      expect(mocks.storeValue.fetchLists).toHaveBeenCalledOnce();
+      expect(mocks.getLists).toHaveBeenCalled();
     });
     expect(
       screen.getByText("Você ainda não criou nenhuma lista personalizada."),
@@ -156,7 +168,7 @@ describe("CustomLists", () => {
   });
 
   it("creates manual list", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Manual/i }),
@@ -168,23 +180,43 @@ describe("CustomLists", () => {
     await userEvent.click(screen.getByRole("button", { name: "Criar" }));
 
     await waitFor(() => {
-      expect(mocks.storeValue.createList).toHaveBeenCalledWith("Minha Lista");
+      expect(mocks.createList).toHaveBeenCalledWith("Minha Lista");
     });
   });
 
+  it("shows error toast when manual list creation fails", async () => {
+    mocks.createList.mockRejectedValueOnce(new Error("create failed"));
+
+    renderCustomLists();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Lista Manual/i }),
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome da Lista"),
+      "Minha Lista",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith("Erro ao criar lista");
+    });
+    expect(screen.getByPlaceholderText("Nome da Lista")).toBeInTheDocument();
+  });
+
   it("does not create list when manual name is empty", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Manual/i }),
     );
     await userEvent.click(screen.getByRole("button", { name: "Criar" }));
 
-    expect(mocks.storeValue.createList).not.toHaveBeenCalled();
+    expect(mocks.createList).not.toHaveBeenCalled();
   });
 
   it("cancels manual creation form", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Manual/i }),
@@ -208,27 +240,32 @@ describe("CustomLists", () => {
       role: "viewer" as const,
       shouldShowDelete: false,
     },
-  ])("renders role behavior for $caseName", ({ role, shouldShowDelete }) => {
-    mocks.storeValue.lists = [
-      {
-        id: "list-1",
-        name: "List",
-        owner_id: "owner-1",
-        created_at: "2026-01-01",
-        updated_at: "2026-01-01",
-        role,
-      },
-    ];
+  ])(
+    "renders role behavior for $caseName",
+    async ({ role, shouldShowDelete }) => {
+      mocks.lists = [
+        {
+          id: "list-1",
+          name: "List",
+          owner_id: "owner-1",
+          created_at: "2026-01-01",
+          updated_at: "2026-01-01",
+          role,
+        },
+      ];
 
-    render(<CustomLists />);
+      renderCustomLists();
 
-    expect(screen.queryByTitle("Excluir Lista") !== null).toBe(
-      shouldShowDelete,
-    );
-  });
+      await screen.findByText("List");
+
+      expect(screen.queryByTitle("Excluir Lista") !== null).toBe(
+        shouldShowDelete,
+      );
+    },
+  );
 
   it("deletes list and shows success toast", async () => {
-    mocks.storeValue.lists = [
+    mocks.lists = [
       {
         id: "list-1",
         name: "List",
@@ -239,15 +276,16 @@ describe("CustomLists", () => {
       },
     ];
 
-    render(<CustomLists />);
+    renderCustomLists();
 
+    await screen.findByText("List");
     await userEvent.click(screen.getByTitle("Excluir Lista"));
     await userEvent.click(
       screen.getByRole("button", { name: "confirm-delete" }),
     );
 
     await waitFor(() => {
-      expect(mocks.storeValue.deleteList).toHaveBeenCalledWith("list-1");
+      expect(mocks.deleteList).toHaveBeenCalledWith("list-1");
     });
     expect(mocks.toastSuccess).toHaveBeenCalledWith(
       "Lista excluída com sucesso",
@@ -255,25 +293,25 @@ describe("CustomLists", () => {
   });
 
   it("returns early when delete is confirmed without selected list", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: "confirm-delete" }),
     );
 
-    expect(mocks.storeValue.deleteList).not.toHaveBeenCalled();
+    expect(mocks.deleteList).not.toHaveBeenCalled();
   });
 
   it("closes delete modal through onClose callback", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(screen.getByRole("button", { name: "close-delete" }));
 
-    expect(mocks.storeValue.deleteList).not.toHaveBeenCalled();
+    expect(mocks.deleteList).not.toHaveBeenCalled();
   });
 
   it("shows error toast when delete fails", async () => {
-    mocks.storeValue.lists = [
+    mocks.lists = [
       {
         id: "list-1",
         name: "List",
@@ -283,10 +321,11 @@ describe("CustomLists", () => {
         role: "owner",
       },
     ];
-    mocks.storeValue.deleteList.mockRejectedValue(new Error("delete failed"));
+    mocks.deleteList.mockRejectedValue(new Error("delete failed"));
 
-    render(<CustomLists />);
+    renderCustomLists();
 
+    await screen.findByText("List");
     await userEvent.click(screen.getByTitle("Excluir Lista"));
     await userEvent.click(
       screen.getByRole("button", { name: "confirm-delete" }),
@@ -297,8 +336,8 @@ describe("CustomLists", () => {
     });
   });
 
-  it("saves magic list by creating list, adding items and refreshing lists", async () => {
-    mocks.storeValue.createList.mockResolvedValue({
+  it("saves magic list by creating list and adding items", async () => {
+    mocks.createList.mockResolvedValue({
       id: "new-list",
       name: "Magic List",
       owner_id: "owner-1",
@@ -307,7 +346,7 @@ describe("CustomLists", () => {
       role: "owner",
     });
 
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Inteligente/i }),
@@ -315,22 +354,21 @@ describe("CustomLists", () => {
     await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
 
     await waitFor(() => {
-      expect(mocks.storeValue.createList).toHaveBeenCalledWith("Magic List");
+      expect(mocks.createList).toHaveBeenCalledWith("Magic List");
     });
-    expect(mocks.addListItems).toHaveBeenCalledWith(
-      "new-list",
-      expect.arrayContaining([
+    expect(mocks.addListItems).toHaveBeenCalledWith({
+      listId: "new-list",
+      items: expect.arrayContaining([
         expect.objectContaining({ id: 10, media_type: "movie" }),
         expect.objectContaining({ id: 20, media_type: "tv" }),
       ]),
-    );
-    expect(mocks.storeValue.fetchLists).toHaveBeenCalled();
+    });
   });
 
   it("propagates magic list save error to modal and shows error path", async () => {
-    mocks.storeValue.createList.mockRejectedValue(new Error("create failed"));
+    mocks.createList.mockRejectedValue(new Error("create failed"));
 
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Inteligente/i }),
@@ -338,12 +376,12 @@ describe("CustomLists", () => {
     await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
 
     await waitFor(() => {
-      expect(mocks.storeValue.createList).toHaveBeenCalled();
+      expect(mocks.createList).toHaveBeenCalled();
     });
   });
 
   it("rollbacks created list when batch insert fails", async () => {
-    mocks.storeValue.createList.mockResolvedValue({
+    mocks.createList.mockResolvedValue({
       id: "new-list",
       name: "Magic List",
       owner_id: "owner-1",
@@ -353,7 +391,7 @@ describe("CustomLists", () => {
     });
     mocks.addListItems.mockRejectedValue(new Error("batch insert failed"));
 
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Inteligente/i }),
@@ -361,9 +399,9 @@ describe("CustomLists", () => {
     await userEvent.click(screen.getByRole("button", { name: "save-magic" }));
 
     await waitFor(() => {
-      expect(mocks.storeValue.createList).toHaveBeenCalled();
+      expect(mocks.createList).toHaveBeenCalled();
       expect(mocks.addListItems).toHaveBeenCalled();
-      expect(mocks.storeValue.deleteList).toHaveBeenCalledWith("new-list");
+      expect(mocks.deleteList).toHaveBeenCalledWith("new-list");
     });
   });
 
@@ -371,7 +409,7 @@ describe("CustomLists", () => {
     const logger = (await import("@/lib/logger")).logger;
     const loggerSpy = vi.spyOn(logger, "error").mockImplementation(() => {});
 
-    mocks.storeValue.createList.mockResolvedValue({
+    mocks.createList.mockResolvedValue({
       id: "new-list",
       name: "Magic List",
       owner_id: "owner-1",
@@ -380,11 +418,9 @@ describe("CustomLists", () => {
       role: "owner",
     });
     mocks.addListItems.mockRejectedValue(new Error("batch insert failed"));
-    mocks.storeValue.deleteList.mockRejectedValue(
-      new Error("rollback delete failed"),
-    );
+    mocks.deleteList.mockRejectedValue(new Error("rollback delete failed"));
 
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Inteligente/i }),
@@ -402,7 +438,7 @@ describe("CustomLists", () => {
   });
 
   it("closes magic modal through onClose callback", async () => {
-    render(<CustomLists />);
+    renderCustomLists();
 
     await userEvent.click(
       screen.getByRole("button", { name: /Lista Inteligente/i }),
