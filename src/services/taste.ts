@@ -1,10 +1,16 @@
 import { logger } from "../lib/logger";
-import { useTasteStore } from "../store/useTasteStore";
 import type { ContentItem } from "../types";
 import { ai } from "./ai";
 import { tmdb } from "./tmdb";
 
-const SUGGESTIONS_CACHE_TTL = 12 * 60 * 60 * 1000;
+export interface GetAiSuggestionsInput {
+  myList: ContentItem[];
+  watchedIds: number[];
+  listItemIds: { id: number; mediaType: "movie" | "tv" }[];
+  mood?: string;
+  mediaType?: "movie" | "tv";
+  signal?: AbortSignal;
+}
 
 export const tasteService = {
   async getProfile(
@@ -50,52 +56,15 @@ export const tasteService = {
     };
   },
 
-  async getAiSuggestions(
-    myList: ContentItem[],
-    watchedIds: number[],
-    listItemIds: { id: number; mediaType: "movie" | "tv" }[],
-    signal?: AbortSignal,
-    moodContext?: string,
-    mediaTypeContext?: "movie" | "tv",
-  ): Promise<ContentItem[]> {
-    const cacheKey = [
-      "ai_suggestions",
-      moodContext ?? "",
-      mediaTypeContext ?? "",
-    ]
-      .filter(Boolean)
-      .join("_");
-
+  async getAiSuggestions(input: GetAiSuggestionsInput): Promise<ContentItem[]> {
     const {
-      tasteSuggestions,
-      tasteSuggestionsTimestamp,
-      tasteSuggestionsScope,
-    } = useTasteStore.getState();
-
-    if (
-      !moodContext &&
-      !mediaTypeContext &&
-      tasteSuggestions &&
-      tasteSuggestionsTimestamp &&
-      !tasteSuggestionsScope &&
-      Date.now() - tasteSuggestionsTimestamp < SUGGESTIONS_CACHE_TTL
-    ) {
-      return tasteSuggestions;
-    }
-
-    if (moodContext || mediaTypeContext) {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached) as {
-          items: ContentItem[];
-          ts: number;
-        };
-        if (Date.now() - parsed.ts < SUGGESTIONS_CACHE_TTL) {
-          useTasteStore.getState().setTasteSuggestions(parsed.items, cacheKey);
-          return parsed.items;
-        }
-      }
-    }
+      myList,
+      watchedIds,
+      listItemIds,
+      mood: moodContext,
+      mediaType: mediaTypeContext,
+      signal,
+    } = input;
 
     const { genreNames, recentTitles } = await this.getProfile(myList, signal);
 
@@ -139,108 +108,11 @@ export const tasteService = {
         ? filtered.filter((item) => item.media_type === mediaTypeContext)
         : filtered;
 
-      if (moodContext || mediaTypeContext) {
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({ items: mediaFiltered, ts: Date.now() }),
-        );
-      }
-      useTasteStore
-        .getState()
-        .setTasteSuggestions(
-          mediaFiltered,
-          moodContext || mediaTypeContext ? cacheKey : undefined,
-        );
-
       return mediaFiltered;
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       logger.error("Error fetching AI suggestions:", err);
-      return [];
+      throw err;
     }
-  },
-
-  async getPersonalizedSuggestions(
-    myList: ContentItem[],
-    watchedIds: number[],
-    listItemIds: { id: number; mediaType: "movie" | "tv" }[],
-    signal?: AbortSignal,
-  ): Promise<ContentItem[]> {
-    const { tasteSuggestions, tasteSuggestionsTimestamp } =
-      useTasteStore.getState();
-
-    if (
-      tasteSuggestions &&
-      tasteSuggestionsTimestamp &&
-      Date.now() - tasteSuggestionsTimestamp < SUGGESTIONS_CACHE_TTL
-    ) {
-      return tasteSuggestions;
-    }
-
-    const knownIds = new Set([
-      ...watchedIds,
-      ...myList.map((i) => i.id),
-      ...listItemIds.map((i) => i.id),
-    ]);
-
-    const itemsToAnalyze = [
-      ...myList.map((i) => ({
-        id: i.id,
-        mediaType: i.media_type as "movie" | "tv",
-      })),
-      ...listItemIds,
-    ].slice(0, 15);
-
-    if (itemsToAnalyze.length === 0) return [];
-
-    const genreCounts = new Map<number, { name: string; count: number }>();
-
-    const results = await Promise.allSettled(
-      itemsToAnalyze.map((item) => {
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        return tmdb.getDetails(item.id, item.mediaType, signal);
-      }),
-    );
-
-    for (const result of results) {
-      if (result.status === "fulfilled") {
-        for (const genre of result.value.genres) {
-          const existing = genreCounts.get(genre.id);
-          if (existing) {
-            existing.count++;
-          } else {
-            genreCounts.set(genre.id, { name: genre.name, count: 1 });
-          }
-        }
-      }
-    }
-
-    if (genreCounts.size === 0) return [];
-
-    const topGenres = [...genreCounts.entries()]
-      .sort((a, b) => b[1].count - a[1].count)
-      .slice(0, 3)
-      .map(([id]) => id);
-
-    try {
-      const suggestions = await tmdb.discover(
-        { with_genres: topGenres.join(","), sort_by: "popularity.desc" },
-        signal,
-      );
-
-      const filtered = suggestions.filter((item) => !knownIds.has(item.id));
-
-      useTasteStore.getState().setTasteSuggestions(filtered);
-
-      return filtered;
-    } catch (err) {
-      if (err instanceof DOMException && err.name === "AbortError") throw err;
-      logger.error("Error fetching personalized suggestions:", err);
-      return [];
-    }
-  },
-
-  clearCache(): void {
-    useTasteStore.getState().clearTasteSuggestions();
   },
 };
