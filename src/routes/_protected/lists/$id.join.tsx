@@ -1,7 +1,9 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
+import { z } from "zod";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -13,67 +15,73 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useJoinList } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
 import { authService } from "@/services/auth";
-import { listService } from "@/services/listService";
+import { listNameQuery } from "@/services/list.queries";
 
-type JoinRouteSearch = {
-  role?: "editor" | "viewer";
-};
+const joinSearchSchema = z.object({
+  role: z.enum(["editor", "viewer"]).optional(),
+});
+
+const userProfileQueryKey = ["auth", "userProfile"] as const;
 
 export const Route = createFileRoute("/_protected/lists/$id/join")({
-  validateSearch: (search: Record<string, unknown>): JoinRouteSearch => ({
-    role:
-      search.role === "editor" || search.role === "viewer"
-        ? search.role
-        : undefined,
-  }),
+  validateSearch: joinSearchSchema,
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(listNameQuery(params.id)),
+  errorComponent: JoinListErrorComponent,
   component: JoinListRouteComponent,
 });
+
+function JoinListErrorComponent({ error }: { error: Error }) {
+  logger.error("Join list route error:", error);
+
+  return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
+      <h1 className="text-2xl font-bold text-white">
+        Não foi possível carregar os detalhes da lista
+      </h1>
+      <p className="text-gray-400">Verifique sua conexão e tente novamente.</p>
+      {import.meta.env.DEV ? (
+        <pre className="max-w-full overflow-auto rounded-md bg-gray-900 px-4 py-2 text-left text-xs text-gray-400">
+          {error.message}
+        </pre>
+      ) : null}
+      <Link
+        to="/lists"
+        search={{ tab: "custom" }}
+        className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+      >
+        Voltar para minhas listas
+      </Link>
+    </div>
+  );
+}
+
+type JoinPhase = "idle" | "forceInput" | "joining" | "success" | "error";
 
 function JoinListRouteComponent() {
   const { id } = Route.useParams();
   const { role = "viewer" } = Route.useSearch();
   const navigate = useNavigate();
+  const joinList = useJoinList();
   const joinSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
   );
 
-  const [status, setStatus] = useState<
-    "loading" | "input" | "confirm" | "joining" | "success" | "error"
-  >("loading");
-  const [listName, setListName] = useState<string>("");
-  const [memberName, setMemberName] = useState<string>("");
-  const [error, setError] = useState<string>("");
-  const isBlockingClose = status === "joining" || status === "success";
+  const listNameResult = useQuery(listNameQuery(id));
+  const profileResult = useQuery({
+    queryKey: userProfileQueryKey,
+    queryFn: () => authService.getUserProfile(),
+    retry: false,
+  });
 
-  const closeToLists = () => {
-    navigate({ to: "/lists", search: { tab: "custom" } });
-  };
-
-  useEffect(() => {
-    const init = async () => {
-      try {
-        const name = await listService.getListName(id);
-        setListName(name);
-
-        const profile = await authService.getUserProfile();
-        if (profile && profile.displayName) {
-          setMemberName(profile.displayName);
-          setStatus("confirm");
-          return;
-        }
-
-        setStatus("input");
-      } catch (err) {
-        logger.error(err);
-        setStatus("error");
-        setError("Não foi possível carregar os detalhes da lista.");
-      }
-    };
-
-    void init();
-  }, [id]);
+  const [memberNameOverride, setMemberNameOverride] = useState<string | null>(
+    null,
+  );
+  const [joinPhase, setJoinPhase] = useState<JoinPhase>("idle");
+  const [submitError, setSubmitError] = useState<string>("");
 
   useEffect(() => {
     return () => {
@@ -84,20 +92,56 @@ function JoinListRouteComponent() {
     };
   }, []);
 
+  const listName = listNameResult.data ?? "";
+  const profileDisplayName = profileResult.data?.displayName ?? "";
+  const memberName = memberNameOverride ?? profileDisplayName;
+  const queriesLoading = listNameResult.isLoading || profileResult.isLoading;
+  const queriesErrored = listNameResult.isError || profileResult.isError;
+
+  const status:
+    | "loading"
+    | "input"
+    | "confirm"
+    | "joining"
+    | "success"
+    | "error" =
+    joinPhase === "joining"
+      ? "joining"
+      : joinPhase === "success"
+        ? "success"
+        : joinPhase === "error" || queriesErrored
+          ? "error"
+          : queriesLoading
+            ? "loading"
+            : joinPhase === "forceInput" || !profileDisplayName
+              ? "input"
+              : "confirm";
+
+  const errorMessage =
+    submitError ||
+    (queriesErrored ? "Não foi possível carregar os detalhes da lista." : "");
+
+  const isBlockingClose = status === "joining" || status === "success";
+
+  const closeToLists = () => {
+    navigate({ to: "/lists", search: { tab: "custom" } });
+  };
+
   const handleJoinSubmit = async () => {
     if (!memberName.trim()) return;
 
-    setStatus("joining");
+    setSubmitError("");
+    setJoinPhase("joining");
     try {
-      await listService.joinList(id, memberName, role);
-      setStatus("success");
+      await joinList.mutateAsync({ listId: id, memberName, role });
+      setJoinPhase("success");
       joinSuccessTimeoutRef.current = setTimeout(() => {
         navigate({ to: "/lists/$id", params: { id } });
       }, 1500);
     } catch (err) {
       logger.error(err);
-      setStatus("error");
-      setError("Não foi possível entrar na lista.");
+      setSubmitError("Não foi possível entrar na lista.");
+      setJoinPhase("error");
     }
   };
 
@@ -186,7 +230,7 @@ function JoinListRouteComponent() {
                   id="join-member-name"
                   type="text"
                   value={memberName}
-                  onChange={(e) => setMemberName(e.target.value)}
+                  onChange={(e) => setMemberNameOverride(e.target.value)}
                   placeholder="Digite seu nome"
                   required
                 />
@@ -235,7 +279,7 @@ function JoinListRouteComponent() {
             <Button
               type="button"
               variant="link"
-              onClick={() => setStatus("input")}
+              onClick={() => setJoinPhase("forceInput")}
               className="mt-2"
             >
               Entrar com outro nome
@@ -269,7 +313,7 @@ function JoinListRouteComponent() {
           <div className="py-4 text-center">
             <div className="mb-3 text-5xl text-red-500">✕</div>
             <p className="mb-2 text-base font-medium">Algo deu errado</p>
-            <p className="mb-5 text-sm text-muted-foreground">{error}</p>
+            <p className="mb-5 text-sm text-muted-foreground">{errorMessage}</p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={closeToLists}>
                 Voltar para minhas listas

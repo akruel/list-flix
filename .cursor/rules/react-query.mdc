@@ -95,7 +95,6 @@ Rules:
 ## Zustand store boundary
 
 - `useUserContentStore` keeps the optimistic copy of watchlist/watched/episodes — its actions are pure local writes; the network call lives in the mutation hook.
-- `useListsStore` exists only as a transition shim and is removed by the Lists vertical phase.
 - `useTasteStore` exists only as a transition shim and is removed by the Home/Taste vertical phase.
 - Never read server data via `useStore()` in new code; subscribe via `useQuery` / `useSuspenseQuery` instead.
 
