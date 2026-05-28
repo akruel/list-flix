@@ -144,4 +144,24 @@ describe("Layout", () => {
 
     expect(modal).toHaveAttribute("data-open", "false");
   });
+
+  it("closes search modal when the route changes", async () => {
+    mocks.pathname = "/";
+    const user = userEvent.setup();
+    const { rerender } = render(<Layout />);
+
+    await user.click(screen.getByTestId("search-open-button"));
+    expect(screen.getByTestId("search-modal")).toHaveAttribute(
+      "data-open",
+      "true",
+    );
+
+    mocks.pathname = "/lists";
+    rerender(<Layout />);
+
+    expect(screen.getByTestId("search-modal")).toHaveAttribute(
+      "data-open",
+      "false",
+    );
+  });
 });

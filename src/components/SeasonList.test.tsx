@@ -51,10 +51,9 @@ vi.mock("@/hooks/mutations", () => ({
   useToggleSeasonWatched: () => ({ mutate: mocks.mutateSeasonWatched }),
 }));
 
-vi.mock("../store/useUserContentStore", () => ({
-  useUserContentStore: (
-    selector: (state: typeof mocks.useStoreValue) => unknown,
-  ) => selector(mocks.useStoreValue),
+vi.mock("@/hooks/userContent", () => ({
+  useShowWatchedEpisodes: (showId: number) =>
+    mocks.useStoreValue.watchedEpisodes[showId] ?? {},
 }));
 
 vi.mock("../hooks/useSeasonProgress", () => ({

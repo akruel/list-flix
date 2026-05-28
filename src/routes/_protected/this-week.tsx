@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useMyList, useWatchedEpisodes } from "@/hooks/userContent";
 import {
   getDateKey,
   getDayLabel,
@@ -15,7 +16,6 @@ import { logger } from "@/lib/logger";
 import { watchingContextBatchQuery } from "@/services/listService.queries";
 import { tmdb } from "@/services/tmdb";
 import { detailsQuery, seasonQuery } from "@/services/tmdb.queries";
-import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentDetails, ContentItem, Episode } from "@/types";
 
 import { sharedTvItemsSafeQuery } from "./-this-week.queries";
@@ -81,8 +81,8 @@ export function ThisWeekErrorComponent({ error }: { error: Error }) {
 }
 
 export function ThisWeekComponent() {
-  const myList = useUserContentStore((s) => s.myList);
-  const watchedEpisodes = useUserContentStore((s) => s.watchedEpisodes);
+  const myList = useMyList();
+  const watchedEpisodes = useWatchedEpisodes();
 
   const { data: sharedItems } = useSuspenseQuery(sharedTvItemsSafeQuery());
 

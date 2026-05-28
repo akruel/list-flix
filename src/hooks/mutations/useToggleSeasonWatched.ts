@@ -1,9 +1,12 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { userContentService } from "@/services/userContent";
-import { userContentKeys } from "@/services/userContent.queries";
-import { useUserContentStore } from "@/store/useUserContentStore";
-import type { Episode, WatchedEpisodeMetadata } from "@/types";
+import {
+  emptyUserContent,
+  type UserContent,
+  userContentKeys,
+} from "@/services/userContent.queries";
+import type { Episode } from "@/types";
 
 export type ToggleSeasonWatchedInput = {
   showId: number;
@@ -34,26 +37,43 @@ export function useToggleSeasonWatched() {
     },
     onMutate: async ({ showId, seasonNumber, episodes, action }) => {
       await queryClient.cancelQueries({ queryKey: userContentKeys.all });
-      const previous = useUserContentStore.getState().watchedEpisodes;
-      if (action === "watch") {
-        useUserContentStore
-          .getState()
-          .markSeasonAsWatched(showId, seasonNumber, episodes);
-      } else {
-        useUserContentStore
-          .getState()
-          .markSeasonAsUnwatched(showId, seasonNumber);
-      }
+      const previous = queryClient.getQueryData<UserContent>(
+        userContentKeys.all,
+      );
+      queryClient.setQueryData<UserContent>(userContentKeys.all, (old) => {
+        const base = old ?? emptyUserContent();
+        const showEpisodes = base.watchedEpisodes[showId] ?? {};
+        if (action === "watch") {
+          const nextEpisodes = { ...showEpisodes };
+          episodes.forEach((ep) => {
+            nextEpisodes[ep.id] = {
+              season_number: seasonNumber,
+              episode_number: ep.episode_number,
+            };
+          });
+          return {
+            ...base,
+            watchedEpisodes: {
+              ...base.watchedEpisodes,
+              [showId]: nextEpisodes,
+            },
+          };
+        }
+        const remaining = Object.fromEntries(
+          Object.entries(showEpisodes).filter(
+            ([, meta]) => meta.season_number !== seasonNumber,
+          ),
+        );
+        return {
+          ...base,
+          watchedEpisodes: { ...base.watchedEpisodes, [showId]: remaining },
+        };
+      });
       return { previous };
     },
     onError: (_error, _variables, context) => {
-      if (context) {
-        useUserContentStore.setState({
-          watchedEpisodes: context.previous as Record<
-            number,
-            Record<number, WatchedEpisodeMetadata>
-          >,
-        });
+      if (context?.previous) {
+        queryClient.setQueryData(userContentKeys.all, context.previous);
       }
     },
     onSettled: () => {

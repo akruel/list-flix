@@ -35,17 +35,9 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("../store/useUserContentStore", () => ({
-  useUserContentStore: (
-    selector: (state: {
-      watchedIds: number[];
-      seriesMetadata: typeof mocks.seriesMetadataMap;
-    }) => unknown,
-  ) =>
-    selector({
-      watchedIds: mocks.watchedIds,
-      seriesMetadata: mocks.seriesMetadataMap,
-    }),
+vi.mock("../hooks/userContent", () => ({
+  useIsWatched: (id: number) => mocks.watchedIds.includes(id),
+  useSeriesMetadata: (id: number) => mocks.seriesMetadataMap[id],
 }));
 
 vi.mock("../hooks/useSeriesProgress", () => ({

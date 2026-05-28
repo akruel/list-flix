@@ -1,8 +1,12 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/lib/logger";
 import { supabase } from "@/lib/supabase";
+
+const pushSubscriptionKey = (userId: string | undefined) =>
+  ["pushSubscription", userId] as const;
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -44,17 +48,18 @@ async function getActiveRegistration(
 
 export function usePushNotification() {
   const { user, status } = useAuth();
+  const queryClient = useQueryClient();
   const [isSupported] = useState(isPushSupported);
   const [swReady, setSwReady] = useState(false);
   const [swChecked, setSwChecked] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | null>(
     () => (isPushSupported() ? Notification.permission : null),
   );
-  const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
   const [isUnsubscribing, setIsUnsubscribing] = useState(false);
 
   const isAuth = status === "authenticated";
+  const userId = user?.id;
 
   useEffect(() => {
     getActiveRegistration().then((reg) => {
@@ -63,31 +68,24 @@ export function usePushNotification() {
     });
   }, []);
 
-  useEffect(() => {
-    if (!isAuth || !user || !swReady) return;
-
-    let cancelled = false;
-
-    supabase
-      .from("push_subscriptions")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          logger.error("Failed to check push subscription:", error);
-          return;
-        }
-        setIsSubscribed(!!data);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isAuth, user, swReady]);
-
-  const effectiveIsSubscribed = !isAuth ? false : isSubscribed;
+  // Server state lives in React Query; subscribe/unsubscribe keep it in sync via
+  // setQueryData. Keyed on the user id so it resets automatically on logout.
+  const { data: isSubscribed = false } = useQuery({
+    queryKey: pushSubscriptionKey(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("push_subscriptions")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (error) {
+        logger.error("Failed to check push subscription:", error);
+        return false;
+      }
+      return !!data;
+    },
+    enabled: isAuth && !!userId && swReady,
+  });
 
   const subscribe = useCallback(async () => {
     if (!user || !swReady) return;
@@ -152,14 +150,14 @@ export function usePushNotification() {
         throw upsertError;
       }
 
-      setIsSubscribed(true);
+      queryClient.setQueryData(pushSubscriptionKey(user.id), true);
     } catch (error) {
       logger.error("Failed to subscribe to push:", error);
       throw error;
     } finally {
       setIsSubscribing(false);
     }
-  }, [user, swReady]);
+  }, [user, swReady, queryClient]);
 
   const unsubscribe = useCallback(async () => {
     if (!user || !swReady) return;
@@ -182,20 +180,20 @@ export function usePushNotification() {
 
       if (error) throw error;
 
-      setIsSubscribed(false);
+      queryClient.setQueryData(pushSubscriptionKey(user.id), false);
     } catch (error) {
       logger.error("Failed to unsubscribe from push:", error);
       throw error;
     } finally {
       setIsUnsubscribing(false);
     }
-  }, [user, swReady]);
+  }, [user, swReady, queryClient]);
 
   return {
     isSupported,
     swReady,
     permission,
-    isSubscribed: effectiveIsSubscribed,
+    isSubscribed,
     isSubscribing,
     isUnsubscribing,
     swChecked,

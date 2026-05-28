@@ -12,6 +12,9 @@ import App from "./App.tsx";
 import ErrorFallback from "./components/ErrorFallback";
 import { logger } from "./lib/logger";
 import { queryClient } from "./lib/queryClient";
+import { cleanupLegacyStorage } from "./store/migrate";
+
+cleanupLegacyStorage();
 
 const updateSW = registerSW({
   onNeedRefresh() {

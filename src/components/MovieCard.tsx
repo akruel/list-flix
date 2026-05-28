@@ -4,9 +4,9 @@ import { Check, Star, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 
+import { useIsWatched, useSeriesMetadata } from "../hooks/userContent";
 import { useSeriesProgress } from "../hooks/useSeriesProgress";
 import { tmdb } from "../services/tmdb";
-import { useUserContentStore } from "../store/useUserContentStore";
 import type { ContentItem, WatchingContext } from "../types";
 
 interface MovieCardProps {
@@ -26,10 +26,8 @@ export function MovieCard({
   const date =
     item.media_type === "movie" ? item.release_date : item.first_air_date;
   const year = date ? new Date(date).getFullYear() : "N/A";
-  const watched = useUserContentStore((s) => s.watchedIds.includes(item.id));
-  const seriesMetadata = useUserContentStore((s) =>
-    item.media_type === "tv" ? s.seriesMetadata[item.id] : undefined,
-  );
+  const watched = useIsWatched(item.id);
+  const seriesMetadata = useSeriesMetadata(item.id);
 
   const { watchedCount } = useSeriesProgress(item.id, 0);
 

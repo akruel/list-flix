@@ -10,12 +10,9 @@ const mocks = vi.hoisted(() => ({
   >,
 }));
 
-vi.mock("../store/useUserContentStore", () => ({
-  useUserContentStore: (
-    selector: (state: {
-      watchedEpisodes: typeof mocks.watchedEpisodes;
-    }) => unknown,
-  ) => selector({ watchedEpisodes: mocks.watchedEpisodes }),
+vi.mock("./userContent", () => ({
+  useShowWatchedEpisodes: (showId: number) =>
+    mocks.watchedEpisodes[showId] ?? {},
 }));
 
 function setWatchedSeasonEpisodes(

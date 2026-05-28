@@ -15,13 +15,13 @@ import {
   useRemoveListItem,
   useToggleWatchlist,
 } from "@/hooks/mutations";
+import { useIsInList } from "@/hooks/userContent";
 import { logger } from "@/lib/logger";
 import {
   listsContainingContentQuery,
   listsQuery,
 } from "@/services/list.queries";
 
-import { useUserContentStore } from "../store/useUserContentStore";
 import type { ContentItem } from "../types";
 import { ListSelectionModalSkeleton } from "./skeletons";
 
@@ -48,9 +48,7 @@ export function ListSelectionModal({
   const { mutate: toggleWatchlist } = useToggleWatchlist();
   const addListItem = useAddListItem();
   const removeListItem = useRemoveListItem();
-  const isContentInList = useUserContentStore((s) =>
-    s.myList.some((item) => item.id === content.id),
-  );
+  const isContentInList = useIsInList(content.id);
   const [toggling, setToggling] = useState<Record<string, boolean>>({});
 
   const lists = listsResult.data ?? [];

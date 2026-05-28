@@ -1,5 +1,7 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@tanstack/react-router", () => ({
@@ -42,6 +44,15 @@ vi.mock("./ui/skeleton", () => ({
 
 import { SearchModal } from "./SearchModal";
 
+function renderModal(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
+
 describe("SearchModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -53,21 +64,21 @@ describe("SearchModal", () => {
   });
 
   it("does not render when isOpen is false", () => {
-    const { container } = render(
+    const { container } = renderModal(
       <SearchModal isOpen={false} onClose={vi.fn()} />,
     );
     expect(container.innerHTML).toBe("");
   });
 
   it("renders when isOpen is true", () => {
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByTestId("search-modal-input")).toBeInTheDocument();
   });
 
   it("calls onClose when X button is clicked", async () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
-    render(<SearchModal isOpen={true} onClose={onClose} />);
+    renderModal(<SearchModal isOpen={true} onClose={onClose} />);
 
     await user.click(screen.getByRole("button", { name: /Fechar/i }));
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -77,7 +88,7 @@ describe("SearchModal", () => {
     vi.useFakeTimers();
     const onClose = vi.fn();
 
-    render(<SearchModal isOpen={true} onClose={onClose} />);
+    renderModal(<SearchModal isOpen={true} onClose={onClose} />);
 
     fireEvent.change(screen.getByTestId("search-modal-input"), {
       target: { value: "test" },
@@ -93,7 +104,7 @@ describe("SearchModal", () => {
   it("shows loading skeletons while searching", async () => {
     mockSearchFn.mockReturnValue(new Promise(() => {}));
 
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
     const user = userEvent.setup();
     await user.type(screen.getByTestId("search-modal-input"), "test");
@@ -106,7 +117,7 @@ describe("SearchModal", () => {
   it("shows empty state when search returns no results", async () => {
     mockSearchFn.mockResolvedValue({ results: [] });
 
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
     const user = userEvent.setup();
     await user.type(screen.getByTestId("search-modal-input"), "test");
@@ -126,7 +137,7 @@ describe("SearchModal", () => {
       ],
     });
 
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
     const user = userEvent.setup();
     await user.type(screen.getByTestId("search-modal-input"), "test");
@@ -142,7 +153,7 @@ describe("SearchModal", () => {
       results: [{ id: 101, title: "Movie", media_type: "movie" }],
     });
 
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
     const user = userEvent.setup();
     const input = screen.getByTestId("search-modal-input");
@@ -168,7 +179,7 @@ describe("SearchModal", () => {
     const onClose = vi.fn();
     const user = userEvent.setup();
 
-    render(<SearchModal isOpen={true} onClose={onClose} />);
+    renderModal(<SearchModal isOpen={true} onClose={onClose} />);
 
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -177,7 +188,7 @@ describe("SearchModal", () => {
   it("handles search error gracefully", async () => {
     mockSearchFn.mockRejectedValue(new Error("network error"));
 
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
     const user = userEvent.setup();
     await user.type(screen.getByTestId("search-modal-input"), "test");
@@ -215,7 +226,7 @@ describe("SearchModal", () => {
           }),
       );
 
-    render(<SearchModal isOpen={true} onClose={vi.fn()} />);
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
 
     const user = userEvent.setup();
     const input = screen.getByTestId("search-modal-input");

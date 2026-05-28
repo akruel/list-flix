@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useUserContentStore } from "../store/useUserContentStore";
+import { useShowWatchedEpisodes } from "./userContent";
 
 interface SeasonProgress {
   watchedCount: number;
@@ -20,14 +20,12 @@ export const useSeasonProgress = (
   seasonNumber: number,
   totalEpisodes: number,
 ): SeasonProgress => {
-  const watchedCount = useUserContentStore((s) => {
-    const showEpisodes = s.watchedEpisodes[showId] ?? {};
-    return Object.values(showEpisodes).filter(
-      (metadata) => metadata.season_number === seasonNumber,
-    ).length;
-  });
+  const showEpisodes = useShowWatchedEpisodes(showId);
 
   return useMemo(() => {
+    const watchedCount = Object.values(showEpisodes).filter(
+      (metadata) => metadata.season_number === seasonNumber,
+    ).length;
     const percentage =
       totalEpisodes > 0 ? Math.round((watchedCount / totalEpisodes) * 100) : 0;
 
@@ -36,5 +34,5 @@ export const useSeasonProgress = (
       totalCount: totalEpisodes,
       percentage,
     };
-  }, [watchedCount, totalEpisodes]);
+  }, [showEpisodes, seasonNumber, totalEpisodes]);
 };

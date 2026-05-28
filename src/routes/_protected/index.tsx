@@ -6,12 +6,12 @@ import { toast } from "sonner";
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMyList, useWatchedIds } from "@/hooks/userContent";
 import { deriveHomeTrending } from "@/lib/home-trending";
 import { logger } from "@/lib/logger";
 import { MOODS } from "@/services/moods";
 import { tasteSuggestionsQuery } from "@/services/taste.queries";
 import { discoverQuery, trendingQuery } from "@/services/tmdb.queries";
-import { useUserContentStore } from "@/store/useUserContentStore";
 
 export const Route = createFileRoute("/_protected/")({
   loader: ({ context }) =>
@@ -51,8 +51,8 @@ function HomeRouteComponent() {
     "movie" | "tv" | null
   >(null);
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
-  const myList = useUserContentStore((s) => s.myList);
-  const watchedIds = useUserContentStore((s) => s.watchedIds);
+  const myList = useMyList();
+  const watchedIds = useWatchedIds();
   const userId = useAuth().user?.id;
 
   const currentMood = selectedMood

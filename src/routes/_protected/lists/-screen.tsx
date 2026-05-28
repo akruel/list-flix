@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Eye, EyeOff, LayoutGrid, List, Trash2, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { CustomLists } from "@/components/CustomLists";
@@ -10,9 +10,9 @@ import { ListDetailsView } from "@/components/ListDetailsView";
 import { MovieCard } from "@/components/MovieCard";
 import { Button } from "@/components/ui/button";
 import { useToggleWatchlist } from "@/hooks/mutations";
+import { useMyList, useWatchedIds } from "@/hooks/userContent";
 import { logger } from "@/lib/logger";
 import { watchingContextBatchQuery } from "@/services/listService.queries";
-import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentItem } from "@/types";
 
 type FilterType = "all" | "watched" | "unwatched";
@@ -25,8 +25,8 @@ interface MyListScreenProps {
 
 export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
   const navigate = useNavigate();
-  const myList = useUserContentStore((s) => s.myList);
-  const watchedIds = useUserContentStore((s) => s.watchedIds);
+  const myList = useMyList();
+  const watchedIds = useWatchedIds();
   const toggleWatchlist = useToggleWatchlist();
 
   const [filter, setFilter] = useState<FilterType>("all");
@@ -75,11 +75,6 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
     });
   };
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMemberFilter(null);
-  }, [myList]);
-
   const handleRemoveFromWatchlist = async () => {
     if (!itemToRemove) return;
     try {
@@ -101,13 +96,19 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
   ).length;
   const unwatchedCount = myList.length - watchedCount;
 
+  // Derive the effective member filter rather than resetting it in an effect
+  // when the list changes: if the selected member is no longer present (e.g.
+  // the item that introduced them left the list), fall back to showing all.
+  const activeMemberFilter =
+    memberFilter && allMembers.includes(memberFilter) ? memberFilter : null;
+
   const filteredList = myList.filter((item) => {
     const isWatched = watchedIdSet.has(item.id);
     if (filter === "watched" && !isWatched) return false;
     if (filter === "unwatched" && isWatched) return false;
-    if (memberFilter) {
+    if (activeMemberFilter) {
       const contexts = watchingContextMap[item.id];
-      if (!contexts?.some((c) => c.memberNames?.includes(memberFilter)))
+      if (!contexts?.some((c) => c.memberNames?.includes(activeMemberFilter)))
         return false;
     }
     return true;
@@ -216,7 +217,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
               <button
                 onClick={() => setMemberFilter(null)}
                 className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                  memberFilter === null
+                  activeMemberFilter === null
                     ? "bg-purple-600 text-white"
                     : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 }`}
@@ -228,7 +229,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                   key={name}
                   onClick={() => setMemberFilter(name)}
                   className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
-                    memberFilter === name
+                    activeMemberFilter === name
                       ? "bg-purple-600 text-white"
                       : "bg-gray-800 text-gray-300 hover:bg-gray-700"
                   }`}
