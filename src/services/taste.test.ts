@@ -231,7 +231,7 @@ describe("tasteService", () => {
       expect(result).toEqual([]);
     });
 
-    it("handles AI errors gracefully", async () => {
+    it("re-throws AI errors so React Query can retry and avoid caching empty", async () => {
       const { tmdb } = await import("./tmdb");
       const { ai } = await import("./ai");
 
@@ -242,13 +242,13 @@ describe("tasteService", () => {
 
       vi.mocked(ai.getSuggestions).mockRejectedValue(new Error("AI failed"));
 
-      const result = await tasteService.getAiSuggestions({
-        myList: [mockMovieItem],
-        watchedIds: [],
-        listItemIds: [],
-      });
-
-      expect(result).toEqual([]);
+      await expect(
+        tasteService.getAiSuggestions({
+          myList: [mockMovieItem],
+          watchedIds: [],
+          listItemIds: [],
+        }),
+      ).rejects.toThrow("AI failed");
     });
 
     it("filters suggestions by media type context", async () => {

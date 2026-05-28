@@ -112,7 +112,7 @@ export const tasteService = {
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") throw err;
       logger.error("Error fetching AI suggestions:", err);
-      return [];
+      throw err;
     }
   },
 };

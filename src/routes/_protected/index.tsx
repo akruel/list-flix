@@ -5,12 +5,13 @@ import { toast } from "sonner";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
+import { useAuth } from "@/contexts/AuthContext";
+import { deriveHomeTrending } from "@/lib/home-trending";
 import { logger } from "@/lib/logger";
 import { MOODS } from "@/services/moods";
 import { tasteSuggestionsQuery } from "@/services/taste.queries";
 import { discoverQuery, trendingQuery } from "@/services/tmdb.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
-import type { ContentItem } from "@/types";
 
 export const Route = createFileRoute("/_protected/")({
   loader: ({ context }) =>
@@ -52,6 +53,7 @@ function HomeRouteComponent() {
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
   const myList = useUserContentStore((s) => s.myList);
   const watchedIds = useUserContentStore((s) => s.watchedIds);
+  const userId = useAuth().user?.id;
 
   const currentMood = selectedMood
     ? MOODS.find((m) => m.key === selectedMood)
@@ -74,9 +76,7 @@ function HomeRouteComponent() {
 
   const moodQueries = useQueries({ queries: moodQueriesConfig });
 
-  const moodLoading = moodQueries.some(
-    (q) => q.isPending && q.fetchStatus !== "idle",
-  );
+  const moodLoading = moodQueries.some((q) => q.isLoading);
   const moodError = moodQueries.find((q) => q.error)?.error;
 
   useEffect(() => {
@@ -86,33 +86,23 @@ function HomeRouteComponent() {
     }
   }, [moodError]);
 
-  const trending = useMemo<ContentItem[]>(() => {
-    if (selectedMood) {
-      if (selectedMediaType) {
-        return (moodQueries[0]?.data ?? []).slice(0, 20);
-      }
-      const movies = moodQueries[0]?.data ?? [];
-      const tvShows = moodQueries[1]?.data ?? [];
-      const merged: ContentItem[] = [];
-      const maxLen = Math.max(movies.length, tvShows.length);
-      for (let i = 0; i < maxLen && merged.length < 20; i++) {
-        if (i < movies.length) merged.push(movies[i]);
-        if (i < tvShows.length) merged.push(tvShows[i]);
-      }
-      return merged;
-    }
-    if (selectedMediaType) {
-      return trendingDefault.filter(
-        (item) => item.media_type === selectedMediaType,
-      );
-    }
-    return trendingDefault;
-  }, [moodQueries, selectedMediaType, selectedMood, trendingDefault]);
+  const trending = useMemo(
+    () =>
+      deriveHomeTrending({
+        selectedMood,
+        selectedMediaType,
+        trendingDefault,
+        moodResults: moodQueries.map((q) => q.data),
+      }),
+    [moodQueries, selectedMediaType, selectedMood, trendingDefault],
+  );
 
-  const tasteEnabled = myList.length > 0 || watchedIds.length > 0;
+  const tasteEnabled =
+    Boolean(userId) && (myList.length > 0 || watchedIds.length > 0);
 
   const tasteResult = useQuery({
     ...tasteSuggestionsQuery({
+      userId: userId ?? "",
       myList,
       watchedIds,
       listItemIds: [],

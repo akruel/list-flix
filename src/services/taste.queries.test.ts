@@ -9,36 +9,59 @@ vi.mock("./taste", () => ({
 }));
 
 describe("taste.queries", () => {
-  it("scopes the cache key by mood and mediaType", () => {
+  it("scopes the cache key by userId, mood and mediaType", () => {
     expect(tasteKeys.all).toEqual(["taste"]);
 
     const noScope = tasteSuggestionsQuery({
+      userId: "u1",
       myList: [],
       watchedIds: [],
       listItemIds: [],
     });
-    expect(noScope.queryKey).toEqual(["taste", "default"]);
+    expect(noScope.queryKey).toEqual(["taste", "u1", "default"]);
 
     const moodScope = tasteSuggestionsQuery({
+      userId: "u1",
       myList: [],
       watchedIds: [],
       listItemIds: [],
       mood: "suspense",
     });
-    expect(moodScope.queryKey).toEqual(["taste", "suspense"]);
+    expect(moodScope.queryKey).toEqual(["taste", "u1", "suspense"]);
 
     const fullScope = tasteSuggestionsQuery({
+      userId: "u1",
       myList: [],
       watchedIds: [],
       listItemIds: [],
       mood: "dark",
       mediaType: "tv",
     });
-    expect(fullScope.queryKey).toEqual(["taste", "dark_tv"]);
+    expect(fullScope.queryKey).toEqual(["taste", "u1", "dark_tv"]);
+  });
+
+  it("isolates cache entries between users", () => {
+    const userA = tasteSuggestionsQuery({
+      userId: "user-a",
+      myList: [],
+      watchedIds: [],
+      listItemIds: [],
+      mood: "suspense",
+    });
+    const userB = tasteSuggestionsQuery({
+      userId: "user-b",
+      myList: [],
+      watchedIds: [],
+      listItemIds: [],
+      mood: "suspense",
+    });
+
+    expect(userA.queryKey).not.toEqual(userB.queryKey);
   });
 
   it("uses a 12 hour stale + gc time", () => {
     const query = tasteSuggestionsQuery({
+      userId: "u1",
       myList: [],
       watchedIds: [],
       listItemIds: [],
@@ -48,13 +71,14 @@ describe("taste.queries", () => {
     expect(query.gcTime).toBe(twelveHours);
   });
 
-  it("forwards parameters and abort signal to tasteService.getAiSuggestions", async () => {
+  it("forwards parameters and abort signal to tasteService.getAiSuggestions (without userId)", async () => {
     const { tasteService } = await import("./taste");
     const controller = new AbortController();
     const myList = [{ id: 1, media_type: "movie", title: "A" }] as never;
     const listItemIds = [{ id: 5, mediaType: "tv" as const }];
 
     const query = tasteSuggestionsQuery({
+      userId: "u1",
       myList,
       watchedIds: [10],
       listItemIds,
