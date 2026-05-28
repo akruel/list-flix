@@ -25,8 +25,9 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }));
 
-vi.mock("../store/useStore", () => ({
-  useStore: () => mocks.storeValue,
+vi.mock("../store/useListsStore", () => ({
+  useListsStore: (selector: (state: typeof mocks.storeValue) => unknown) =>
+    selector(mocks.storeValue),
 }));
 
 vi.mock("../services/listService", () => ({

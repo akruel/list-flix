@@ -12,7 +12,7 @@ import {
 } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
-import { useStore } from "@/store/useStore";
+import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentDetails, Provider } from "@/types";
 
 export const Route = createFileRoute("/_protected/details/$type/$id")({
@@ -28,17 +28,18 @@ function DetailsRouteComponent() {
   const { type, id } = Route.useParams();
   const isValidType = type === "movie" || type === "tv";
   const contentType = isValidType ? type : "movie";
+  const numericId = Number(id);
 
   const [details, setDetails] = useState<ContentDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [showListModal, setShowListModal] = useState(false);
-  const {
-    isInList,
-    markAsWatched,
-    markAsUnwatched,
-    isWatched,
-    saveSeriesMetadata,
-  } = useStore();
+  const isSaved = useUserContentStore((s) =>
+    s.myList.some((item) => item.id === numericId),
+  );
+  const watched = useUserContentStore((s) => s.watchedIds.includes(numericId));
+  const markAsWatched = useUserContentStore((s) => s.markAsWatched);
+  const markAsUnwatched = useUserContentStore((s) => s.markAsUnwatched);
+  const saveSeriesMetadata = useUserContentStore((s) => s.saveSeriesMetadata);
 
   useEffect(() => {
     const fetchDetails = async () => {
@@ -88,8 +89,6 @@ function DetailsRouteComponent() {
       ? details.release_date
       : details.first_air_date;
   const year = date ? parseLocalDate(date).getFullYear() : "N/A";
-  const isSaved = isInList(details.id);
-  const watched = isWatched(details.id);
 
   const handleToggleList = () => {
     setShowListModal(true);

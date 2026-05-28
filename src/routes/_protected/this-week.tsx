@@ -13,7 +13,7 @@ import {
 import { logger } from "@/lib/logger";
 import { listService } from "@/services/listService";
 import { tmdb } from "@/services/tmdb";
-import { useStore } from "@/store/useStore";
+import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentItem, Episode, WatchingContext } from "@/types";
 
 export const Route = createFileRoute("/_protected/this-week")({
@@ -28,7 +28,7 @@ interface WeekEpisode {
 }
 
 function ThisWeekComponent() {
-  const { myList, isEpisodeWatched } = useStore();
+  const myList = useUserContentStore((s) => s.myList);
   const [episodes, setEpisodes] = useState<WeekEpisode[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -137,11 +137,15 @@ function ThisWeekComponent() {
               continue;
             }
 
+            const watchedEpisodes =
+              useUserContentStore.getState().watchedEpisodes[details.id] ?? {};
+
             for (const episode of seasonData.episodes) {
+              const isWatched = Object.hasOwn(watchedEpisodes, episode.id);
               if (
                 episode.air_date &&
                 isDateInCurrentWeek(episode.air_date) &&
-                !isEpisodeWatched(details.id, episode.id)
+                !isWatched
               ) {
                 weekEpisodes.push({
                   showId: details.id,
@@ -179,7 +183,7 @@ function ThisWeekComponent() {
     return () => {
       cancelled = true;
     };
-  }, [allTvShows, isEpisodeWatched]);
+  }, [allTvShows]);
 
   const groupedEpisodes = episodes.reduce<Record<string, WeekEpisode[]>>(
     (acc, ep) => {

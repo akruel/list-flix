@@ -8,15 +8,32 @@ const mocks = vi.hoisted(() => ({
   getSeasonDetails: vi.fn(),
   toastError: vi.fn(),
   useStoreValue: {
-    isEpisodeWatched: vi.fn(),
+    watchedEpisodes: {} as Record<
+      number,
+      Record<number, { season_number: number; episode_number: number }>
+    >,
     markEpisodeAsWatched: vi.fn(),
     markEpisodeAsUnwatched: vi.fn(),
     markSeasonAsWatched: vi.fn(),
     markSeasonAsUnwatched: vi.fn(),
-    getSeasonProgress: vi.fn(),
   },
   useSeasonProgress: vi.fn(),
 }));
+
+function buildWatchedEpisodes(perSeason: Record<number, number>) {
+  let episodeId = 1;
+  const map: Record<number, { season_number: number; episode_number: number }> =
+    {};
+  Object.entries(perSeason).forEach(([seasonNumber, count]) => {
+    for (let i = 0; i < count; i++) {
+      map[episodeId++] = {
+        season_number: Number(seasonNumber),
+        episode_number: i + 1,
+      };
+    }
+  });
+  return map;
+}
 
 vi.mock("../services/tmdb", () => ({
   tmdb: {
@@ -31,8 +48,10 @@ vi.mock("sonner", () => ({
   },
 }));
 
-vi.mock("../store/useStore", () => ({
-  useStore: () => mocks.useStoreValue,
+vi.mock("../store/useUserContentStore", () => ({
+  useUserContentStore: (
+    selector: (state: typeof mocks.useStoreValue) => unknown,
+  ) => selector(mocks.useStoreValue),
 }));
 
 vi.mock("../hooks/useSeasonProgress", () => ({
@@ -65,8 +84,7 @@ describe("SeasonList", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.useStoreValue.isEpisodeWatched.mockReturnValue(false);
-    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
+    mocks.useStoreValue.watchedEpisodes = {};
 
     mocks.useSeasonProgress.mockReturnValue({
       watchedCount: 0,
@@ -142,8 +160,6 @@ describe("SeasonList", () => {
   });
 
   it("marks season as watched without refetch when expanded episodes already belong to same season", async () => {
-    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
-
     render(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
@@ -191,7 +207,9 @@ describe("SeasonList", () => {
   });
 
   it("renders watched season with green styling and Eye icon", () => {
-    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 2 });
+    mocks.useStoreValue.watchedEpisodes = {
+      100: buildWatchedEpisodes({ 1: 2, 2: 2 }),
+    };
 
     render(<SeasonList tvId={100} seasons={seasons} />);
 
@@ -205,8 +223,6 @@ describe("SeasonList", () => {
   });
 
   it("fetches season details when marking as watched without expanding", async () => {
-    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
-
     render(<SeasonList tvId={100} seasons={seasons} />);
 
     const seasonToggleButtons = screen.getAllByRole("button", {
@@ -244,7 +260,9 @@ describe("SeasonList", () => {
   ])(
     "toggles season watched state for $caseName",
     async ({ watchedCount, expectedWatchedCall, expectedUnwatchedCall }) => {
-      mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount });
+      mocks.useStoreValue.watchedEpisodes = {
+        100: buildWatchedEpisodes({ 1: watchedCount }),
+      };
 
       render(<SeasonList tvId={100} seasons={seasons} />);
 
@@ -297,7 +315,6 @@ describe("SeasonList", () => {
   });
 
   it("shows toast error when season details fail on watched toggle", async () => {
-    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
     mocks.getSeasonDetails.mockRejectedValue(new Error("season failed"));
 
     render(<SeasonList tvId={100} seasons={seasons} />);
@@ -335,8 +352,6 @@ describe("SeasonList", () => {
   });
 
   it("clears stale episodes when expanding a new season", async () => {
-    mocks.useStoreValue.getSeasonProgress.mockReturnValue({ watchedCount: 0 });
-
     render(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
@@ -436,7 +451,9 @@ describe("SeasonList", () => {
       expectedWatchedCall,
       expectedUnwatchedCall,
     }) => {
-      mocks.useStoreValue.isEpisodeWatched.mockReturnValue(isEpisodeWatched);
+      mocks.useStoreValue.watchedEpisodes = isEpisodeWatched
+        ? { 100: { 101: { season_number: 1, episode_number: 1 } } }
+        : {};
 
       render(<SeasonList tvId={100} seasons={seasons} />);
 

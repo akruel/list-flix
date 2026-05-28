@@ -10,8 +10,8 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
-vi.mock("@/store/useStore", () => ({
-  useStore: {
+vi.mock("@/store/useUserContentStore", () => ({
+  useUserContentStore: {
     getState: () => ({ addToList: vi.fn() }),
   },
 }));

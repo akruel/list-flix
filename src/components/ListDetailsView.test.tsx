@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { useStore } from "../store/useStore";
+import { useListsStore } from "../store/useListsStore";
 import { ListDetailsView } from "./ListDetailsView";
 
 const mocks = vi.hoisted(() => ({
@@ -25,8 +25,8 @@ vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mocks.navigate,
 }));
 
-vi.mock("../store/useStore", () => ({
-  useStore: vi.fn(),
+vi.mock("../store/useListsStore", () => ({
+  useListsStore: vi.fn(),
 }));
 
 vi.mock("../services/listService", () => ({
@@ -112,7 +112,7 @@ vi.mock("./DeleteConfirmationModal", () => ({
     ) : null,
 }));
 
-const mockedUseStore = vi.mocked(useStore);
+const mockedUseListsStore = vi.mocked(useListsStore);
 let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 function createListDetails(overrides?: {
@@ -181,9 +181,12 @@ describe("ListDetailsView", () => {
       },
       configurable: true,
     });
-    mockedUseStore.mockReturnValue({
-      updateList: mocks.updateList,
-    } as unknown as ReturnType<typeof useStore>);
+    mockedUseListsStore.mockImplementation(((
+      selector?: (state: { updateList: typeof mocks.updateList }) => unknown,
+    ) => {
+      const state = { updateList: mocks.updateList };
+      return selector ? selector(state) : state;
+    }) as unknown as typeof useListsStore);
   });
 
   afterEach(() => {

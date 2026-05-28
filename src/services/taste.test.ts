@@ -23,8 +23,8 @@ let mockStore: {
   clearTasteSuggestions: ReturnType<typeof vi.fn>;
 };
 
-vi.mock("../store/useStore", () => ({
-  useStore: {
+vi.mock("../store/useTasteStore", () => ({
+  useTasteStore: {
     getState: () => mockStore,
   },
 }));

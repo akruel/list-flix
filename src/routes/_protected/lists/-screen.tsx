@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { logger } from "@/lib/logger";
 import { listService } from "@/services/listService";
 import { userContentService } from "@/services/userContent";
-import { useStore } from "@/store/useStore";
+import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentItem, WatchingContext } from "@/types";
 
 type FilterType = "all" | "watched" | "unwatched";
@@ -24,7 +24,9 @@ interface MyListScreenProps {
 
 export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
   const navigate = useNavigate();
-  const { myList, isWatched, removeFromList } = useStore();
+  const myList = useUserContentStore((s) => s.myList);
+  const watchedIds = useUserContentStore((s) => s.watchedIds);
+  const removeFromList = useUserContentStore((s) => s.removeFromList);
 
   const [filter, setFilter] = useState<FilterType>("all");
   const [activeTab, setActiveTab] = useState<TabType>(
@@ -114,12 +116,16 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
     }
   };
 
-  const watchedCount = myList.filter((item) => isWatched(item.id)).length;
+  const watchedIdSet = useMemo(() => new Set(watchedIds), [watchedIds]);
+  const watchedCount = myList.filter((item) =>
+    watchedIdSet.has(item.id),
+  ).length;
   const unwatchedCount = myList.length - watchedCount;
 
   const filteredList = myList.filter((item) => {
-    if (filter === "watched" && !isWatched(item.id)) return false;
-    if (filter === "unwatched" && isWatched(item.id)) return false;
+    const isWatched = watchedIdSet.has(item.id);
+    if (filter === "watched" && !isWatched) return false;
+    if (filter === "unwatched" && isWatched) return false;
     if (memberFilter) {
       const contexts = watchingContextMap[item.id];
       if (!contexts?.some((c) => c.memberNames?.includes(memberFilter)))

@@ -1,0 +1,28 @@
+---
+description: Supabase migrations, RLS, and schema change conventions
+globs: supabase/**/*
+alwaysApply: false
+---
+
+# Supabase
+
+## Migrations
+
+- Create new migrations with `pnpm run db:migration:new <name>` — never edit already-applied migrations
+- After schema changes, run `pnpm run test:rls` (requires Docker + Supabase CLI)
+- Verify existing RPCs and functions still work after changes
+
+## RLS
+
+- Every exposed table must have RLS enabled
+- Use restrictive policies when direct table access should be blocked
+- Prefer `SECURITY DEFINER` RPCs for complex reads across shared lists (see `supabase/migrations/20260522205547_activity_feed.sql`)
+
+## Edge Functions
+
+- Functions live in `supabase/functions/`
+- Follow existing patterns in the codebase before adding new endpoints
+
+## Details
+
+For deeper Supabase guidance, read `.agents/skills/supabase/SKILL.md`.

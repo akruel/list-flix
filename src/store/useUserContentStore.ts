@@ -1,24 +1,25 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import { listService } from "../services/listService";
 import { userContentService } from "../services/userContent";
 import type {
   ContentItem,
   Episode,
-  List,
   SeriesMetadata,
   WatchedEpisodeMetadata,
 } from "../types";
+import { NEW_KEYS } from "./migrate";
 
-interface ListStore {
+interface UserContentStore {
   myList: ContentItem[];
   watchedIds: number[];
-  watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>>; // showId -> { episodeId -> metadata }
-  seriesMetadata: Record<number, SeriesMetadata>; // showId -> metadata
+  watchedEpisodes: Record<number, Record<number, WatchedEpisodeMetadata>>;
+  seriesMetadata: Record<number, SeriesMetadata>;
+
   addToList: (item: ContentItem) => void;
   removeFromList: (id: number) => void;
   isInList: (id: number) => boolean;
+
   markAsWatched: (id: number) => void;
   markAsUnwatched: (id: number) => void;
   isWatched: (id: number) => boolean;
@@ -42,58 +43,24 @@ interface ListStore {
     seasonNumber: number,
   ) => { watchedCount: number };
   getSeriesProgress: (showId: number) => { watchedCount: number };
+
   saveSeriesMetadata: (showId: number, metadata: SeriesMetadata) => void;
   getSeriesMetadata: (showId: number) => SeriesMetadata | undefined;
 
   syncWithSupabase: () => Promise<void>;
-
-  // Shared Lists
-  lists: List[];
-  fetchLists: () => Promise<void>;
-  createList: (name: string) => Promise<List>;
-  deleteList: (id: string) => Promise<void>;
-  updateList: (id: string, name: string) => Promise<void>;
-
-  // Taste suggestions cache
-  tasteSuggestions: ContentItem[] | null;
-  tasteSuggestionsTimestamp: number | null;
-  tasteSuggestionsScope: string | null;
-  setTasteSuggestions: (suggestions: ContentItem[], scope?: string) => void;
-  clearTasteSuggestions: () => void;
 }
 
-export const useStore = create<ListStore>()(
+export const useUserContentStore = create<UserContentStore>()(
   persist(
     (set, get) => ({
       myList: [],
       watchedIds: [],
       watchedEpisodes: {},
       seriesMetadata: {},
-      lists: [],
-      tasteSuggestions: null,
-      tasteSuggestionsTimestamp: null,
-      tasteSuggestionsScope: null,
-
-      setTasteSuggestions: (suggestions, scope) => {
-        set({
-          tasteSuggestions: suggestions,
-          tasteSuggestionsTimestamp: Date.now(),
-          tasteSuggestionsScope: scope ?? null,
-        });
-      },
-
-      clearTasteSuggestions: () => {
-        set({
-          tasteSuggestions: null,
-          tasteSuggestionsTimestamp: null,
-          tasteSuggestionsScope: null,
-        });
-      },
 
       addToList: (item) => {
         set((state) => {
           if (state.myList.some((i) => i.id === item.id)) return state;
-          // Optimistic update
           userContentService.addToWatchlist(item);
           return { myList: [...state.myList, item] };
         });
@@ -101,7 +68,6 @@ export const useStore = create<ListStore>()(
 
       removeFromList: (id) => {
         set((state) => {
-          // Optimistic update
           userContentService.removeFromWatchlist(id);
           return {
             myList: state.myList.filter((i) => i.id !== id),
@@ -115,7 +81,6 @@ export const useStore = create<ListStore>()(
         set((state) => {
           if (state.watchedIds.includes(id)) return state;
 
-          // Try to find item metadata from myList if available
           const item = state.myList.find((i) => i.id === id);
           userContentService.markAsWatched(id, item?.media_type || "movie");
 
@@ -240,7 +205,6 @@ export const useStore = create<ListStore>()(
             ? state.watchedEpisodes[showId]
             : {};
 
-          // Remove all episodes that belong to this season
           const remaining = Object.fromEntries(
             Object.entries(currentShowEpisodes).filter(
               ([, meta]) => meta.season_number !== seasonNumber,
@@ -285,7 +249,6 @@ export const useStore = create<ListStore>()(
             [showId]: metadata,
           },
         }));
-        // Persist to Supabase
         userContentService.saveSeriesMetadata(showId, metadata);
       },
 
@@ -295,47 +258,20 @@ export const useStore = create<ListStore>()(
 
       syncWithSupabase: async () => {
         const state = get();
-        // 1. Upload local data to Supabase (migration)
         await userContentService.syncLocalData(
           state.myList,
           state.watchedIds,
           state.watchedEpisodes,
         );
 
-        // 2. Fetch latest data from Supabase (source of truth)
         const { watchlist, watchedIds, watchedEpisodes, seriesMetadata } =
           await userContentService.getUserContent();
 
         set({ myList: watchlist, watchedIds, watchedEpisodes, seriesMetadata });
       },
-
-      fetchLists: async () => {
-        const lists = await listService.getLists();
-        set({ lists });
-      },
-
-      createList: async (name) => {
-        const newList = await listService.createList(name);
-        get().fetchLists();
-        return newList;
-      },
-
-      deleteList: async (id) => {
-        await listService.deleteList(id);
-        set((state) => ({
-          lists: state.lists.filter((l) => l.id !== id),
-        }));
-      },
-
-      updateList: async (id, name) => {
-        await listService.updateList(id, name);
-        set((state) => ({
-          lists: state.lists.map((l) => (l.id === id ? { ...l, name } : l)),
-        }));
-      },
     }),
     {
-      name: "listflix-storage",
+      name: NEW_KEYS.userContent,
     },
   ),
 );

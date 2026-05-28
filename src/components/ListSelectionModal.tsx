@@ -12,7 +12,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
-import { useStore } from "../store/useStore";
+import { useListsStore } from "../store/useListsStore";
+import { useUserContentStore } from "../store/useUserContentStore";
 import type { ContentItem } from "../types";
 import { ListSelectionModalSkeleton } from "./skeletons";
 
@@ -27,7 +28,13 @@ export function ListSelectionModal({
   onClose,
   content,
 }: ListSelectionModalProps) {
-  const { lists, fetchLists, addToList, removeFromList, isInList } = useStore();
+  const lists = useListsStore((s) => s.lists);
+  const fetchLists = useListsStore((s) => s.fetchLists);
+  const addToList = useUserContentStore((s) => s.addToList);
+  const removeFromList = useUserContentStore((s) => s.removeFromList);
+  const isContentInList = useUserContentStore((s) =>
+    s.myList.some((item) => item.id === content.id),
+  );
   const [loading, setLoading] = useState(false);
   const [membership, setMembership] = useState<Record<string, string>>({}); // listId -> itemId
   const [toggling, setToggling] = useState<Record<string, boolean>>({}); // listId -> boolean
@@ -55,7 +62,7 @@ export function ListSelectionModal({
   }, [isOpen, content.id, content.media_type, fetchLists]);
 
   const handleToggleDefaultList = () => {
-    if (isInList(content.id)) {
+    if (isContentInList) {
       removeFromList(content.id);
     } else {
       addToList(content);
@@ -120,9 +127,9 @@ export function ListSelectionModal({
                   </div>
                   <span className="font-medium text-white">Minha Lista</span>
                 </div>
-                {isInList(content.id) && (
+                {isContentInList ? (
                   <Check size={20} className="text-purple-500" />
-                )}
+                ) : null}
               </Button>
 
               <div className="mx-3 my-2 h-px bg-gray-800" />

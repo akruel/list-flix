@@ -8,7 +8,8 @@ import { logger } from "@/lib/logger";
 import { getMoodDiscoverParams, MOODS } from "@/services/moods";
 import { tasteService } from "@/services/taste";
 import { tmdb } from "@/services/tmdb";
-import { useStore } from "@/store/useStore";
+import { useTasteStore } from "@/store/useTasteStore";
+import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentItem } from "@/types";
 
 export const Route = createFileRoute("/_protected/")({
@@ -24,7 +25,9 @@ function HomeRouteComponent() {
     "movie" | "tv" | null
   >(null);
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
-  const { myList, watchedIds, tasteSuggestions } = useStore();
+  const myList = useUserContentStore((s) => s.myList);
+  const watchedIds = useUserContentStore((s) => s.watchedIds);
+  const tasteSuggestions = useTasteStore((s) => s.tasteSuggestions);
 
   const currentMood = selectedMood
     ? MOODS.find((m) => m.key === selectedMood)
@@ -35,7 +38,7 @@ function HomeRouteComponent() {
 
   useEffect(() => {
     if (myList.length === 0 && watchedIds.length === 0) {
-      useStore.getState().clearTasteSuggestions();
+      useTasteStore.getState().clearTasteSuggestions();
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSuggestionsLoading(false);
       return;
@@ -48,7 +51,7 @@ function HomeRouteComponent() {
     prevMediaTypeRef.current = selectedMediaType;
 
     if (moodChanged || mediaTypeChanged) {
-      useStore.getState().clearTasteSuggestions();
+      useTasteStore.getState().clearTasteSuggestions();
     }
 
     let cancelled = false;
@@ -203,7 +206,7 @@ function HomeRouteComponent() {
             key={mood.key}
             onClick={() => {
               const newMood = selectedMood === mood.key ? null : mood.key;
-              if (newMood) useStore.getState().clearTasteSuggestions();
+              if (newMood) useTasteStore.getState().clearTasteSuggestions();
               setDecadeFilter(null);
               setSelectedMood(newMood);
             }}

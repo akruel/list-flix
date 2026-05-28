@@ -2,6 +2,7 @@ import { RouterProvider } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
+import { queryClient } from "./lib/queryClient";
 import { router } from "./router";
 
 function AppRouter() {
@@ -19,6 +20,7 @@ function AppRouter() {
           status,
           user,
         },
+        queryClient,
       }}
     />
   );

@@ -16,13 +16,16 @@ import { Input } from "@/components/ui/input";
 import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
-import { useStore } from "../store/useStore";
+import { useListsStore } from "../store/useListsStore";
 import type { ContentItem } from "../types";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MagicSearchModal } from "./MagicSearchModal";
 
 export function CustomLists() {
-  const { lists, fetchLists, createList, deleteList } = useStore();
+  const lists = useListsStore((s) => s.lists);
+  const fetchLists = useListsStore((s) => s.fetchLists);
+  const createList = useListsStore((s) => s.createList);
+  const deleteList = useListsStore((s) => s.deleteList);
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [listToDelete, setListToDelete] = useState<string | null>(null);

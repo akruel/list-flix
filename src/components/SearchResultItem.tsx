@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
-import { useStore } from "@/store/useStore";
+import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentItem } from "@/types";
 
 interface SearchResultItemProps {
@@ -24,7 +24,7 @@ export function SearchResultItem({ item }: SearchResultItemProps) {
     e.stopPropagation();
 
     try {
-      useStore.getState().addToList(item);
+      useUserContentStore.getState().addToList(item);
       toast.success(`"${title}" adicionado à lista`);
     } catch (err) {
       logger.error("Error adding to list:", err);

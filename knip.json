@@ -11,6 +11,7 @@
     "src/components/ui/dialog.tsx",
     "src/components/ui/dropdown-menu.tsx",
     "src/components/ui/scroll-area.tsx",
-    "src/components/ui/toast.tsx"
+    "src/components/ui/toast.tsx",
+    "src/hooks/mutations/index.ts"
   ]
 }

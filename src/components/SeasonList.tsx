@@ -15,7 +15,7 @@ import { logger } from "@/lib/logger";
 
 import { useSeasonProgress } from "../hooks/useSeasonProgress";
 import { tmdb } from "../services/tmdb";
-import { useStore } from "../store/useStore";
+import { useUserContentStore } from "../store/useUserContentStore";
 import type { Episode } from "../types";
 import { EpisodeListSkeleton } from "./skeletons";
 
@@ -37,14 +37,28 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const {
-    isEpisodeWatched,
-    markEpisodeAsWatched,
-    markEpisodeAsUnwatched,
-    markSeasonAsWatched,
-    markSeasonAsUnwatched,
-    getSeasonProgress,
-  } = useStore();
+  const showWatchedEpisodes = useUserContentStore(
+    (s) => s.watchedEpisodes[tvId],
+  );
+  const markEpisodeAsWatched = useUserContentStore(
+    (s) => s.markEpisodeAsWatched,
+  );
+  const markEpisodeAsUnwatched = useUserContentStore(
+    (s) => s.markEpisodeAsUnwatched,
+  );
+  const markSeasonAsWatched = useUserContentStore((s) => s.markSeasonAsWatched);
+  const markSeasonAsUnwatched = useUserContentStore(
+    (s) => s.markSeasonAsUnwatched,
+  );
+
+  const showEpisodesMap = showWatchedEpisodes ?? {};
+  const isEpisodeWatched = (episodeId: number) =>
+    Object.hasOwn(showEpisodesMap, episodeId);
+  const getSeasonProgress = (seasonNumber: number) => ({
+    watchedCount: Object.values(showEpisodesMap).filter(
+      (metadata) => metadata.season_number === seasonNumber,
+    ).length,
+  });
 
   const handleSeasonToggle = async (
     e: React.MouseEvent,
@@ -53,7 +67,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   ) => {
     e.stopPropagation(); // Prevent expanding/collapsing
 
-    const { watchedCount } = getSeasonProgress(tvId, seasonNumber);
+    const { watchedCount } = getSeasonProgress(seasonNumber);
     const isFullyWatched = watchedCount === totalEpisodes && totalEpisodes > 0;
 
     if (isFullyWatched) {
@@ -97,7 +111,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   };
 
   const toggleEpisodeWatched = (episode: Episode) => {
-    if (isEpisodeWatched(tvId, episode.id)) {
+    if (isEpisodeWatched(episode.id)) {
       markEpisodeAsUnwatched(tvId, episode.id);
     } else {
       markEpisodeAsWatched(
@@ -199,22 +213,20 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                       )
                     }
                     className={`z-10 rounded-full ${
-                      getSeasonProgress(tvId, season.season_number)
-                        .watchedCount === season.episode_count &&
-                      season.episode_count > 0
+                      getSeasonProgress(season.season_number).watchedCount ===
+                        season.episode_count && season.episode_count > 0
                         ? "text-green-500 hover:bg-green-500/10 hover:text-green-600"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     title={
-                      getSeasonProgress(tvId, season.season_number)
-                        .watchedCount === season.episode_count
+                      getSeasonProgress(season.season_number).watchedCount ===
+                      season.episode_count
                         ? "Marcar como não assistido"
                         : "Marcar como assistido"
                     }
                   >
-                    {getSeasonProgress(tvId, season.season_number)
-                      .watchedCount === season.episode_count &&
-                    season.episode_count > 0 ? (
+                    {getSeasonProgress(season.season_number).watchedCount ===
+                      season.episode_count && season.episode_count > 0 ? (
                       <Eye size={20} />
                     ) : (
                       <EyeOff size={20} />
@@ -253,7 +265,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                   ) : (
                     <div className="divide-y divide-border">
                       {episodes.map((episode) => {
-                        const isWatched = isEpisodeWatched(tvId, episode.id);
+                        const isWatched = isEpisodeWatched(episode.id);
                         return (
                           <div
                             key={episode.id}

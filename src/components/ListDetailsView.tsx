@@ -26,7 +26,7 @@ import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
 import { tmdb } from "../services/tmdb";
-import { useStore } from "../store/useStore";
+import { useListsStore } from "../store/useListsStore";
 import type { List, ListItem, ListMember } from "../types";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MovieCard } from "./MovieCard";
@@ -61,7 +61,7 @@ const ListDetailsSkeleton = () => (
 
 export function ListDetailsView({ id }: ListDetailsViewProps) {
   const navigate = useNavigate();
-  const { updateList } = useStore();
+  const updateList = useListsStore((s) => s.updateList);
   const [list, setList] = useState<List | null>(null);
   const [items, setItems] = useState<ListItem[]>([]);
   const [members, setMembers] = useState<ListMember[]>([]);
