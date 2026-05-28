@@ -21,7 +21,7 @@ import { authService } from "@/services/auth";
 import { listNameQuery } from "@/services/list.queries";
 
 const joinSearchSchema = z.object({
-  role: z.enum(["editor", "viewer"]).optional(),
+  role: z.enum(["editor", "viewer"]).catch("viewer"),
 });
 
 const userProfileQueryKey = ["auth", "userProfile"] as const;
@@ -63,7 +63,7 @@ type JoinPhase = "idle" | "forceInput" | "joining" | "success" | "error";
 
 function JoinListRouteComponent() {
   const { id } = Route.useParams();
-  const { role = "viewer" } = Route.useSearch();
+  const { role } = Route.useSearch();
   const navigate = useNavigate();
   const joinList = useJoinList();
   const joinSuccessTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
