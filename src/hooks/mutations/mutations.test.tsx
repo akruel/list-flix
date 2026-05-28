@@ -25,6 +25,10 @@ vi.mock("@/services/userContent", () => ({
   },
 }));
 
+vi.mock("@/services/listService", () => ({
+  listService: {},
+}));
+
 const mockedService = userContentService as unknown as {
   markAsWatched: ReturnType<typeof vi.fn>;
   markAsUnwatched: ReturnType<typeof vi.fn>;
