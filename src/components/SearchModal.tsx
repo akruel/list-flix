@@ -3,6 +3,7 @@ import { Search, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 
 import { SearchResultItem } from "./SearchResultItem";
@@ -20,12 +21,18 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const debouncedQuery = useDebouncedValue(query.trim(), 500);
 
-  const { data, isFetching } = useQuery({
+  const { data, isFetching, error } = useQuery({
     queryKey: ["search", debouncedQuery],
     queryFn: () => tmdb.search(debouncedQuery, { page: 1 }),
     enabled: isOpen && debouncedQuery.length > 0,
     select: (response) => response.results,
   });
+
+  useEffect(() => {
+    if (error) {
+      logger.error("Search error:", error);
+    }
+  }, [error]);
 
   const results = data ?? [];
   const isSearching = debouncedQuery.length > 0 && isFetching;
