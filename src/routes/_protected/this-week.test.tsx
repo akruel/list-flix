@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   >,
   detailsResults: [] as MockQueryResult[],
   seasonResults: [] as MockQueryResult[],
-  isDateInCurrentWeek: vi.fn(() => true),
+  isDateInCurrentWeek: vi.fn<(date: string) => boolean>(() => true),
 }));
 
 vi.mock("@/store/useUserContentStore", () => ({
