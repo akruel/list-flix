@@ -2,12 +2,26 @@ import { logger } from "../lib/logger";
 
 const LEGACY_KEY = "listflix-storage";
 const MIGRATION_FLAG = "listflix-store-split-migrated-v1";
+const ORPHAN_CLEANUP_FLAG = "listflix-taste-store-removed-v1";
 
 const NEW_KEYS = {
   userContent: "listflix-user-content",
   lists: "listflix-lists",
-  taste: "listflix-taste",
 } as const;
+
+const ORPHAN_KEYS = ["listflix-taste"] as const;
+
+function cleanupOrphanedKeys() {
+  try {
+    if (localStorage.getItem(ORPHAN_CLEANUP_FLAG)) return;
+    for (const key of ORPHAN_KEYS) {
+      localStorage.removeItem(key);
+    }
+    localStorage.setItem(ORPHAN_CLEANUP_FLAG, "1");
+  } catch (err) {
+    logger.error("Failed to clean up orphaned store keys:", err);
+  }
+}
 
 function migrateOnce() {
   try {
@@ -55,20 +69,6 @@ function migrateOnce() {
       );
     }
 
-    if (!localStorage.getItem(NEW_KEYS.taste)) {
-      localStorage.setItem(
-        NEW_KEYS.taste,
-        JSON.stringify({
-          state: {
-            tasteSuggestions: state.tasteSuggestions ?? null,
-            tasteSuggestionsTimestamp: state.tasteSuggestionsTimestamp ?? null,
-            tasteSuggestionsScope: state.tasteSuggestionsScope ?? null,
-          },
-          version: 0,
-        }),
-      );
-    }
-
     localStorage.removeItem(LEGACY_KEY);
     localStorage.setItem(MIGRATION_FLAG, "1");
   } catch (err) {
@@ -77,5 +77,6 @@ function migrateOnce() {
 }
 
 migrateOnce();
+cleanupOrphanedKeys();
 
 export { NEW_KEYS };

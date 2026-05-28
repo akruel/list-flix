@@ -4,9 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const LEGACY_KEY = "listflix-storage";
 const MIGRATION_FLAG = "listflix-store-split-migrated-v1";
+const ORPHAN_CLEANUP_FLAG = "listflix-taste-store-removed-v1";
 const NEW_USER_CONTENT = "listflix-user-content";
 const NEW_LISTS = "listflix-lists";
-const NEW_TASTE = "listflix-taste";
+const ORPHAN_TASTE = "listflix-taste";
 
 const loggerErrorMock = vi.fn();
 vi.mock("../lib/logger", () => ({
@@ -69,7 +70,7 @@ describe("migrate", () => {
     expect(localStorage.getItem(NEW_USER_CONTENT)).toBeNull();
   });
 
-  it("splits legacy state into three persisted slices", async () => {
+  it("splits legacy state into user-content and lists slices", async () => {
     const legacy = {
       state: {
         myList: [{ id: 1, media_type: "movie", title: "A" }],
@@ -78,8 +79,6 @@ describe("migrate", () => {
         seriesMetadata: { 7: { total_episodes: 12, number_of_seasons: 1 } },
         lists: [{ id: "list-1", name: "L", role: "owner" }],
         tasteSuggestions: [{ id: 9, media_type: "movie", title: "T" }],
-        tasteSuggestionsTimestamp: 1234,
-        tasteSuggestionsScope: "scope-x",
       },
     };
     localStorage.setItem(LEGACY_KEY, JSON.stringify(legacy));
@@ -90,11 +89,6 @@ describe("migrate", () => {
     expect(readKey(NEW_USER_CONTENT).state.watchedIds).toEqual([42]);
 
     expect(readKey(NEW_LISTS).state.lists).toEqual(legacy.state.lists);
-
-    expect(readKey(NEW_TASTE).state.tasteSuggestions).toEqual(
-      legacy.state.tasteSuggestions,
-    );
-    expect(readKey(NEW_TASTE).state.tasteSuggestionsScope).toBe("scope-x");
 
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
     expect(localStorage.getItem(MIGRATION_FLAG)).toBe("1");
@@ -113,12 +107,6 @@ describe("migrate", () => {
     });
 
     expect(readKey(NEW_LISTS).state).toEqual({ lists: [] });
-
-    expect(readKey(NEW_TASTE).state).toEqual({
-      tasteSuggestions: null,
-      tasteSuggestionsTimestamp: null,
-      tasteSuggestionsScope: null,
-    });
   });
 
   it("does not overwrite new keys that already exist", async () => {
@@ -134,16 +122,11 @@ describe("migrate", () => {
       NEW_LISTS,
       JSON.stringify({ state: { lists: "preserved" } }),
     );
-    localStorage.setItem(
-      NEW_TASTE,
-      JSON.stringify({ state: { tasteSuggestions: "preserved" } }),
-    );
 
     await importMigrate();
 
     expect(readKey(NEW_USER_CONTENT).state.myList).toBe("preserved");
     expect(readKey(NEW_LISTS).state.lists).toBe("preserved");
-    expect(readKey(NEW_TASTE).state.tasteSuggestions).toBe("preserved");
   });
 
   it("logs and swallows errors when legacy JSON is malformed", async () => {
@@ -154,5 +137,42 @@ describe("migrate", () => {
     expect(loggerErrorMock).toHaveBeenCalledOnce();
     expect(localStorage.getItem(LEGACY_KEY)).toBe("not-json");
     expect(localStorage.getItem(MIGRATION_FLAG)).toBeNull();
+  });
+
+  it("removes orphaned taste store key on first run", async () => {
+    localStorage.setItem(
+      ORPHAN_TASTE,
+      JSON.stringify({ state: { tasteSuggestions: [{ id: 1 }] } }),
+    );
+
+    await importMigrate();
+
+    expect(localStorage.getItem(ORPHAN_TASTE)).toBeNull();
+    expect(localStorage.getItem(ORPHAN_CLEANUP_FLAG)).toBe("1");
+  });
+
+  it("does not re-run orphan cleanup when flag is set", async () => {
+    localStorage.setItem(ORPHAN_CLEANUP_FLAG, "1");
+    localStorage.setItem(
+      ORPHAN_TASTE,
+      JSON.stringify({ state: { tasteSuggestions: "kept" } }),
+    );
+
+    await importMigrate();
+
+    expect(readKey(ORPHAN_TASTE).state.tasteSuggestions).toBe("kept");
+  });
+
+  it("logs and swallows errors when orphan cleanup fails", async () => {
+    const removeItemSpy = vi
+      .spyOn(Storage.prototype, "removeItem")
+      .mockImplementationOnce(() => {
+        throw new Error("storage offline");
+      });
+
+    await importMigrate();
+
+    expect(loggerErrorMock).toHaveBeenCalled();
+    removeItemSpy.mockRestore();
   });
 });
