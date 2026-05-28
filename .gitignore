@@ -38,3 +38,6 @@ test-results
 .agents/
 .opencode/
 skills-*.json
+
+# Local-only helper scripts (kept out of version control)
+scripts/setup-phase-worktrees.sh
