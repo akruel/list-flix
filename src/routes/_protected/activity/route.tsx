@@ -1,103 +1,87 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  useQueryClient,
+  useQueryErrorResetBoundary,
+  useSuspenseInfiniteQuery,
+} from "@tanstack/react-query";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Bell, List, RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo } from "react";
 
 import { ActivityCard } from "@/components/ActivityCard";
 import { ActivityFeedSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { getDayGroupLabel, getDayKeyFromIso } from "@/lib/date-utils";
-import { activityService, groupActivities } from "@/services/activityService";
+import { logger } from "@/lib/logger";
+import { activityFeedQuery, activityKeys } from "@/services/activity.queries";
+import { groupActivities } from "@/services/activityService";
 import type { GroupedActivity } from "@/types";
 
 export const Route = createFileRoute("/_protected/activity")({
+  loader: ({ context }) =>
+    context.queryClient.ensureInfiniteQueryData(activityFeedQuery()),
+  pendingComponent: ActivityPendingComponent,
+  errorComponent: ActivityErrorComponent,
   component: ActivityRouteComponent,
 });
 
-const PAGE_SIZE = 50;
+function ActivityPendingComponent() {
+  return (
+    <div data-testid="route-activity" className="mx-auto max-w-lg">
+      <ActivityHeader refreshDisabled />
+      <ActivityFeedSkeleton />
+    </div>
+  );
+}
 
-function ActivityRouteComponent() {
-  const [items, setItems] = useState<GroupedActivity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const offsetRef = useRef(0);
+function ActivityErrorComponent({ error }: { error: Error }) {
+  const router = useRouter();
+  const queryErrorResetBoundary = useQueryErrorResetBoundary();
 
-  const [fetchTrigger, setFetchTrigger] = useState<{
-    reset: boolean;
-    tick: number;
-  }>({ reset: true, tick: 0 });
+  logger.error("Activity route error:", error);
 
   useEffect(() => {
-    let cancelled = false;
-    const { reset } = fetchTrigger;
+    queryErrorResetBoundary.reset();
+  }, [queryErrorResetBoundary]);
 
-    const fetchFeed = async () => {
-      const offset = reset ? 0 : offsetRef.current;
+  const handleRetry = () => {
+    void router.invalidate();
+  };
 
-      if (reset) {
-        setLoading(true);
-        setError(null);
-      } else {
-        setLoadingMore(true);
-      }
+  return (
+    <div data-testid="route-activity" className="mx-auto max-w-lg">
+      <ActivityHeader onRefresh={handleRetry} />
+      <div className="flex flex-col items-center gap-4 py-20 text-center">
+        <Bell className="h-12 w-12 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">
+          Não foi possível carregar as atividades.
+        </p>
+        <Button variant="outline" size="sm" onClick={handleRetry}>
+          Tentar novamente
+        </Button>
+      </div>
+    </div>
+  );
+}
 
-      try {
-        const raw = await activityService.getActivityFeed(PAGE_SIZE, offset);
-        if (cancelled) return;
+function ActivityRouteComponent() {
+  const queryClient = useQueryClient();
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isFetchNextPageError,
+  } = useSuspenseInfiniteQuery(activityFeedQuery());
 
-        const grouped = groupActivities(raw);
-        setItems((prev) => (reset ? grouped : [...prev, ...grouped]));
-        offsetRef.current = offset + raw.length;
-        setHasMore(raw.length === PAGE_SIZE);
-      } catch {
-        if (!cancelled) setError("Não foi possível carregar as atividades.");
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-          setLoadingMore(false);
-        }
-      }
-    };
-
-    fetchFeed();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [fetchTrigger]);
+  const items = useMemo(() => groupActivities(data.pages.flat()), [data.pages]);
 
   const handleRefresh = () => {
-    setFetchTrigger((prev) => ({ reset: true, tick: prev.tick + 1 }));
+    void queryClient.resetQueries({ queryKey: activityKeys.feed() });
   };
 
   const handleLoadMore = () => {
-    setFetchTrigger((prev) => ({ reset: false, tick: prev.tick + 1 }));
+    void fetchNextPage();
   };
-
-  if (loading) {
-    return (
-      <div data-testid="route-activity" className="mx-auto max-w-lg">
-        <ActivityHeader onRefresh={handleRefresh} refreshDisabled />
-        <ActivityFeedSkeleton />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div data-testid="route-activity" className="mx-auto max-w-lg">
-        <ActivityHeader onRefresh={handleRefresh} />
-        <div className="flex flex-col items-center gap-4 py-20 text-center">
-          <Bell className="h-12 w-12 text-muted-foreground/50" />
-          <p className="text-sm text-muted-foreground">{error}</p>
-          <Button variant="outline" size="sm" onClick={handleRefresh}>
-            Tentar novamente
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   if (items.length === 0) {
     return (
@@ -135,15 +119,24 @@ function ActivityRouteComponent() {
         ))}
       </div>
 
-      {hasMore ? (
+      {isFetchNextPageError ? (
+        <div className="mt-6 flex flex-col items-center gap-2 text-center">
+          <p className="text-sm text-muted-foreground">
+            Não foi possível carregar mais atividades.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleLoadMore}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : hasNextPage ? (
         <div className="mt-6 flex justify-center">
           <Button
             variant="outline"
             size="sm"
             onClick={handleLoadMore}
-            disabled={loadingMore}
+            disabled={isFetchingNextPage}
           >
-            {loadingMore ? "Carregando..." : "Carregar mais"}
+            {isFetchingNextPage ? "Carregando..." : "Carregar mais"}
           </Button>
         </div>
       ) : null}
@@ -155,7 +148,7 @@ function ActivityHeader({
   onRefresh,
   refreshDisabled,
 }: {
-  onRefresh: () => void;
+  onRefresh?: () => void;
   refreshDisabled?: boolean;
 }) {
   return (
@@ -163,7 +156,7 @@ function ActivityHeader({
       <h1 className="text-2xl font-bold text-foreground">Atividades</h1>
       <button
         onClick={onRefresh}
-        disabled={refreshDisabled}
+        disabled={refreshDisabled || !onRefresh}
         aria-label="Atualizar feed"
         className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
       >

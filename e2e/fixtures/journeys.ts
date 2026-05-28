@@ -139,7 +139,13 @@ export const journeyCoverageManifest: JourneyCoverageEntry[] = [
     objective:
       "Ver atividade no feed quando um membro entra em uma lista compartilhada",
     blocking: true,
-    requiredScenarioIds: [SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT],
+    requiredScenarioIds: [
+      SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT,
+      SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE,
+      SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE_ERROR,
+      SCENARIO_IDS.ACTIVITY_FEED_INITIAL_ERROR_RETRY,
+      SCENARIO_IDS.ACTIVITY_FEED_REFRESH_RESETS,
+    ],
     touchedPaths: ["/auth", "/activity"],
   },
 ];
