@@ -1,6 +1,7 @@
+import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { CalendarDays, ChevronRight, Clock, Tv, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -11,12 +12,19 @@ import {
   isDateInCurrentWeek,
 } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { listService } from "@/services/listService";
+import {
+  sharedTvItemsQuery,
+  watchingContextBatchQuery,
+} from "@/services/listService.queries";
 import { tmdb } from "@/services/tmdb";
+import { detailsQuery, seasonQuery } from "@/services/tmdb.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
-import type { ContentItem, Episode, WatchingContext } from "@/types";
+import type { ContentItem, Episode } from "@/types";
 
 export const Route = createFileRoute("/_protected/this-week")({
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(sharedTvItemsQuery()),
+  errorComponent: ThisWeekErrorComponent,
   component: ThisWeekComponent,
 });
 
@@ -27,175 +35,149 @@ interface WeekEpisode {
   episode: Episode;
 }
 
-function ThisWeekComponent() {
-  const myList = useUserContentStore((s) => s.myList);
-  const [episodes, setEpisodes] = useState<WeekEpisode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+function ThisWeekErrorComponent({ error }: { error: Error }) {
+  logger.error("This Week route error:", error);
+  return (
+    <div
+      data-testid="route-this-week"
+      className="flex flex-col items-center gap-4 py-16 text-center"
+    >
+      <p className="text-muted-foreground">
+        Não foi possível carregar os episódios desta semana.
+      </p>
+      {import.meta.env.DEV ? (
+        <pre className="max-w-full overflow-auto rounded-md bg-muted px-4 py-2 text-left text-xs text-muted-foreground">
+          {error.message}
+        </pre>
+      ) : null}
+      <Button variant="outline" onClick={() => window.location.reload()}>
+        Tentar novamente
+      </Button>
+    </div>
+  );
+}
 
-  const [sharedTvIds, setSharedTvIds] = useState<Set<number>>(new Set());
-  const [watchingContextMap, setWatchingContextMap] = useState<
-    Record<number, WatchingContext[]>
-  >({});
-  const [sharedLoading, setSharedLoading] = useState(true);
+export function ThisWeekComponent() {
+  const myList = useUserContentStore((s) => s.myList);
+  const watchedEpisodes = useUserContentStore((s) => s.watchedEpisodes);
+
+  const { data: sharedItems } = useSuspenseQuery(sharedTvItemsQuery());
 
   const personalTvShows = useMemo(
     () => myList.filter((item) => item.media_type === "tv"),
     [myList],
   );
 
-  const allTvShows = useMemo(() => {
+  const allTvShows = useMemo<ContentItem[]>(() => {
     const personalIds = new Set(personalTvShows.map((i) => i.id));
-
-    const combined = [...personalTvShows];
-    for (const id of sharedTvIds) {
-      if (!personalIds.has(id)) {
-        combined.push({ id, media_type: "tv" } as ContentItem);
+    const combined: ContentItem[] = [...personalTvShows];
+    for (const item of sharedItems) {
+      if (!personalIds.has(item.content_id)) {
+        combined.push({ id: item.content_id, media_type: "tv" } as ContentItem);
       }
     }
     return combined;
-  }, [personalTvShows, sharedTvIds]);
+  }, [personalTvShows, sharedItems]);
 
-  const hasAnyTvShows = personalTvShows.length > 0 || sharedTvIds.size > 0;
-  const effectiveLoading = loading || (sharedLoading && !hasAnyTvShows);
-
-  // Fetch shared list TV shows and watching contexts
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchSharedItems = async () => {
-      try {
-        const items = await listService.getAllSharedTvItems();
-        if (cancelled) return;
-        const ids = new Set(items.map((i) => i.content_id));
-        setSharedTvIds(ids);
-
-        if (items.length > 0) {
-          const batchItems = items.map((i) => ({
-            contentId: i.content_id,
-            contentType: i.content_type as "movie" | "tv",
-          }));
-          const map = await listService
-            .getWatchingContextBatch(batchItems)
-            .catch(() => ({}) as Record<number, WatchingContext[]>);
-          if (!cancelled) setWatchingContextMap(map);
-        }
-      } catch (err) {
-        logger.error("Erro ao buscar séries de listas compartilhadas:", err);
-      } finally {
-        if (!cancelled) setSharedLoading(false);
-      }
-    };
-
-    fetchSharedItems();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchEpisodes = async () => {
-      if (allTvShows.length === 0) {
-        if (!cancelled) setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const results = await Promise.allSettled(
-          allTvShows.map((show) => tmdb.getDetails(show.id, "tv")),
-        );
-
-        if (cancelled) return;
-
-        const weekEpisodes: WeekEpisode[] = [];
-        let failCount = 0;
-
-        for (const result of results) {
-          if (result.status === "fulfilled") {
-            const details = result.value;
-
-            const activeSeason =
-              details.next_episode_to_air?.season_number ??
-              details.last_episode_to_air?.season_number;
-
-            if (activeSeason == null) continue;
-
-            let seasonData;
-            try {
-              seasonData = await tmdb.getSeasonDetails(
-                details.id,
-                activeSeason,
-              );
-            } catch {
-              failCount++;
-              continue;
-            }
-
-            const watchedEpisodes =
-              useUserContentStore.getState().watchedEpisodes[details.id] ?? {};
-
-            for (const episode of seasonData.episodes) {
-              const isWatched = Object.hasOwn(watchedEpisodes, episode.id);
-              if (
-                episode.air_date &&
-                isDateInCurrentWeek(episode.air_date) &&
-                !isWatched
-              ) {
-                weekEpisodes.push({
-                  showId: details.id,
-                  showName: details.name || "",
-                  showPoster: details.poster_path ?? null,
-                  episode,
-                });
-              }
-            }
-          } else {
-            failCount++;
-          }
-        }
-
-        if (weekEpisodes.length === 0 && failCount === results.length) {
-          setError("Erro ao carregar episódios da semana.");
-          return;
-        }
-
-        weekEpisodes.sort((a, b) =>
-          a.episode.air_date.localeCompare(b.episode.air_date),
-        );
-
-        setEpisodes(weekEpisodes);
-      } catch (err) {
-        logger.error("Erro ao buscar episódios da semana:", err);
-        setError("Erro ao carregar episódios da semana.");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchEpisodes();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [allTvShows]);
-
-  const groupedEpisodes = episodes.reduce<Record<string, WeekEpisode[]>>(
-    (acc, ep) => {
-      const key = getDateKey(ep.episode.air_date);
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(ep);
-      return acc;
-    },
-    {},
+  const watchingContextItems = useMemo(
+    () =>
+      sharedItems.map((i) => ({
+        contentId: i.content_id,
+        contentType: i.content_type as "movie" | "tv",
+      })),
+    [sharedItems],
   );
 
-  const sortedDays = Object.keys(groupedEpisodes).sort();
+  const { data: watchingContextMap = {} } = useQuery(
+    watchingContextBatchQuery(watchingContextItems),
+  );
+
+  const detailsResults = useQueries({
+    queries: allTvShows.map((show) => detailsQuery("tv", show.id)),
+  });
+
+  const seasonInputs = useMemo(() => {
+    const inputs: Array<{ tvId: number; seasonNumber: number }> = [];
+    for (const result of detailsResults) {
+      if (!result.data) continue;
+      const details = result.data;
+      const activeSeason =
+        details.next_episode_to_air?.season_number ??
+        details.last_episode_to_air?.season_number;
+      if (activeSeason != null) {
+        inputs.push({ tvId: details.id, seasonNumber: activeSeason });
+      }
+    }
+    return inputs;
+  }, [detailsResults]);
+
+  const seasonResults = useQueries({
+    queries: seasonInputs.map(({ tvId, seasonNumber }) =>
+      seasonQuery(tvId, seasonNumber),
+    ),
+  });
+
+  const isLoading =
+    detailsResults.some((r) => r.isPending) ||
+    (seasonInputs.length > 0 && seasonResults.some((r) => r.isPending));
+
+  const episodes = useMemo(() => {
+    const weekEpisodes: WeekEpisode[] = [];
+
+    const detailsById = new Map<
+      number,
+      (typeof detailsResults)[number]["data"] & {}
+    >();
+    for (const r of detailsResults) {
+      if (r.data) detailsById.set(r.data.id, r.data);
+    }
+
+    seasonResults.forEach((seasonResult, idx) => {
+      if (!seasonResult.data) return;
+      const input = seasonInputs[idx];
+      if (!input) return;
+      const details = detailsById.get(input.tvId);
+      if (!details) return;
+
+      const showWatched = watchedEpisodes[details.id] ?? {};
+
+      for (const episode of seasonResult.data.episodes) {
+        const isWatched = Object.hasOwn(showWatched, episode.id);
+        if (
+          episode.air_date &&
+          isDateInCurrentWeek(episode.air_date) &&
+          !isWatched
+        ) {
+          weekEpisodes.push({
+            showId: details.id,
+            showName: details.name ?? "",
+            showPoster: details.poster_path ?? null,
+            episode,
+          });
+        }
+      }
+    });
+
+    return weekEpisodes.sort((a, b) =>
+      a.episode.air_date.localeCompare(b.episode.air_date),
+    );
+  }, [seasonResults, seasonInputs, detailsResults, watchedEpisodes]);
+
+  const groupedEpisodes = useMemo(
+    () =>
+      episodes.reduce<Record<string, WeekEpisode[]>>((acc, ep) => {
+        const key = getDateKey(ep.episode.air_date);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(ep);
+        return acc;
+      }, {}),
+    [episodes],
+  );
+
+  const sortedDays = useMemo(
+    () => Object.keys(groupedEpisodes).sort(),
+    [groupedEpisodes],
+  );
 
   return (
     <div data-testid="route-this-week" className="space-y-6">
@@ -204,8 +186,8 @@ function ThisWeekComponent() {
         <h1 className="text-2xl font-bold">Esta Semana</h1>
       </div>
 
-      {effectiveLoading ? (
-        <div className="space-y-4">
+      {isLoading ? (
+        <div data-testid="loading-skeleton" className="space-y-4">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="space-y-2">
               <div className="h-5 w-40 animate-pulse rounded bg-muted" />
@@ -215,43 +197,28 @@ function ThisWeekComponent() {
         </div>
       ) : null}
 
-      {!effectiveLoading && error ? (
+      {!isLoading && allTvShows.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <p className="text-muted-foreground">{error}</p>
-          <Button variant="outline" onClick={() => window.location.reload()}>
-            Tentar novamente
+          <Tv className="h-12 w-12 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            Você ainda não adicionou nenhuma série à sua lista.
+          </p>
+          <Button asChild>
+            <Link to="/search">Buscar séries</Link>
           </Button>
         </div>
-      ) : null}
+      )}
 
-      {!effectiveLoading &&
-        !error &&
-        personalTvShows.length === 0 &&
-        sharedTvIds.size === 0 && (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <Tv className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Você ainda não adicionou nenhuma série à sua lista.
-            </p>
-            <Button asChild>
-              <Link to="/search">Buscar séries</Link>
-            </Button>
-          </div>
-        )}
+      {!isLoading && allTvShows.length > 0 && sortedDays.length === 0 && (
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <CalendarDays className="h-12 w-12 text-muted-foreground" />
+          <p className="text-muted-foreground">
+            Nenhum episódio estreia esta semana.
+          </p>
+        </div>
+      )}
 
-      {!effectiveLoading &&
-        !error &&
-        sortedDays.length === 0 &&
-        allTvShows.length > 0 && (
-          <div className="flex flex-col items-center gap-4 py-16 text-center">
-            <CalendarDays className="h-12 w-12 text-muted-foreground" />
-            <p className="text-muted-foreground">
-              Nenhum episódio estreia esta semana.
-            </p>
-          </div>
-        )}
-
-      {!effectiveLoading && !error && sortedDays.length > 0 && (
+      {!isLoading && sortedDays.length > 0 && (
         <div className="space-y-6">
           {sortedDays.map((dayKey) => (
             <section key={dayKey}>
