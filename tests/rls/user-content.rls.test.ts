@@ -28,6 +28,7 @@ async function createUserContentFixture(): Promise<UserContentFixture> {
   const insertWatchlist = await userA.client.from("watchlists").insert({
     tmdb_id: watchlistTmdbId,
     media_type: "movie",
+    title: "Watchlist movie",
   });
 
   if (insertWatchlist.error) throw insertWatchlist.error;
@@ -116,6 +117,7 @@ describe.sequential("RLS: watchlists policies", () => {
           user_id: fixture.userA.id,
           tmdb_id: Math.floor(Math.random() * 100000),
           media_type: "movie",
+          title: "Cross-user attempt",
         });
 
       expect(insertForOther.error).not.toBeNull();
@@ -142,6 +144,57 @@ describe.sequential("RLS: watchlists policies", () => {
         .single();
 
       expect(stillExists.error).toBeNull();
+    } finally {
+      await teardownFixture(fixture);
+    }
+  });
+
+  it("rejects inserts with no title or name (metadata constraint)", async () => {
+    const fixture = await createUserContentFixture();
+
+    try {
+      const missingMetadata = await fixture.userA.client
+        .from("watchlists")
+        .insert({
+          tmdb_id: Math.floor(Math.random() * 100000) + 1_000_000,
+          media_type: "movie",
+        });
+
+      expect(missingMetadata.error).not.toBeNull();
+      expect(missingMetadata.error?.message).toMatch(
+        /watchlists_metadata_required/i,
+      );
+
+      const blankMetadata = await fixture.userA.client
+        .from("watchlists")
+        .insert({
+          tmdb_id: Math.floor(Math.random() * 100000) + 2_000_000,
+          media_type: "tv",
+          title: "",
+          name: "",
+        });
+
+      expect(blankMetadata.error).not.toBeNull();
+    } finally {
+      await teardownFixture(fixture);
+    }
+  });
+
+  it("accepts inserts with name only (tv) or title only (movie)", async () => {
+    const fixture = await createUserContentFixture();
+
+    try {
+      const tmdbIdMovie = Math.floor(Math.random() * 100000) + 3_000_000;
+      const movieInsert = await fixture.userA.client
+        .from("watchlists")
+        .insert({ tmdb_id: tmdbIdMovie, media_type: "movie", title: "Movie" });
+      expect(movieInsert.error).toBeNull();
+
+      const tmdbIdShow = Math.floor(Math.random() * 100000) + 4_000_000;
+      const tvInsert = await fixture.userA.client
+        .from("watchlists")
+        .insert({ tmdb_id: tmdbIdShow, media_type: "tv", name: "Show" });
+      expect(tvInsert.error).toBeNull();
     } finally {
       await teardownFixture(fixture);
     }
