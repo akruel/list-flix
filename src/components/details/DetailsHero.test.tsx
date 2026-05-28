@@ -3,6 +3,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
+import type { ContentDetails } from "@/types";
+
 import { DetailsHero } from "./DetailsHero";
 
 vi.mock("@/services/tmdb", () => ({
@@ -11,16 +13,24 @@ vi.mock("@/services/tmdb", () => ({
   },
 }));
 
-const movieDetails = {
+const baseDetails = {
+  status: "Released",
+  credits: { cast: [] },
+  videos: { results: [] },
+  genres: [],
+} satisfies Pick<ContentDetails, "status" | "credits" | "videos" | "genres">;
+
+const movieDetails: ContentDetails = {
+  ...baseDetails,
+  genres: [{ id: 1, name: "Action" }],
   id: 1,
-  media_type: "movie" as const,
+  media_type: "movie",
   title: "Test Movie",
   release_date: "2020-05-15",
   vote_average: 8.2,
   runtime: 125,
   backdrop_path: "/backdrop.jpg",
   poster_path: "/poster.jpg",
-  genres: [{ id: 1, name: "Action" }],
 };
 
 describe("DetailsHero", () => {
@@ -28,14 +38,12 @@ describe("DetailsHero", () => {
     render(
       <DetailsHero
         details={{
+          ...baseDetails,
           id: 2,
           media_type: "tv",
           name: "Test Show",
           first_air_date: "2019-03-01",
           vote_average: 7.5,
-          backdrop_path: null,
-          poster_path: null,
-          genres: [],
         }}
       />,
     );
@@ -62,9 +70,9 @@ describe("DetailsHero", () => {
     render(
       <DetailsHero
         details={{
+          ...baseDetails,
           id: 3,
           media_type: "tv",
-          genres: [],
         }}
       />,
     );
