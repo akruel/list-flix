@@ -1,4 +1,7 @@
-import { useSuspenseInfiniteQuery } from "@tanstack/react-query";
+import {
+  useQueryClient,
+  useSuspenseInfiniteQuery,
+} from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Bell, List, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
@@ -8,7 +11,7 @@ import { ActivityFeedSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
 import { getDayGroupLabel, getDayKeyFromIso } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { activityFeedQuery } from "@/services/activity.queries";
+import { activityFeedQuery, activityKeys } from "@/services/activity.queries";
 import { groupActivities } from "@/services/activityService";
 import type { GroupedActivity } from "@/types";
 
@@ -55,19 +58,19 @@ function ActivityErrorComponent({
 }
 
 function ActivityRouteComponent() {
+  const queryClient = useQueryClient();
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
-    refetch,
-    isRefetching,
+    isFetchNextPageError,
   } = useSuspenseInfiniteQuery(activityFeedQuery());
 
   const items = useMemo(() => groupActivities(data.pages.flat()), [data.pages]);
 
   const handleRefresh = () => {
-    void refetch();
+    void queryClient.resetQueries({ queryKey: activityKeys.feed() });
   };
 
   const handleLoadMore = () => {
@@ -77,10 +80,7 @@ function ActivityRouteComponent() {
   if (items.length === 0) {
     return (
       <div data-testid="route-activity" className="mx-auto max-w-lg">
-        <ActivityHeader
-          onRefresh={handleRefresh}
-          refreshDisabled={isRefetching}
-        />
+        <ActivityHeader onRefresh={handleRefresh} />
         <EmptyState />
       </div>
     );
@@ -90,10 +90,7 @@ function ActivityRouteComponent() {
 
   return (
     <div data-testid="route-activity" className="mx-auto max-w-lg">
-      <ActivityHeader
-        onRefresh={handleRefresh}
-        refreshDisabled={isRefetching}
-      />
+      <ActivityHeader onRefresh={handleRefresh} />
       <div className="space-y-6">
         {grouped.map(({ dayLabel, dayItems }) => (
           <section key={dayLabel}>
@@ -116,7 +113,16 @@ function ActivityRouteComponent() {
         ))}
       </div>
 
-      {hasNextPage ? (
+      {isFetchNextPageError ? (
+        <div className="mt-6 flex flex-col items-center gap-2 text-center">
+          <p className="text-sm text-muted-foreground">
+            Não foi possível carregar mais atividades.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleLoadMore}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : hasNextPage ? (
         <div className="mt-6 flex justify-center">
           <Button
             variant="outline"

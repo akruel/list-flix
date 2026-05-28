@@ -1,3 +1,5 @@
+import type { Page } from "@playwright/test";
+
 import { signIn } from "../fixtures/auth";
 import { ROUTE_TEST_IDS, SCENARIO_IDS } from "../fixtures/routes";
 import {
@@ -10,6 +12,78 @@ import { mockTmdbApi } from "../fixtures/tmdb-mock";
 test.beforeEach(async ({ page }) => {
   await mockTmdbApi(page);
 });
+
+interface FakeActivity {
+  id: string;
+  actor_id: string;
+  activity_type: string;
+  list_id: string;
+  content_id: number | null;
+  content_type: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+function buildItemAddedActivities(
+  startIndex: number,
+  count: number,
+): FakeActivity[] {
+  const baseDate = new Date("2026-05-22T10:00:00Z").getTime();
+  return Array.from({ length: count }, (_, i) => {
+    const n = startIndex + i;
+    return {
+      id: `e2e-act-${n}`,
+      actor_id: "actor-e2e",
+      activity_type: "item_added",
+      list_id: "list-e2e",
+      content_id: 1000 + n,
+      content_type: "movie",
+      metadata: {
+        actor_name: "Mock Actor",
+        content_title: `E2E Item ${n}`,
+        list_name: "E2E List",
+      },
+      created_at: new Date(baseDate - n * 60_000).toISOString(),
+    };
+  });
+}
+
+interface FeedResponse {
+  status: number;
+  body: unknown;
+}
+
+type FeedHandler = (offset: number, callIndex: number) => FeedResponse;
+
+async function interceptActivityFeed(
+  page: Page,
+  handler: FeedHandler,
+): Promise<void> {
+  const callsPerOffset = new Map<number, number>();
+
+  await page.route("**/rest/v1/rpc/get_activity_feed*", async (route) => {
+    const req = route.request();
+    if (req.method() !== "POST") {
+      await route.continue();
+      return;
+    }
+
+    const parsed = req.postDataJSON() as {
+      p_offset?: number;
+      p_limit?: number;
+    } | null;
+    const offset = typeof parsed?.p_offset === "number" ? parsed.p_offset : 0;
+    const callIndex = callsPerOffset.get(offset) ?? 0;
+    callsPerOffset.set(offset, callIndex + 1);
+
+    const { status, body } = handler(offset, callIndex);
+    await route.fulfill({
+      status,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
+  });
+}
 
 test(`[${SCENARIO_IDS.ACTIVITY_FEED_RENDER}] renders activity route`, async ({
   page,
@@ -75,4 +149,133 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT}] shows member_joined activ
     await memberCleanup.run();
     await ownerCleanup.run();
   }
+});
+
+test(`[${SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE}] appends next page when "Carregar mais" is clicked`, async ({
+  page,
+}) => {
+  await signIn(page);
+
+  await interceptActivityFeed(page, (offset) => {
+    if (offset === 0) {
+      return { status: 200, body: buildItemAddedActivities(1, 50) };
+    }
+    if (offset === 50) {
+      return { status: 200, body: buildItemAddedActivities(51, 10) };
+    }
+    return { status: 200, body: [] };
+  });
+
+  await page.goto("/activity");
+
+  await expect(page.getByTestId(ROUTE_TEST_IDS.activity)).toBeVisible();
+  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(page.getByText("E2E Item 50")).toBeVisible();
+  await expect(page.getByText("E2E Item 51")).toBeHidden();
+
+  const loadMore = page.getByRole("button", { name: "Carregar mais" });
+  await expect(loadMore).toBeVisible();
+  await loadMore.click();
+
+  await expect(page.getByText("E2E Item 60")).toBeVisible();
+  await expect(page.getByText("E2E Item 51")).toBeVisible();
+  await expect(loadMore).toBeHidden();
+});
+
+test(`[${SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE_ERROR}] shows inline error and retries without dropping the list`, async ({
+  page,
+}) => {
+  await signIn(page);
+
+  await interceptActivityFeed(page, (offset, callIndex) => {
+    if (offset === 0) {
+      return { status: 200, body: buildItemAddedActivities(1, 50) };
+    }
+    if (offset === 50) {
+      if (callIndex === 0) {
+        return { status: 500, body: { message: "boom" } };
+      }
+      return { status: 200, body: buildItemAddedActivities(51, 10) };
+    }
+    return { status: 200, body: [] };
+  });
+
+  await page.goto("/activity");
+
+  await expect(page.getByText("E2E Item 1")).toBeVisible();
+
+  await page.getByRole("button", { name: "Carregar mais" }).click();
+
+  await expect(
+    page.getByText("Não foi possível carregar mais atividades."),
+  ).toBeVisible();
+  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(page.getByText("E2E Item 50")).toBeVisible();
+
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+
+  await expect(page.getByText("E2E Item 60")).toBeVisible();
+  await expect(
+    page.getByText("Não foi possível carregar mais atividades."),
+  ).toBeHidden();
+});
+
+test(`[${SCENARIO_IDS.ACTIVITY_FEED_INITIAL_ERROR_RETRY}] surfaces errorComponent on initial failure and recovers via retry`, async ({
+  page,
+}) => {
+  await signIn(page);
+
+  await interceptActivityFeed(page, (offset, callIndex) => {
+    if (offset === 0) {
+      if (callIndex === 0) {
+        return { status: 500, body: { message: "boom" } };
+      }
+      return { status: 200, body: buildItemAddedActivities(1, 5) };
+    }
+    return { status: 200, body: [] };
+  });
+
+  await page.goto("/activity");
+
+  await expect(
+    page.getByText("Não foi possível carregar as atividades."),
+  ).toBeVisible();
+
+  await page.getByRole("button", { name: "Tentar novamente" }).click();
+
+  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(
+    page.getByText("Não foi possível carregar as atividades."),
+  ).toBeHidden();
+});
+
+test(`[${SCENARIO_IDS.ACTIVITY_FEED_REFRESH_RESETS}] refresh resets the feed back to page one`, async ({
+  page,
+}) => {
+  await signIn(page);
+
+  await interceptActivityFeed(page, (offset) => {
+    if (offset === 0) {
+      return { status: 200, body: buildItemAddedActivities(1, 50) };
+    }
+    if (offset === 50) {
+      return { status: 200, body: buildItemAddedActivities(51, 10) };
+    }
+    return { status: 200, body: [] };
+  });
+
+  await page.goto("/activity");
+
+  await expect(page.getByText("E2E Item 1")).toBeVisible();
+
+  const loadMore = page.getByRole("button", { name: "Carregar mais" });
+  await loadMore.click();
+  await expect(page.getByText("E2E Item 60")).toBeVisible();
+
+  await page.getByRole("button", { name: "Atualizar feed" }).click();
+
+  await expect(page.getByText("E2E Item 60")).toBeHidden();
+  await expect(page.getByText("E2E Item 51")).toBeHidden();
+  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(loadMore).toBeVisible();
 });
