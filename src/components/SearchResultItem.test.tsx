@@ -25,11 +25,9 @@ vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const mockAddToList = vi.fn();
-vi.mock("@/store/useUserContentStore", () => ({
-  useUserContentStore: {
-    getState: () => ({ addToList: mockAddToList }),
-  },
+const mockMutate = vi.fn();
+vi.mock("@/hooks/mutations", () => ({
+  useToggleWatchlist: () => ({ mutate: mockMutate }),
 }));
 
 import { SearchResultItem } from "./SearchResultItem";
@@ -60,13 +58,37 @@ describe("SearchResultItem", () => {
     expect(screen.getByTitle("Adicionar à lista")).toBeInTheDocument();
   });
 
-  it("calls addToList when add button is clicked", async () => {
+  it("shows success toast when mutation succeeds", async () => {
+    const user = userEvent.setup();
+    mockMutate.mockImplementation(
+      (_vars: unknown, options: { onSuccess?: () => void }) => {
+        options.onSuccess?.();
+      },
+    );
+
+    render(<SearchResultItem item={mockItem} />);
+
+    await user.click(screen.getByTitle("Adicionar à lista"));
+
+    const { toast } = await import("sonner");
+    expect(toast.success).toHaveBeenCalledWith(
+      '"Mock Movie 101" adicionado à lista',
+    );
+  });
+
+  it("calls toggleWatchlist when add button is clicked", async () => {
     const user = userEvent.setup();
     render(<SearchResultItem item={mockItem} />);
 
     await user.click(screen.getByTitle("Adicionar à lista"));
 
-    expect(mockAddToList).toHaveBeenCalledWith(mockItem);
+    expect(mockMutate).toHaveBeenCalledWith(
+      { item: mockItem, action: "add" },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      }),
+    );
   });
 
   it("renders link to details page", () => {
@@ -104,21 +126,24 @@ describe("SearchResultItem", () => {
     expect(screen.queryByText("0.0")).not.toBeInTheDocument();
   });
 
-  it("shows error toast when addToList throws", async () => {
+  it("shows error toast when mutation fails", async () => {
     const user = userEvent.setup();
-    mockAddToList.mockImplementation(() => {
-      throw new Error("add failed");
-    });
+    mockMutate.mockImplementation(
+      (_vars: unknown, options: { onError?: (err: Error) => void }) => {
+        options.onError?.(new Error("add failed"));
+      },
+    );
 
     render(<SearchResultItem item={mockItem} />);
 
     await user.click(screen.getByTitle("Adicionar à lista"));
 
-    // The error should be logged and a toast shown
     const { logger } = await import("@/lib/logger");
+    const { toast } = await import("sonner");
     expect(logger.error).toHaveBeenCalledWith(
       "Error adding to list:",
       expect.any(Error),
     );
+    expect(toast.error).toHaveBeenCalledWith("Erro ao adicionar");
   });
 });

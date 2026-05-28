@@ -16,8 +16,7 @@ const mocks = vi.hoisted(() => ({
       role: "owner" | "editor" | "viewer";
     }>,
     fetchLists: vi.fn(),
-    addToList: vi.fn(),
-    removeFromList: vi.fn(),
+    toggleWatchlist: vi.fn(),
     myList: [] as Array<{ id: number; media_type: "movie" | "tv" }>,
   },
   getListsContainingContent: vi.fn(),
@@ -38,17 +37,15 @@ vi.mock("../store/useListsStore", () => ({
     }),
 }));
 
+vi.mock("@/hooks/mutations", () => ({
+  useToggleWatchlist: () => ({ mutate: mocks.storeValue.toggleWatchlist }),
+}));
+
 vi.mock("../store/useUserContentStore", () => ({
   useUserContentStore: (
-    selector: (state: {
-      addToList: typeof mocks.storeValue.addToList;
-      removeFromList: typeof mocks.storeValue.removeFromList;
-      myList: typeof mocks.storeValue.myList;
-    }) => unknown,
+    selector: (state: { myList: typeof mocks.storeValue.myList }) => unknown,
   ) =>
     selector({
-      addToList: mocks.storeValue.addToList,
-      removeFromList: mocks.storeValue.removeFromList,
       myList: mocks.storeValue.myList,
     }),
 }));
@@ -154,17 +151,10 @@ describe("ListSelectionModal", () => {
     await screen.findByText("Minha Lista");
     await userEvent.click(screen.getByRole("button", { name: /Minha Lista/i }));
 
-    const isRemove = expectedCall === "remove";
-    expect(mocks.storeValue.removeFromList).toHaveBeenCalledTimes(
-      isRemove ? 1 : 0,
-    );
-    expect(mocks.storeValue.removeFromList.mock.calls[0]?.[0]).toEqual(
-      isRemove ? 10 : undefined,
-    );
-    expect(mocks.storeValue.addToList).toHaveBeenCalledTimes(isRemove ? 0 : 1);
-    expect(mocks.storeValue.addToList.mock.calls[0]?.[0]).toEqual(
-      isRemove ? undefined : content,
-    );
+    expect(mocks.storeValue.toggleWatchlist).toHaveBeenCalledWith({
+      item: content,
+      action: expectedCall,
+    });
   });
 
   it("toggles custom list removal when membership exists", async () => {

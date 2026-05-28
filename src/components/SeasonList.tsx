@@ -10,6 +10,10 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Progress } from "@/components/ui/progress";
+import {
+  useToggleEpisodeWatched,
+  useToggleSeasonWatched,
+} from "@/hooks/mutations";
 import { formatDate, parseLocalDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 
@@ -40,16 +44,8 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const showWatchedEpisodes = useUserContentStore(
     (s) => s.watchedEpisodes[tvId],
   );
-  const markEpisodeAsWatched = useUserContentStore(
-    (s) => s.markEpisodeAsWatched,
-  );
-  const markEpisodeAsUnwatched = useUserContentStore(
-    (s) => s.markEpisodeAsUnwatched,
-  );
-  const markSeasonAsWatched = useUserContentStore((s) => s.markSeasonAsWatched);
-  const markSeasonAsUnwatched = useUserContentStore(
-    (s) => s.markSeasonAsUnwatched,
-  );
+  const { mutate: mutateEpisodeWatched } = useToggleEpisodeWatched();
+  const { mutate: mutateSeasonWatched } = useToggleSeasonWatched();
 
   const showEpisodesMap = showWatchedEpisodes ?? {};
   const isEpisodeWatched = (episodeId: number) =>
@@ -71,7 +67,12 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     const isFullyWatched = watchedCount === totalEpisodes && totalEpisodes > 0;
 
     if (isFullyWatched) {
-      markSeasonAsUnwatched(tvId, seasonNumber);
+      mutateSeasonWatched({
+        showId: tvId,
+        seasonNumber,
+        episodes: [],
+        action: "unwatch",
+      });
     } else {
       try {
         let seasonEpisodes = episodes;
@@ -81,7 +82,12 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
           seasonEpisodes = data.episodes;
         }
 
-        markSeasonAsWatched(tvId, seasonNumber, seasonEpisodes);
+        mutateSeasonWatched({
+          showId: tvId,
+          seasonNumber,
+          episodes: seasonEpisodes,
+          action: "watch",
+        });
       } catch (error) {
         logger.error("Error fetching season details:", error);
         toast.error("Erro ao marcar temporada como assistida / não assistida");
@@ -110,17 +116,15 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     }
   };
 
-  const toggleEpisodeWatched = (episode: Episode) => {
-    if (isEpisodeWatched(episode.id)) {
-      markEpisodeAsUnwatched(tvId, episode.id);
-    } else {
-      markEpisodeAsWatched(
-        tvId,
-        episode.id,
-        episode.season_number,
-        episode.episode_number,
-      );
-    }
+  const handleToggleEpisodeWatched = (episode: Episode) => {
+    const isWatched = isEpisodeWatched(episode.id);
+    mutateEpisodeWatched({
+      showId: tvId,
+      episodeId: episode.id,
+      seasonNumber: episode.season_number,
+      episodeNumber: episode.episode_number,
+      action: isWatched ? "unwatch" : "watch",
+    });
   };
 
   // Filter out season 0 (Specials) if desired, or keep it. Usually season 0 is specials.
@@ -315,7 +319,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                                     variant="ghost"
                                     size="icon"
                                     onClick={() =>
-                                      toggleEpisodeWatched(episode)
+                                      handleToggleEpisodeWatched(episode)
                                     }
                                     className={`h-8 w-8 flex-shrink-0 rounded-full ${
                                       isWatched

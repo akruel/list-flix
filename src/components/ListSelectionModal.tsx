@@ -9,6 +9,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToggleWatchlist } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
 
 import { listService } from "../services/listService";
@@ -30,8 +31,7 @@ export function ListSelectionModal({
 }: ListSelectionModalProps) {
   const lists = useListsStore((s) => s.lists);
   const fetchLists = useListsStore((s) => s.fetchLists);
-  const addToList = useUserContentStore((s) => s.addToList);
-  const removeFromList = useUserContentStore((s) => s.removeFromList);
+  const { mutate: toggleWatchlist } = useToggleWatchlist();
   const isContentInList = useUserContentStore((s) =>
     s.myList.some((item) => item.id === content.id),
   );
@@ -62,11 +62,10 @@ export function ListSelectionModal({
   }, [isOpen, content.id, content.media_type, fetchLists]);
 
   const handleToggleDefaultList = () => {
-    if (isContentInList) {
-      removeFromList(content.id);
-    } else {
-      addToList(content);
-    }
+    toggleWatchlist({
+      item: content,
+      action: isContentInList ? "remove" : "add",
+    });
   };
 
   const handleToggleCustomList = async (listId: string) => {
