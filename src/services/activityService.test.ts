@@ -32,25 +32,33 @@ function makeActivity(overrides: Partial<Activity> = {}): Activity {
 }
 
 describe("activityService.getActivityFeed", () => {
-  it("calls supabase.rpc with default limits and offset", async () => {
-    mockRpc.mockResolvedValueOnce({ data: [], error: null });
-    const feed = await activityService.getActivityFeed();
-    expect(mockRpc).toHaveBeenCalledWith("get_activity_feed", {
-      p_limit: 50,
-      p_offset: 0,
-    });
-    expect(feed).toEqual([]);
-  });
-
-  it("calls supabase.rpc with custom limits and offset", async () => {
-    mockRpc.mockResolvedValueOnce({ data: [{ id: "act-1" }], error: null });
-    const feed = await activityService.getActivityFeed(20, 10);
-    expect(mockRpc).toHaveBeenCalledWith("get_activity_feed", {
-      p_limit: 20,
-      p_offset: 10,
-    });
-    expect(feed).toEqual([{ id: "act-1" }]);
-  });
+  it.each([
+    {
+      caseName: "default limits and offset",
+      callArgs: [] as [],
+      data: [],
+      expectedRpcParams: { p_limit: 50, p_offset: 0 },
+      expectedReturn: [],
+    },
+    {
+      caseName: "custom limits and offset",
+      callArgs: [20, 10] as [number, number],
+      data: [{ id: "act-1" }],
+      expectedRpcParams: { p_limit: 20, p_offset: 10 },
+      expectedReturn: [{ id: "act-1" }],
+    },
+  ])(
+    "calls supabase.rpc with $caseName",
+    async ({ callArgs, data, expectedRpcParams, expectedReturn }) => {
+      mockRpc.mockResolvedValueOnce({ data, error: null });
+      const feed = await activityService.getActivityFeed(...callArgs);
+      expect(mockRpc).toHaveBeenCalledWith(
+        "get_activity_feed",
+        expectedRpcParams,
+      );
+      expect(feed).toEqual(expectedReturn);
+    },
+  );
 
   it("throws when supabase.rpc returns an error", async () => {
     const errorObj = new Error("Database error");
@@ -72,32 +80,31 @@ describe("groupActivities", () => {
     expect(groupActivities([])).toEqual([]);
   });
 
-  it("wraps non-episode-watched activities as singles", () => {
-    const activity = makeActivity({ activity_type: "movie_watched" });
+  it.each([
+    {
+      caseName: "non-episode-watched activities (movie_watched)",
+      overrides: { activity_type: "movie_watched" } as Partial<Activity>,
+    },
+    {
+      caseName: "member_joined",
+      overrides: {
+        activity_type: "member_joined",
+        content_id: null,
+        content_type: null,
+      } as Partial<Activity>,
+    },
+    {
+      caseName: "item_added",
+      overrides: { activity_type: "item_added" } as Partial<Activity>,
+    },
+    {
+      caseName: "item_removed",
+      overrides: { activity_type: "item_removed" } as Partial<Activity>,
+    },
+  ])("wraps $caseName as single", ({ overrides }) => {
+    const activity = makeActivity(overrides);
     const result = groupActivities([activity]);
     expect(result).toHaveLength(1);
-    expect(result[0]).toEqual({ type: "single", activity });
-  });
-
-  it("wraps member_joined as single", () => {
-    const activity = makeActivity({
-      activity_type: "member_joined",
-      content_id: null,
-      content_type: null,
-    });
-    const result = groupActivities([activity]);
-    expect(result[0]).toEqual({ type: "single", activity });
-  });
-
-  it("wraps item_added as single", () => {
-    const activity = makeActivity({ activity_type: "item_added" });
-    const result = groupActivities([activity]);
-    expect(result[0]).toEqual({ type: "single", activity });
-  });
-
-  it("wraps item_removed as single", () => {
-    const activity = makeActivity({ activity_type: "item_removed" });
-    const result = groupActivities([activity]);
     expect(result[0]).toEqual({ type: "single", activity });
   });
 
