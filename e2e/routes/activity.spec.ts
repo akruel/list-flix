@@ -55,6 +55,12 @@ interface FeedResponse {
 
 type FeedHandler = (offset: number, callIndex: number) => FeedResponse;
 
+function activityItemTitle(page: Page, index: number) {
+  return page
+    .getByTestId(ROUTE_TEST_IDS.activity)
+    .getByText(`E2E Item ${index}`, { exact: true });
+}
+
 async function interceptActivityFeed(
   page: Page,
   handler: FeedHandler,
@@ -169,16 +175,16 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE}] appends next page when "Carregar
   await page.goto("/activity");
 
   await expect(page.getByTestId(ROUTE_TEST_IDS.activity)).toBeVisible();
-  await expect(page.getByText("E2E Item 1")).toBeVisible();
-  await expect(page.getByText("E2E Item 50")).toBeVisible();
-  await expect(page.getByText("E2E Item 51")).toBeHidden();
+  await expect(activityItemTitle(page, 1)).toBeVisible();
+  await expect(activityItemTitle(page, 50)).toBeVisible();
+  await expect(activityItemTitle(page, 51)).toBeHidden();
 
   const loadMore = page.getByRole("button", { name: "Carregar mais" });
   await expect(loadMore).toBeVisible();
   await loadMore.click();
 
-  await expect(page.getByText("E2E Item 60")).toBeVisible();
-  await expect(page.getByText("E2E Item 51")).toBeVisible();
+  await expect(activityItemTitle(page, 60)).toBeVisible();
+  await expect(activityItemTitle(page, 51)).toBeVisible();
   await expect(loadMore).toBeHidden();
 });
 
@@ -202,19 +208,22 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE_ERROR}] shows inline error and ret
 
   await page.goto("/activity");
 
-  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(activityItemTitle(page, 1)).toBeVisible();
 
   await page.getByRole("button", { name: "Carregar mais" }).click();
 
   await expect(
     page.getByText("Não foi possível carregar mais atividades."),
   ).toBeVisible();
-  await expect(page.getByText("E2E Item 1")).toBeVisible();
-  await expect(page.getByText("E2E Item 50")).toBeVisible();
+  await expect(activityItemTitle(page, 1)).toBeVisible();
+  await expect(activityItemTitle(page, 50)).toBeVisible();
 
-  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await page
+    .getByTestId(ROUTE_TEST_IDS.activity)
+    .getByRole("button", { name: "Tentar novamente" })
+    .click();
 
-  await expect(page.getByText("E2E Item 60")).toBeVisible();
+  await expect(activityItemTitle(page, 60)).toBeVisible();
   await expect(
     page.getByText("Não foi possível carregar mais atividades."),
   ).toBeHidden();
@@ -241,9 +250,12 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_INITIAL_ERROR_RETRY}] surfaces errorComponen
     page.getByText("Não foi possível carregar as atividades."),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Tentar novamente" }).click();
+  await page
+    .getByTestId(ROUTE_TEST_IDS.activity)
+    .getByRole("button", { name: "Tentar novamente" })
+    .click();
 
-  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(activityItemTitle(page, 1)).toBeVisible();
   await expect(
     page.getByText("Não foi possível carregar as atividades."),
   ).toBeHidden();
@@ -266,16 +278,16 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_REFRESH_RESETS}] refresh resets the feed bac
 
   await page.goto("/activity");
 
-  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(activityItemTitle(page, 1)).toBeVisible();
 
   const loadMore = page.getByRole("button", { name: "Carregar mais" });
   await loadMore.click();
-  await expect(page.getByText("E2E Item 60")).toBeVisible();
+  await expect(activityItemTitle(page, 60)).toBeVisible();
 
   await page.getByRole("button", { name: "Atualizar feed" }).click();
 
-  await expect(page.getByText("E2E Item 60")).toBeHidden();
-  await expect(page.getByText("E2E Item 51")).toBeHidden();
-  await expect(page.getByText("E2E Item 1")).toBeVisible();
+  await expect(activityItemTitle(page, 60)).toBeHidden();
+  await expect(activityItemTitle(page, 51)).toBeHidden();
+  await expect(activityItemTitle(page, 1)).toBeVisible();
   await expect(loadMore).toBeVisible();
 });
