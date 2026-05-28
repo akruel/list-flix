@@ -7,15 +7,13 @@ import { SeasonList } from "./SeasonList";
 const mocks = vi.hoisted(() => ({
   getSeasonDetails: vi.fn(),
   toastError: vi.fn(),
+  mutateEpisodeWatched: vi.fn(),
+  mutateSeasonWatched: vi.fn(),
   useStoreValue: {
     watchedEpisodes: {} as Record<
       number,
       Record<number, { season_number: number; episode_number: number }>
     >,
-    markEpisodeAsWatched: vi.fn(),
-    markEpisodeAsUnwatched: vi.fn(),
-    markSeasonAsWatched: vi.fn(),
-    markSeasonAsUnwatched: vi.fn(),
   },
   useSeasonProgress: vi.fn(),
 }));
@@ -46,6 +44,11 @@ vi.mock("sonner", () => ({
   toast: {
     error: (...args: unknown[]) => mocks.toastError(...args),
   },
+}));
+
+vi.mock("@/hooks/mutations", () => ({
+  useToggleEpisodeWatched: () => ({ mutate: mocks.mutateEpisodeWatched }),
+  useToggleSeasonWatched: () => ({ mutate: mocks.mutateSeasonWatched }),
 }));
 
 vi.mock("../store/useUserContentStore", () => ({
@@ -172,11 +175,12 @@ describe("SeasonList", () => {
     await userEvent.click(seasonToggleButtons[0]);
 
     expect(mocks.getSeasonDetails).not.toHaveBeenCalled();
-    expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledWith(
-      100,
-      1,
-      expect.arrayContaining([expect.objectContaining({ id: 101 })]),
-    );
+    expect(mocks.mutateSeasonWatched).toHaveBeenCalledWith({
+      showId: 100,
+      seasonNumber: 1,
+      episodes: expect.arrayContaining([expect.objectContaining({ id: 101 })]),
+      action: "watch",
+    });
   });
 
   it("collapses season when clicking expanded season again", async () => {
@@ -234,13 +238,14 @@ describe("SeasonList", () => {
       expect(mocks.getSeasonDetails).toHaveBeenCalledWith(100, 1);
     });
     await waitFor(() => {
-      expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledWith(
-        100,
-        1,
-        expect.arrayContaining([
+      expect(mocks.mutateSeasonWatched).toHaveBeenCalledWith({
+        showId: 100,
+        seasonNumber: 1,
+        episodes: expect.arrayContaining([
           expect.objectContaining({ id: 101, name: "Episode 1" }),
         ]),
-      );
+        action: "watch",
+      });
     });
   });
 
@@ -259,7 +264,7 @@ describe("SeasonList", () => {
     },
   ])(
     "toggles season watched state for $caseName",
-    async ({ watchedCount, expectedWatchedCall, expectedUnwatchedCall }) => {
+    async ({ watchedCount, expectedWatchedCall }) => {
       mocks.useStoreValue.watchedEpisodes = {
         100: buildWatchedEpisodes({ 1: watchedCount }),
       };
@@ -272,12 +277,14 @@ describe("SeasonList", () => {
       await userEvent.click(seasonToggleButtons[0]);
 
       await waitFor(() => {
-        expect(mocks.useStoreValue.markSeasonAsWatched).toHaveBeenCalledTimes(
-          expectedWatchedCall ? 1 : 0,
-        );
+        expect(mocks.mutateSeasonWatched).toHaveBeenCalledTimes(1);
       });
-      expect(mocks.useStoreValue.markSeasonAsUnwatched.mock.calls).toEqual(
-        expectedUnwatchedCall ? [[100, 1]] : [],
+      expect(mocks.mutateSeasonWatched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showId: 100,
+          seasonNumber: 1,
+          action: expectedWatchedCall ? "watch" : "unwatch",
+        }),
       );
     },
   );
@@ -370,7 +377,7 @@ describe("SeasonList", () => {
     await userEvent.click(seasonToggleButtons[1]);
 
     await waitFor(() => {
-      expect(mocks.useStoreValue.markSeasonAsWatched).not.toHaveBeenCalled();
+      expect(mocks.mutateSeasonWatched).not.toHaveBeenCalled();
     });
     expect(mocks.toastError).toHaveBeenCalled();
   });
@@ -446,11 +453,7 @@ describe("SeasonList", () => {
     },
   ])(
     "toggles episode watched state for $caseName",
-    async ({
-      isEpisodeWatched,
-      expectedWatchedCall,
-      expectedUnwatchedCall,
-    }) => {
+    async ({ isEpisodeWatched, expectedWatchedCall }) => {
       mocks.useStoreValue.watchedEpisodes = isEpisodeWatched
         ? { 100: { 101: { season_number: 1, episode_number: 1 } } }
         : {};
@@ -467,11 +470,13 @@ describe("SeasonList", () => {
       });
       await userEvent.click(episodeButton);
 
-      expect(mocks.useStoreValue.markEpisodeAsWatched).toHaveBeenCalledTimes(
-        expectedWatchedCall ? 1 : 0,
-      );
-      expect(mocks.useStoreValue.markEpisodeAsUnwatched).toHaveBeenCalledTimes(
-        expectedUnwatchedCall ? 1 : 0,
+      expect(mocks.mutateEpisodeWatched).toHaveBeenCalledTimes(1);
+      expect(mocks.mutateEpisodeWatched).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showId: 100,
+          episodeId: 101,
+          action: expectedWatchedCall ? "watch" : "unwatch",
+        }),
       );
     },
   );

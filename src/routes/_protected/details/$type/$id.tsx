@@ -1,19 +1,19 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Check, Clock, Eye, EyeOff, Plus, Share2, Star } from "lucide-react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
+import { DetailsActions } from "@/components/details/DetailsActions";
+import { DetailsHero } from "@/components/details/DetailsHero";
+import { ProvidersBar } from "@/components/details/ProvidersBar";
 import { ListSelectionModal } from "@/components/ListSelectionModal";
 import { SeasonList } from "@/components/SeasonList";
 import { DetailsSkeleton } from "@/components/skeletons";
-import {
-  formatDateLong,
-  getCountdownText,
-  parseLocalDate,
-} from "@/lib/date-utils";
+import { useSaveSeriesMetadata, useToggleWatched } from "@/hooks/mutations";
+import { formatDateLong, getCountdownText } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
+import { detailsQuery } from "@/services/tmdb.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
-import type { ContentDetails, Provider } from "@/types";
 
 export const Route = createFileRoute("/_protected/details/$type/$id")({
   beforeLoad: ({ params }) => {
@@ -21,170 +21,102 @@ export const Route = createFileRoute("/_protected/details/$type/$id")({
       throw redirect({ to: "/" });
     }
   },
+  loader: ({ context, params }) => {
+    const type = params.type as "movie" | "tv";
+    return context.queryClient.ensureQueryData(
+      detailsQuery(type, Number(params.id)),
+    );
+  },
+  pendingComponent: DetailsSkeleton,
+  errorComponent: DetailsErrorComponent,
   component: DetailsRouteComponent,
 });
 
+function DetailsErrorComponent({ error }: { error: Error }) {
+  logger.error("Details route error:", error);
+
+  return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
+      <h1 className="text-2xl font-bold text-white">
+        Não foi possível carregar os detalhes
+      </h1>
+      <p className="text-gray-400">Verifique sua conexão e tente novamente.</p>
+      {import.meta.env.DEV ? (
+        <pre className="max-w-full overflow-auto rounded-md bg-gray-900 px-4 py-2 text-left text-xs text-gray-400">
+          {error.message}
+        </pre>
+      ) : null}
+      <Link
+        to="/"
+        className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+      >
+        Voltar para o início
+      </Link>
+    </div>
+  );
+}
+
 function DetailsRouteComponent() {
   const { type, id } = Route.useParams();
-  const isValidType = type === "movie" || type === "tv";
-  const contentType = isValidType ? type : "movie";
+  const contentType = type as "movie" | "tv";
   const numericId = Number(id);
 
-  const [details, setDetails] = useState<ContentDetails | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: details } = useSuspenseQuery(
+    detailsQuery(contentType, numericId),
+  );
   const [showListModal, setShowListModal] = useState(false);
+
   const isSaved = useUserContentStore((s) =>
     s.myList.some((item) => item.id === numericId),
   );
   const watched = useUserContentStore((s) => s.watchedIds.includes(numericId));
-  const markAsWatched = useUserContentStore((s) => s.markAsWatched);
-  const markAsUnwatched = useUserContentStore((s) => s.markAsUnwatched);
-  const saveSeriesMetadata = useUserContentStore((s) => s.saveSeriesMetadata);
+  const { mutate: toggleWatched } = useToggleWatched();
+  const { mutate: saveSeriesMetadata } = useSaveSeriesMetadata();
 
   useEffect(() => {
-    const fetchDetails = async () => {
-      if (!id || !isValidType) return;
-
-      try {
-        const data = await tmdb.getDetails(Number(id), contentType);
-        setDetails(data);
-
-        if (contentType === "tv" && data.seasons) {
-          const totalRegularEpisodes = data.seasons.reduce((acc, season) => {
-            if (season.season_number > 0) {
-              return acc + season.episode_count;
-            }
-            return acc;
-          }, 0);
-
-          saveSeriesMetadata(Number(id), {
-            total_episodes: totalRegularEpisodes,
-            number_of_seasons: data.number_of_seasons || 0,
-          });
+    if (contentType === "tv" && details.seasons) {
+      const totalRegularEpisodes = details.seasons.reduce((acc, season) => {
+        if (season.season_number > 0) {
+          return acc + season.episode_count;
         }
-      } catch (error) {
-        logger.error("Error fetching details:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+        return acc;
+      }, 0);
 
-    void fetchDetails();
-  }, [contentType, id, isValidType, saveSeriesMetadata]);
-
-  if (!isValidType) {
-    return <div>Conteúdo não encontrado</div>;
-  }
-
-  if (loading) {
-    return <DetailsSkeleton />;
-  }
-
-  if (!details) return <div>Conteúdo não encontrado</div>;
-
-  const title =
-    (details.media_type === "movie" ? details.title : details.name) || "";
-  const date =
-    details.media_type === "movie"
-      ? details.release_date
-      : details.first_air_date;
-  const year = date ? parseLocalDate(date).getFullYear() : "N/A";
-
-  const handleToggleList = () => {
-    setShowListModal(true);
-  };
-
-  const handleToggleWatched = () => {
-    if (watched) {
-      markAsUnwatched(details.id);
-    } else {
-      markAsWatched(details.id);
+      saveSeriesMetadata({
+        showId: numericId,
+        metadata: {
+          total_episodes: totalRegularEpisodes,
+          number_of_seasons: details.number_of_seasons || 0,
+        },
+      });
     }
-  };
+  }, [contentType, details, numericId, saveSeriesMetadata]);
 
   const providers = details["watch/providers"]?.results?.BR;
   const flatrate = providers?.flatrate || [];
   const rent = providers?.rent || [];
   const buy = providers?.buy || [];
 
+  const handleToggleWatched = () => {
+    toggleWatched({
+      id: details.id,
+      mediaType: details.media_type,
+      action: watched ? "unwatch" : "watch",
+    });
+  };
+
   return (
     <div data-testid="route-details" className="pb-10">
-      <div className="relative h-[40vh] w-full md:h-[60vh]">
-        <div className="absolute inset-0">
-          <img
-            src={tmdb.getImageUrl(details.backdrop_path || "", "original")}
-            alt={title}
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-950 via-gray-950/60 to-transparent" />
-        </div>
-
-        <div className="container absolute bottom-0 left-0 right-0 mx-auto flex flex-col items-end gap-6 p-4 md:flex-row">
-          <img
-            src={tmdb.getImageUrl(details.poster_path || "", "w300")}
-            alt={title}
-            className="hidden w-48 rounded-lg shadow-2xl md:block"
-          />
-          <div className="mb-4 flex-1">
-            <h1 className="mb-2 text-3xl font-bold md:text-5xl">{title}</h1>
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300 md:text-base">
-              <span className="flex items-center gap-1 text-yellow-400">
-                <Star size={16} fill="currentColor" />{" "}
-                {(details.vote_average || 0).toFixed(1)}
-              </span>
-              <span>{year}</span>
-              {!!details.runtime && (
-                <span className="flex items-center gap-1">
-                  <Clock size={16} /> {Math.floor(details.runtime / 60)}h{" "}
-                  {details.runtime % 60}m
-                </span>
-              )}
-              <div className="flex gap-2">
-                {details.genres.map((g) => (
-                  <span
-                    key={g.id}
-                    className="rounded-md bg-gray-800 px-2 py-1 text-xs"
-                  >
-                    {g.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DetailsHero details={details} />
 
       <div className="container mx-auto mt-8 px-4">
         <div className="space-y-8">
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            <button
-              data-testid="details-add-button"
-              onClick={handleToggleList}
-              className={`flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-colors ${
-                isSaved
-                  ? "bg-green-600 text-white hover:bg-green-700"
-                  : "bg-purple-600 text-white hover:bg-purple-700"
-              }`}
-            >
-              {isSaved ? <Check size={20} /> : <Plus size={20} />}
-              {isSaved ? "Salvo" : "Adicionar"}
-            </button>
-            <button
-              data-testid="details-toggle-watched-button"
-              onClick={handleToggleWatched}
-              className={`flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-colors ${
-                watched
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "bg-gray-800 text-white hover:bg-gray-700"
-              }`}
-            >
-              {watched ? <Eye size={20} /> : <EyeOff size={20} />}
-              {watched ? "Assistido" : "Marcar"}
-            </button>
-            <button className="flex items-center justify-center gap-2 rounded-xl bg-gray-800 py-3 font-semibold text-white transition-colors hover:bg-gray-700">
-              <Share2 size={20} /> Compartilhar
-            </button>
-          </div>
+          <DetailsActions
+            isSaved={isSaved}
+            watched={watched}
+            onToggleList={() => setShowListModal(true)}
+            onToggleWatched={handleToggleWatched}
+          />
 
           <section>
             <h2 className="mb-3 text-xl font-bold">Sinopse</h2>
@@ -301,74 +233,12 @@ function DetailsRouteComponent() {
         </div>
 
         <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div className="h-full rounded-xl border border-gray-800 bg-gray-900 p-6">
-            <h2 className="mb-4 text-xl font-bold">Onde Assistir</h2>
-
-            {!flatrate.length && !rent.length && !buy.length && (
-              <p className="text-sm text-gray-400">
-                Nenhuma informação de streaming disponível para o Brasil.
-              </p>
-            )}
-
-            {flatrate.length > 0 && (
-              <div className="mb-6">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
-                  Streaming
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {flatrate.map((provider) => (
-                    <ProviderLogo
-                      key={provider.provider_id}
-                      provider={provider}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {rent.length > 0 && (
-              <div className="mb-6">
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
-                  Alugar
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {rent.map((provider) => (
-                    <ProviderLogo
-                      key={provider.provider_id}
-                      provider={provider}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {buy.length > 0 && (
-              <div>
-                <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-gray-400">
-                  Comprar
-                </h3>
-                <div className="flex flex-wrap gap-3">
-                  {buy.map((provider) => (
-                    <ProviderLogo
-                      key={provider.provider_id}
-                      provider={provider}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!!providers?.link && (
-              <a
-                href={providers.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-6 block text-center text-xs text-purple-400 hover:text-purple-300"
-              >
-                Ver todos no TMDB
-              </a>
-            )}
-          </div>
+          <ProvidersBar
+            flatrate={flatrate}
+            rent={rent}
+            buy={buy}
+            link={providers?.link}
+          />
 
           {details.media_type === "tv" && (
             <div className="h-full rounded-xl border border-gray-800 bg-gray-900 p-6">
@@ -484,18 +354,6 @@ function DetailsRouteComponent() {
         isOpen={showListModal}
         onClose={() => setShowListModal(false)}
         content={details}
-      />
-    </div>
-  );
-}
-
-function ProviderLogo({ provider }: { provider: Provider }) {
-  return (
-    <div className="group relative" title={provider.provider_name}>
-      <img
-        src={tmdb.getImageUrl(provider.logo_path, "w300")}
-        alt={provider.provider_name}
-        className="h-12 w-12 rounded-lg shadow-sm transition-transform group-hover:scale-110"
       />
     </div>
   );

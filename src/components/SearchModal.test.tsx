@@ -10,10 +10,8 @@ vi.mock("@tanstack/react-router", () => ({
 
 vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 
-vi.mock("@/store/useUserContentStore", () => ({
-  useUserContentStore: {
-    getState: () => ({ addToList: vi.fn() }),
-  },
+vi.mock("@/hooks/mutations", () => ({
+  useToggleWatchlist: () => ({ mutate: vi.fn() }),
 }));
 
 const { mockSearchFn } = vi.hoisted(() => ({
