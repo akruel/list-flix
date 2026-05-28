@@ -247,6 +247,30 @@ const routeCoverageManifest: RouteCoverageEntry[] = [
     scenarioId: SCENARIO_IDS.ACTIVITY_FEED_SHOWS_LIST_EVENT,
     expectation: "render",
   },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE,
+    expectation: "render",
+  },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE_ERROR,
+    expectation: "render",
+  },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_INITIAL_ERROR_RETRY,
+    expectation: "render",
+  },
+  {
+    routePath: "/activity",
+    routeFile: "src/routes/_protected/activity/route.tsx",
+    scenarioId: SCENARIO_IDS.ACTIVITY_FEED_REFRESH_RESETS,
+    expectation: "render",
+  },
 ];
 
 function normalizeRoutePath(routePath: string): string {

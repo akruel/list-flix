@@ -1,6 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, Plus, Sparkles, Trash2, Users } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,45 +14,49 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import {
+  useAddListItems,
+  useCreateList,
+  useDeleteList,
+} from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
+import { listsQuery } from "@/services/list.queries";
+import type { ContentItem } from "@/types";
 
-import { listService } from "../services/listService";
-import { useListsStore } from "../store/useListsStore";
-import type { ContentItem } from "../types";
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MagicSearchModal } from "./MagicSearchModal";
 
 export function CustomLists() {
-  const lists = useListsStore((s) => s.lists);
-  const fetchLists = useListsStore((s) => s.fetchLists);
-  const createList = useListsStore((s) => s.createList);
-  const deleteList = useListsStore((s) => s.deleteList);
+  const { data: lists = [] } = useQuery(listsQuery());
+  const createList = useCreateList();
+  const addListItems = useAddListItems();
+  const deleteList = useDeleteList();
+
   const [isCreating, setIsCreating] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [listToDelete, setListToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  // Magic Search State
   const [isMagicModalOpen, setIsMagicModalOpen] = useState(false);
-
-  useEffect(() => {
-    fetchLists();
-  }, [fetchLists]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newListName.trim()) return;
 
-    await createList(newListName);
-    setNewListName("");
-    setIsCreating(false);
+    try {
+      await createList.mutateAsync(newListName);
+      setNewListName("");
+      setIsCreating(false);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Erro ao criar lista");
+    }
   };
 
   const handleDelete = async () => {
     if (!listToDelete) return;
     try {
       setIsDeleting(true);
-      await deleteList(listToDelete);
+      await deleteList.mutateAsync(listToDelete);
       toast.success("Lista excluída com sucesso");
       setListToDelete(null);
     } catch (err) {
@@ -67,18 +72,16 @@ export function CustomLists() {
   };
 
   const handleSaveMagicList = async (name: string, items: ContentItem[]) => {
-    let newList: Awaited<ReturnType<typeof createList>> | null = null;
+    let newList: Awaited<ReturnType<typeof createList.mutateAsync>> | null =
+      null;
     try {
-      newList = await createList(name);
-
-      await listService.addListItems(newList.id, items);
-
-      fetchLists();
+      newList = await createList.mutateAsync(name);
+      await addListItems.mutateAsync({ listId: newList.id, items });
     } catch (error) {
       if (newList) {
-        deleteList(newList.id).catch((e) =>
-          logger.error("Rollback failed:", e),
-        );
+        deleteList
+          .mutateAsync(newList.id)
+          .catch((e) => logger.error("Rollback failed:", e));
       }
       logger.error("Error saving magic list:", error);
       throw error;

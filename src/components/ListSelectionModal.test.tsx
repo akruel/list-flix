@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
@@ -6,59 +7,42 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ListSelectionModal } from "./ListSelectionModal";
 
 const mocks = vi.hoisted(() => ({
-  storeValue: {
-    lists: [] as Array<{
-      id: string;
-      name: string;
-      owner_id: string;
-      created_at: string;
-      updated_at: string;
-      role: "owner" | "editor" | "viewer";
-    }>,
-    fetchLists: vi.fn(),
-    addToList: vi.fn(),
-    removeFromList: vi.fn(),
-    myList: [] as Array<{ id: number; media_type: "movie" | "tv" }>,
-  },
-  getListsContainingContent: vi.fn(),
-  removeListItem: vi.fn(),
+  lists: [] as Array<{
+    id: string;
+    name: string;
+    owner_id: string;
+    created_at: string;
+    updated_at: string;
+    role: "owner" | "editor" | "viewer";
+  }>,
+  myList: [] as Array<{ id: number; media_type: "movie" | "tv" }>,
+  toggleWatchlist: vi.fn(),
   addListItem: vi.fn(),
+  removeListItem: vi.fn(),
+  getLists: vi.fn(),
+  getListsContainingContent: vi.fn(),
 }));
 
-vi.mock("../store/useListsStore", () => ({
-  useListsStore: (
-    selector: (state: {
-      lists: typeof mocks.storeValue.lists;
-      fetchLists: typeof mocks.storeValue.fetchLists;
-    }) => unknown,
-  ) =>
-    selector({
-      lists: mocks.storeValue.lists,
-      fetchLists: mocks.storeValue.fetchLists,
-    }),
+vi.mock("@/hooks/mutations", () => ({
+  useToggleWatchlist: () => ({ mutate: mocks.toggleWatchlist }),
+  useAddListItem: () => ({ mutateAsync: mocks.addListItem }),
+  useRemoveListItem: () => ({ mutateAsync: mocks.removeListItem }),
 }));
 
 vi.mock("../store/useUserContentStore", () => ({
   useUserContentStore: (
-    selector: (state: {
-      addToList: typeof mocks.storeValue.addToList;
-      removeFromList: typeof mocks.storeValue.removeFromList;
-      myList: typeof mocks.storeValue.myList;
-    }) => unknown,
+    selector: (state: { myList: typeof mocks.myList }) => unknown,
   ) =>
     selector({
-      addToList: mocks.storeValue.addToList,
-      removeFromList: mocks.storeValue.removeFromList,
-      myList: mocks.storeValue.myList,
+      myList: mocks.myList,
     }),
 }));
 
 vi.mock("../services/listService", () => ({
   listService: {
+    getLists: (...args: unknown[]) => mocks.getLists(...args),
     getListsContainingContent: (...args: unknown[]) =>
       mocks.getListsContainingContent(...args),
-    removeListItem: (...args: unknown[]) => mocks.removeListItem(...args),
-    addListItem: (...args: unknown[]) => mocks.addListItem(...args),
   },
 }));
 
@@ -99,12 +83,24 @@ vi.mock("@/components/ui/scroll-area", () => ({
   ScrollArea: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
+function renderModal(ui: ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
+
 describe("ListSelectionModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.storeValue.lists = [];
-    mocks.storeValue.myList = [];
-    mocks.storeValue.fetchLists.mockResolvedValue(undefined);
+    mocks.lists = [];
+    mocks.myList = [];
+    mocks.getLists.mockImplementation(() => Promise.resolve(mocks.lists));
     mocks.getListsContainingContent.mockResolvedValue({});
     mocks.removeListItem.mockResolvedValue(undefined);
     mocks.addListItem.mockResolvedValue(undefined);
@@ -117,16 +113,20 @@ describe("ListSelectionModal", () => {
   };
 
   it("loads lists and membership when opened", async () => {
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     await waitFor(() => {
-      expect(mocks.storeValue.fetchLists).toHaveBeenCalledOnce();
+      expect(mocks.getLists).toHaveBeenCalled();
     });
     expect(mocks.getListsContainingContent).toHaveBeenCalledWith(10, "movie");
   });
 
   it("shows custom empty state when no custom lists exist", async () => {
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     expect(
       await screen.findByText("Nenhuma lista personalizada encontrada."),
@@ -145,30 +145,25 @@ describe("ListSelectionModal", () => {
       expectedCall: "add",
     },
   ])("toggles default list for $caseName", async ({ inList, expectedCall }) => {
-    mocks.storeValue.myList = inList
+    mocks.myList = inList
       ? [{ id: content.id, media_type: content.media_type }]
       : [];
 
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     await screen.findByText("Minha Lista");
     await userEvent.click(screen.getByRole("button", { name: /Minha Lista/i }));
 
-    const isRemove = expectedCall === "remove";
-    expect(mocks.storeValue.removeFromList).toHaveBeenCalledTimes(
-      isRemove ? 1 : 0,
-    );
-    expect(mocks.storeValue.removeFromList.mock.calls[0]?.[0]).toEqual(
-      isRemove ? 10 : undefined,
-    );
-    expect(mocks.storeValue.addToList).toHaveBeenCalledTimes(isRemove ? 0 : 1);
-    expect(mocks.storeValue.addToList.mock.calls[0]?.[0]).toEqual(
-      isRemove ? undefined : content,
-    );
+    expect(mocks.toggleWatchlist).toHaveBeenCalledWith({
+      item: content,
+      action: expectedCall,
+    });
   });
 
   it("toggles custom list removal when membership exists", async () => {
-    mocks.storeValue.lists = [
+    mocks.lists = [
       {
         id: "list-1",
         name: "Owner list",
@@ -190,7 +185,9 @@ describe("ListSelectionModal", () => {
       "list-1": "item-1",
     });
 
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Owner list")).toBeInTheDocument();
@@ -200,12 +197,17 @@ describe("ListSelectionModal", () => {
     await userEvent.click(screen.getByRole("button", { name: /Owner list/i }));
 
     await waitFor(() => {
-      expect(mocks.removeListItem).toHaveBeenCalledWith("item-1");
+      expect(mocks.removeListItem).toHaveBeenCalledWith({
+        itemId: "item-1",
+        listId: "list-1",
+        contentId: content.id,
+        contentType: content.media_type,
+      });
     });
   });
 
   it("toggles custom list add when membership does not exist", async () => {
-    mocks.storeValue.lists = [
+    mocks.lists = [
       {
         id: "list-1",
         name: "Editor list",
@@ -215,11 +217,11 @@ describe("ListSelectionModal", () => {
         role: "editor",
       },
     ];
-    mocks.getListsContainingContent
-      .mockResolvedValueOnce({})
-      .mockResolvedValueOnce({ "list-1": "item-99" });
+    mocks.getListsContainingContent.mockResolvedValueOnce({});
 
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Editor list")).toBeInTheDocument();
@@ -228,21 +230,48 @@ describe("ListSelectionModal", () => {
     await userEvent.click(screen.getByRole("button", { name: /Editor list/i }));
 
     await waitFor(() => {
-      expect(mocks.addListItem).toHaveBeenCalledWith("list-1", content);
+      expect(mocks.addListItem).toHaveBeenCalledWith({
+        listId: "list-1",
+        item: content,
+      });
     });
-    expect(mocks.getListsContainingContent).toHaveBeenCalledTimes(2);
   });
 
   it("handles loading errors without crashing", async () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
-    mocks.storeValue.fetchLists.mockRejectedValue(new Error("load failed"));
+    mocks.getLists.mockRejectedValue(new Error("load failed"));
 
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalled();
+    });
+
+    consoleErrorSpy.mockRestore();
+  });
+
+  it("logs membership query errors without crashing", async () => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mocks.getListsContainingContent.mockRejectedValue(
+      new Error("membership failed"),
+    );
+
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        "Error loading membership:",
+        expect.any(Error),
+      );
     });
 
     consoleErrorSpy.mockRestore();
@@ -252,7 +281,7 @@ describe("ListSelectionModal", () => {
     const consoleErrorSpy = vi
       .spyOn(console, "error")
       .mockImplementation(() => {});
-    mocks.storeValue.lists = [
+    mocks.lists = [
       {
         id: "list-1",
         name: "Owner list",
@@ -267,7 +296,9 @@ describe("ListSelectionModal", () => {
     });
     mocks.removeListItem.mockRejectedValue(new Error("toggle failed"));
 
-    render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={vi.fn()} content={content} />,
+    );
 
     await waitFor(() => {
       expect(screen.getByText("Owner list")).toBeInTheDocument();
@@ -284,7 +315,9 @@ describe("ListSelectionModal", () => {
 
   it("closes modal when concluído button is clicked", async () => {
     const onClose = vi.fn();
-    render(<ListSelectionModal isOpen onClose={onClose} content={content} />);
+    renderModal(
+      <ListSelectionModal isOpen onClose={onClose} content={content} />,
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "Concluído" }));
     expect(onClose).toHaveBeenCalledOnce();
@@ -305,7 +338,9 @@ describe("ListSelectionModal", () => {
     "handles dialog close behavior for $caseName",
     async ({ trigger, expectedCalls }) => {
       const onClose = vi.fn();
-      render(<ListSelectionModal isOpen onClose={onClose} content={content} />);
+      renderModal(
+        <ListSelectionModal isOpen onClose={onClose} content={content} />,
+      );
 
       await userEvent.click(screen.getByRole("button", { name: trigger }));
 

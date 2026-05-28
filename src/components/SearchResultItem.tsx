@@ -2,9 +2,9 @@ import { Link } from "@tanstack/react-router";
 import { Plus, Star } from "lucide-react";
 import { toast } from "sonner";
 
+import { useToggleWatchlist } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
-import { useUserContentStore } from "@/store/useUserContentStore";
 import type { ContentItem } from "@/types";
 
 interface SearchResultItemProps {
@@ -12,6 +12,7 @@ interface SearchResultItemProps {
 }
 
 export function SearchResultItem({ item }: SearchResultItemProps) {
+  const { mutate: toggleWatchlist } = useToggleWatchlist();
   const title = item.media_type === "movie" ? item.title : item.name;
   const date =
     item.media_type === "movie" ? item.release_date : item.first_air_date;
@@ -23,13 +24,18 @@ export function SearchResultItem({ item }: SearchResultItemProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    try {
-      useUserContentStore.getState().addToList(item);
-      toast.success(`"${title}" adicionado à lista`);
-    } catch (err) {
-      logger.error("Error adding to list:", err);
-      toast.error("Erro ao adicionar");
-    }
+    toggleWatchlist(
+      { item, action: "add" },
+      {
+        onSuccess: () => {
+          toast.success(`"${title}" adicionado à lista`);
+        },
+        onError: (err) => {
+          logger.error("Error adding to list:", err);
+          toast.error("Erro ao adicionar");
+        },
+      },
+    );
   };
 
   return (

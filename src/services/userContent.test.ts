@@ -307,7 +307,7 @@ describe("userContentService", () => {
           media_type: "movie",
           title: "Movie",
         }),
-      expected: undefined,
+      expected: true,
     },
     {
       caseName: "removeFromWatchlist",
@@ -406,6 +406,43 @@ describe("userContentService", () => {
     await run();
 
     expect(consoleErrorSpy).toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it.each([
+    {
+      caseName: "addToWatchlist returns false on insert error",
+      run: () =>
+        userContentService.addToWatchlist({
+          id: 1,
+          media_type: "movie",
+          title: "Movie",
+        }),
+      mockFrom: () => ({
+        insert: vi
+          .fn()
+          .mockResolvedValue({ error: new Error("insert failed") }),
+      }),
+    },
+    {
+      caseName: "removeFromWatchlist returns false on delete error",
+      run: () => userContentService.removeFromWatchlist(1),
+      mockFrom: () => ({
+        delete: vi.fn().mockReturnValue({
+          match: vi
+            .fn()
+            .mockResolvedValue({ error: new Error("delete failed") }),
+        }),
+      }),
+    },
+  ])("$caseName", async ({ run, mockFrom }) => {
+    const consoleErrorSpy = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockedSupabase.from.mockImplementation(() => mockFrom());
+
+    await expect(run()).resolves.toBe(false);
+
     consoleErrorSpy.mockRestore();
   });
 

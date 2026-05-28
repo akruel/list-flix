@@ -3,6 +3,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { queryClient } from "../lib/queryClient";
+import { tasteKeys } from "../services/taste.queries";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 const mocks = vi.hoisted(() => ({
@@ -102,6 +104,22 @@ describe("AuthContext", () => {
     expect(() => render(<AuthConsumer />)).toThrow(
       "useAuth must be used within an AuthProvider",
     );
+  });
+
+  it("clears the taste query cache and sets none status when initial session is missing", async () => {
+    const removeQueriesSpy = vi.spyOn(queryClient, "removeQueries");
+
+    renderWithProvider();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("status")).toHaveTextContent("none");
+    });
+
+    expect(removeQueriesSpy).toHaveBeenCalledWith({
+      queryKey: tasteKeys.all,
+    });
+
+    removeQueriesSpy.mockRestore();
   });
 
   it("sets none status when initial session is missing", async () => {

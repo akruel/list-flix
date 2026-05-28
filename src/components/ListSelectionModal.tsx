@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { Check, Globe, Loader2, Lock } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,10 +10,17 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  useAddListItem,
+  useRemoveListItem,
+  useToggleWatchlist,
+} from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
+import {
+  listsContainingContentQuery,
+  listsQuery,
+} from "@/services/list.queries";
 
-import { listService } from "../services/listService";
-import { useListsStore } from "../store/useListsStore";
 import { useUserContentStore } from "../store/useUserContentStore";
 import type { ContentItem } from "../types";
 import { ListSelectionModalSkeleton } from "./skeletons";
@@ -28,45 +36,40 @@ export function ListSelectionModal({
   onClose,
   content,
 }: ListSelectionModalProps) {
-  const lists = useListsStore((s) => s.lists);
-  const fetchLists = useListsStore((s) => s.fetchLists);
-  const addToList = useUserContentStore((s) => s.addToList);
-  const removeFromList = useUserContentStore((s) => s.removeFromList);
+  const listsResult = useQuery({
+    ...listsQuery(),
+    enabled: isOpen,
+  });
+  const membershipResult = useQuery({
+    ...listsContainingContentQuery(content.id, content.media_type),
+    enabled: isOpen,
+  });
+
+  const { mutate: toggleWatchlist } = useToggleWatchlist();
+  const addListItem = useAddListItem();
+  const removeListItem = useRemoveListItem();
   const isContentInList = useUserContentStore((s) =>
     s.myList.some((item) => item.id === content.id),
   );
-  const [loading, setLoading] = useState(false);
-  const [membership, setMembership] = useState<Record<string, string>>({}); // listId -> itemId
-  const [toggling, setToggling] = useState<Record<string, boolean>>({}); // listId -> boolean
+  const [toggling, setToggling] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    if (isOpen) {
-      const loadData = async () => {
-        setLoading(true);
-        try {
-          await fetchLists();
-          const memberMap = await listService.getListsContainingContent(
-            content.id,
-            content.media_type,
-          );
-          setMembership(memberMap);
-        } catch (error) {
-          logger.error("Error loading lists:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
+  const lists = listsResult.data ?? [];
+  const membership = membershipResult.data ?? {};
+  const isLoading =
+    (listsResult.isLoading || membershipResult.isLoading) && isOpen;
 
-      loadData();
-    }
-  }, [isOpen, content.id, content.media_type, fetchLists]);
+  if (listsResult.isError) {
+    logger.error("Error loading lists:", listsResult.error);
+  }
+  if (membershipResult.isError) {
+    logger.error("Error loading membership:", membershipResult.error);
+  }
 
   const handleToggleDefaultList = () => {
-    if (isContentInList) {
-      removeFromList(content.id);
-    } else {
-      addToList(content);
-    }
+    toggleWatchlist({
+      item: content,
+      action: isContentInList ? "remove" : "add",
+    });
   };
 
   const handleToggleCustomList = async (listId: string) => {
@@ -76,24 +79,14 @@ export function ListSelectionModal({
         ? membership[listId]
         : undefined;
       if (itemId) {
-        // Remove
-        await listService.removeListItem(itemId);
-        setMembership((prev) => {
-          const next = Object.fromEntries(
-            Object.entries(prev).filter(([key]) => key !== listId),
-          );
-          return next;
+        await removeListItem.mutateAsync({
+          itemId,
+          listId,
+          contentId: content.id,
+          contentType: content.media_type,
         });
       } else {
-        // Add
-        await listService.addListItem(listId, content);
-        // We need to fetch the new item ID or just reload.
-        // Reloading is safer to get the correct ID for future removal.
-        const memberMap = await listService.getListsContainingContent(
-          content.id,
-          content.media_type,
-        );
-        setMembership(memberMap);
+        await addListItem.mutateAsync({ listId, item: content });
       }
     } catch (error) {
       logger.error("Error toggling list:", error);
@@ -110,11 +103,10 @@ export function ListSelectionModal({
         </DialogHeader>
 
         <ScrollArea className="max-h-[60vh] pr-4">
-          {loading ? (
+          {isLoading ? (
             <ListSelectionModalSkeleton />
           ) : (
             <div className="space-y-1">
-              {/* Default List */}
               <Button
                 data-testid="list-selection-default"
                 variant="ghost"
@@ -134,7 +126,6 @@ export function ListSelectionModal({
 
               <div className="mx-3 my-2 h-px bg-gray-800" />
 
-              {/* Custom Lists */}
               {lists
                 .filter(
                   (list) => list.role === "owner" || list.role === "editor",
@@ -147,7 +138,9 @@ export function ListSelectionModal({
                     <Button
                       key={list.id}
                       variant="ghost"
-                      onClick={() => handleToggleCustomList(list.id)}
+                      onClick={() => {
+                        void handleToggleCustomList(list.id);
+                      }}
                       disabled={isToggling}
                       className="h-auto w-full justify-between px-3 py-3 hover:bg-gray-800"
                     >

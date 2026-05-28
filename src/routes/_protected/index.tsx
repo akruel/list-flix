@@ -1,25 +1,51 @@
+import { useQueries, useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { MovieCard } from "@/components/MovieCard";
 import { ContentGridSkeleton } from "@/components/skeletons";
+import { useAuth } from "@/contexts/AuthContext";
+import { deriveHomeTrending } from "@/lib/home-trending";
 import { logger } from "@/lib/logger";
-import { getMoodDiscoverParams, MOODS } from "@/services/moods";
-import { tasteService } from "@/services/taste";
-import { tmdb } from "@/services/tmdb";
-import { useTasteStore } from "@/store/useTasteStore";
+import { MOODS } from "@/services/moods";
+import { tasteSuggestionsQuery } from "@/services/taste.queries";
+import { discoverQuery, trendingQuery } from "@/services/tmdb.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
-import type { ContentItem } from "@/types";
 
 export const Route = createFileRoute("/_protected/")({
+  loader: ({ context }) =>
+    context.queryClient.ensureQueryData(trendingQuery("week")),
+  errorComponent: HomeErrorComponent,
   component: HomeRouteComponent,
 });
 
+function HomeErrorComponent({ error }: { error: Error }) {
+  logger.error("Home route error:", error);
+
+  return (
+    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center">
+      <h1 className="text-2xl font-bold text-white">
+        Não foi possível carregar a home
+      </h1>
+      <p className="text-gray-400">Verifique sua conexão e tente novamente.</p>
+      {import.meta.env.DEV ? (
+        <pre className="max-w-full overflow-auto rounded-md bg-gray-900 px-4 py-2 text-left text-xs text-gray-400">
+          {error.message}
+        </pre>
+      ) : null}
+      <button
+        type="button"
+        onClick={() => window.location.reload()}
+        className="inline-flex items-center justify-center rounded-md bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+      >
+        Recarregar
+      </button>
+    </div>
+  );
+}
+
 function HomeRouteComponent() {
-  const [trending, setTrending] = useState<ContentItem[]>([]);
-  const [trendingLoading, setTrendingLoading] = useState(true);
-  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [selectedMediaType, setSelectedMediaType] = useState<
     "movie" | "tv" | null
@@ -27,113 +53,67 @@ function HomeRouteComponent() {
   const [decadeFilter, setDecadeFilter] = useState<number | null>(null);
   const myList = useUserContentStore((s) => s.myList);
   const watchedIds = useUserContentStore((s) => s.watchedIds);
-  const tasteSuggestions = useTasteStore((s) => s.tasteSuggestions);
+  const userId = useAuth().user?.id;
 
   const currentMood = selectedMood
     ? MOODS.find((m) => m.key === selectedMood)
     : undefined;
 
-  const prevMoodRef = useRef(selectedMood);
-  const prevMediaTypeRef = useRef(selectedMediaType);
+  const { data: trendingDefault } = useSuspenseQuery(trendingQuery("week"));
 
-  useEffect(() => {
-    if (myList.length === 0 && watchedIds.length === 0) {
-      useTasteStore.getState().clearTasteSuggestions();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSuggestionsLoading(false);
-      return;
+  const moodQueriesConfig = useMemo(() => {
+    if (!selectedMood) return [];
+    if (selectedMediaType) {
+      return [
+        discoverQuery({ mood: selectedMood, mediaType: selectedMediaType }),
+      ];
     }
-
-    const moodChanged = prevMoodRef.current !== selectedMood;
-    prevMoodRef.current = selectedMood;
-
-    const mediaTypeChanged = prevMediaTypeRef.current !== selectedMediaType;
-    prevMediaTypeRef.current = selectedMediaType;
-
-    if (moodChanged || mediaTypeChanged) {
-      useTasteStore.getState().clearTasteSuggestions();
-    }
-
-    let cancelled = false;
-
-    const loadSuggestions = async () => {
-      setSuggestionsLoading(true);
-      try {
-        await tasteService.getAiSuggestions(
-          myList,
-          watchedIds,
-          [],
-          undefined,
-          selectedMood ?? undefined,
-          selectedMediaType ?? undefined,
-        );
-      } catch {
-        // handled by tasteService
-      } finally {
-        if (!cancelled) setSuggestionsLoading(false);
-      }
-    };
-
-    void loadSuggestions();
-    return () => {
-      cancelled = true;
-    };
-  }, [myList, watchedIds, selectedMood, selectedMediaType]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchContent = async () => {
-      setTrendingLoading(true);
-
-      try {
-        if (selectedMood) {
-          if (selectedMediaType) {
-            const params = getMoodDiscoverParams(
-              selectedMood,
-              selectedMediaType,
-            );
-            const data = await tmdb.discover(params);
-            if (!cancelled) setTrending(data.slice(0, 20));
-          } else {
-            const [movies, tvShows] = await Promise.all([
-              tmdb.discover(getMoodDiscoverParams(selectedMood, "movie")),
-              tmdb.discover(getMoodDiscoverParams(selectedMood, "tv")),
-            ]);
-            const merged: ContentItem[] = [];
-            const maxLen = Math.max(movies.length, tvShows.length);
-            for (let i = 0; i < maxLen && merged.length < 20; i++) {
-              if (i < movies.length) merged.push(movies[i]);
-              if (i < tvShows.length) merged.push(tvShows[i]);
-            }
-            if (!cancelled) setTrending(merged);
-          }
-        } else {
-          const data = await tmdb.getTrending("week");
-          if (selectedMediaType) {
-            if (!cancelled)
-              setTrending(
-                data.filter((item) => item.media_type === selectedMediaType),
-              );
-          } else {
-            if (!cancelled) setTrending(data);
-          }
-        }
-      } catch (error) {
-        if (!cancelled) {
-          logger.error("Error fetching content:", error);
-          toast.error("Erro ao carregar conteúdo.");
-        }
-      } finally {
-        if (!cancelled) setTrendingLoading(false);
-      }
-    };
-
-    void fetchContent();
-    return () => {
-      cancelled = true;
-    };
+    return [
+      discoverQuery({ mood: selectedMood, mediaType: "movie" }),
+      discoverQuery({ mood: selectedMood, mediaType: "tv" }),
+    ];
   }, [selectedMood, selectedMediaType]);
+
+  const moodQueries = useQueries({ queries: moodQueriesConfig });
+
+  const moodLoading = moodQueries.some((q) => q.isLoading);
+  const moodError = moodQueries.find((q) => q.error)?.error;
+
+  useEffect(() => {
+    if (moodError) {
+      logger.error("Error fetching content:", moodError);
+      toast.error("Erro ao carregar conteúdo.");
+    }
+  }, [moodError]);
+
+  const trending = useMemo(
+    () =>
+      deriveHomeTrending({
+        selectedMood,
+        selectedMediaType,
+        trendingDefault,
+        moodResults: moodQueries.map((q) => q.data),
+      }),
+    [moodQueries, selectedMediaType, selectedMood, trendingDefault],
+  );
+
+  const tasteEnabled =
+    Boolean(userId) && (myList.length > 0 || watchedIds.length > 0);
+
+  const tasteResult = useQuery({
+    ...tasteSuggestionsQuery({
+      userId: userId ?? "",
+      myList,
+      watchedIds,
+      listItemIds: [],
+      mood: selectedMood ?? undefined,
+      mediaType: selectedMediaType ?? undefined,
+    }),
+    enabled: tasteEnabled,
+  });
+
+  const tasteSuggestions = tasteResult.data ?? [];
+  const suggestionsLoading = tasteEnabled && tasteResult.isLoading;
 
   const dataYears = useMemo(() => {
     const years = new Set<number>();
@@ -167,9 +147,8 @@ function HomeRouteComponent() {
     : trending;
 
   const showForYou =
-    !decadeFilter &&
-    (suggestionsLoading || (tasteSuggestions && tasteSuggestions.length > 0));
-  const showInitialLoading = trendingLoading && trending.length === 0;
+    !decadeFilter && (suggestionsLoading || tasteSuggestions.length > 0);
+  const showInitialLoading = moodLoading && trending.length === 0;
 
   return (
     <div data-testid="route-home">
@@ -205,10 +184,8 @@ function HomeRouteComponent() {
           <button
             key={mood.key}
             onClick={() => {
-              const newMood = selectedMood === mood.key ? null : mood.key;
-              if (newMood) useTasteStore.getState().clearTasteSuggestions();
               setDecadeFilter(null);
-              setSelectedMood(newMood);
+              setSelectedMood(selectedMood === mood.key ? null : mood.key);
             }}
             className={`shrink-0 rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
               selectedMood === mood.key
@@ -257,7 +234,7 @@ function HomeRouteComponent() {
                 </div>
               ))}
             </div>
-          ) : tasteSuggestions && tasteSuggestions.length > 0 ? (
+          ) : tasteSuggestions.length > 0 ? (
             <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {tasteSuggestions.map((item) => (
                 <div key={item.id} className="w-36 shrink-0 sm:w-40">
