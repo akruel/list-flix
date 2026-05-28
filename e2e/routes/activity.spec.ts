@@ -198,7 +198,7 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_LOAD_MORE_ERROR}] shows inline error and ret
       return { status: 200, body: buildItemAddedActivities(1, 50) };
     }
     if (offset === 50) {
-      if (callIndex === 0) {
+      if (callIndex < 2) {
         return { status: 500, body: { message: "boom" } };
       }
       return { status: 200, body: buildItemAddedActivities(51, 10) };
@@ -236,7 +236,7 @@ test(`[${SCENARIO_IDS.ACTIVITY_FEED_INITIAL_ERROR_RETRY}] surfaces errorComponen
 
   await interceptActivityFeed(page, (offset, callIndex) => {
     if (offset === 0) {
-      if (callIndex === 0) {
+      if (callIndex < 2) {
         return { status: 500, body: { message: "boom" } };
       }
       return { status: 200, body: buildItemAddedActivities(1, 5) };
