@@ -19,8 +19,10 @@ import {
 import { tmdb } from "@/services/tmdb";
 import { detailsQuery, seasonQuery } from "@/services/tmdb.queries";
 import { useUserContentStore } from "@/store/useUserContentStore";
-import type { ContentItem, Episode } from "@/types";
+import type { ContentDetails, ContentItem, Episode } from "@/types";
 
+// errorComponent catches sharedTvItemsQuery (loader/Suspense) failures only;
+// per-query TMDB errors are handled inline via detailsCombined.isError.
 export const Route = createFileRoute("/_protected/this-week")({
   loader: ({ context }) =>
     context.queryClient.ensureQueryData(sharedTvItemsQuery()),
@@ -92,15 +94,23 @@ export function ThisWeekComponent() {
     watchingContextBatchQuery(watchingContextItems),
   );
 
-  const detailsResults = useQueries({
+  const detailsCombined = useQueries({
     queries: allTvShows.map((show) => detailsQuery("tv", show.id)),
+    combine: (results) => ({
+      details: results.flatMap((r) => (r.data ? [r.data] : [])),
+      isPending: results.some((r) => r.isPending),
+      isError: results.length > 0 && results.every((r) => r.isError),
+      refetch: () => {
+        results.forEach((r) => {
+          void r.refetch();
+        });
+      },
+    }),
   });
 
   const seasonInputs = useMemo(() => {
     const inputs: Array<{ tvId: number; seasonNumber: number }> = [];
-    for (const result of detailsResults) {
-      if (!result.data) continue;
-      const details = result.data;
+    for (const details of detailsCombined.details) {
       const activeSeason =
         details.next_episode_to_air?.season_number ??
         details.last_episode_to_air?.season_number;
@@ -109,31 +119,33 @@ export function ThisWeekComponent() {
       }
     }
     return inputs;
-  }, [detailsResults]);
+  }, [detailsCombined.details]);
 
-  const seasonResults = useQueries({
+  const seasonCombined = useQueries({
     queries: seasonInputs.map(({ tvId, seasonNumber }) =>
       seasonQuery(tvId, seasonNumber),
     ),
+    combine: (results) => ({
+      seasons: results.map((r) => r.data),
+      isPending: results.some((r) => r.isPending),
+    }),
   });
 
   const isLoading =
-    detailsResults.some((r) => r.isPending) ||
-    (seasonInputs.length > 0 && seasonResults.some((r) => r.isPending));
+    detailsCombined.isPending ||
+    (seasonInputs.length > 0 && seasonCombined.isPending);
+
+  const isError = !isLoading && detailsCombined.isError;
 
   const episodes = useMemo(() => {
     const weekEpisodes: WeekEpisode[] = [];
 
-    const detailsById = new Map<
-      number,
-      (typeof detailsResults)[number]["data"] & {}
-    >();
-    for (const r of detailsResults) {
-      if (r.data) detailsById.set(r.data.id, r.data);
-    }
+    const detailsById = new Map<number, ContentDetails>(
+      detailsCombined.details.map((d) => [d.id, d]),
+    );
 
-    seasonResults.forEach((seasonResult, idx) => {
-      if (!seasonResult.data) return;
+    seasonCombined.seasons.forEach((seasonData, idx) => {
+      if (!seasonData) return;
       const input = seasonInputs[idx];
       if (!input) return;
       const details = detailsById.get(input.tvId);
@@ -141,7 +153,7 @@ export function ThisWeekComponent() {
 
       const showWatched = watchedEpisodes[details.id] ?? {};
 
-      for (const episode of seasonResult.data.episodes) {
+      for (const episode of seasonData.episodes) {
         const isWatched = Object.hasOwn(showWatched, episode.id);
         if (
           episode.air_date &&
@@ -161,7 +173,12 @@ export function ThisWeekComponent() {
     return weekEpisodes.sort((a, b) =>
       a.episode.air_date.localeCompare(b.episode.air_date),
     );
-  }, [seasonResults, seasonInputs, detailsResults, watchedEpisodes]);
+  }, [
+    seasonCombined.seasons,
+    seasonInputs,
+    detailsCombined.details,
+    watchedEpisodes,
+  ]);
 
   const groupedEpisodes = useMemo(
     () =>
@@ -197,7 +214,18 @@ export function ThisWeekComponent() {
         </div>
       ) : null}
 
-      {!isLoading && allTvShows.length === 0 && (
+      {isError ? (
+        <div className="flex flex-col items-center gap-4 py-16 text-center">
+          <p className="text-muted-foreground">
+            Erro ao carregar episódios da semana.
+          </p>
+          <Button variant="outline" onClick={() => detailsCombined.refetch()}>
+            Tentar novamente
+          </Button>
+        </div>
+      ) : null}
+
+      {!isLoading && !isError && allTvShows.length === 0 && (
         <div className="flex flex-col items-center gap-4 py-16 text-center">
           <Tv className="h-12 w-12 text-muted-foreground" />
           <p className="text-muted-foreground">
@@ -209,16 +237,19 @@ export function ThisWeekComponent() {
         </div>
       )}
 
-      {!isLoading && allTvShows.length > 0 && sortedDays.length === 0 && (
-        <div className="flex flex-col items-center gap-4 py-16 text-center">
-          <CalendarDays className="h-12 w-12 text-muted-foreground" />
-          <p className="text-muted-foreground">
-            Nenhum episódio estreia esta semana.
-          </p>
-        </div>
-      )}
+      {!isLoading &&
+        !isError &&
+        allTvShows.length > 0 &&
+        sortedDays.length === 0 && (
+          <div className="flex flex-col items-center gap-4 py-16 text-center">
+            <CalendarDays className="h-12 w-12 text-muted-foreground" />
+            <p className="text-muted-foreground">
+              Nenhum episódio estreia esta semana.
+            </p>
+          </div>
+        )}
 
-      {!isLoading && sortedDays.length > 0 && (
+      {!isLoading && !isError && sortedDays.length > 0 && (
         <div className="space-y-6">
           {sortedDays.map((dayKey) => (
             <section key={dayKey}>

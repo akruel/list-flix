@@ -1,4 +1,7 @@
+// Tests mock @tanstack/react-query at the hook level (layout/state assertions).
+// They do not exercise QueryClient cache, suspense boundaries, or retry behavior.
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,6 +11,7 @@ type MockQueryResult<T = unknown> = {
   data: T | undefined;
   isPending: boolean;
   isError: boolean;
+  refetch?: () => void;
 };
 
 const mocks = vi.hoisted(() => ({
@@ -28,21 +32,28 @@ vi.mock("@/store/useUserContentStore", () => ({
     selector(mocks as unknown as Parameters<typeof selector>[0]),
 }));
 
+function pickMockResults(queries: Array<{ queryKey: readonly unknown[] }>) {
+  if (queries.length === 0) return [];
+  const firstKey = queries[0]?.queryKey?.[1];
+  if (firstKey === "details")
+    return mocks.detailsResults.slice(0, queries.length);
+  if (firstKey === "season")
+    return mocks.seasonResults.slice(0, queries.length);
+  return [];
+}
+
 vi.mock("@tanstack/react-query", () => ({
   useSuspenseQuery: () => ({ data: mocks.sharedItems }),
   useQuery: () => ({ data: mocks.watchingContextMap }),
   useQueries: ({
     queries,
+    combine,
   }: {
     queries: Array<{ queryKey: readonly unknown[] }>;
+    combine?: (results: MockQueryResult[]) => Record<string, unknown>;
   }) => {
-    if (queries.length === 0) return [];
-    const firstKey = queries[0]?.queryKey?.[1];
-    if (firstKey === "details")
-      return mocks.detailsResults.slice(0, queries.length);
-    if (firstKey === "season")
-      return mocks.seasonResults.slice(0, queries.length);
-    return [];
+    const results = pickMockResults(queries);
+    return combine ? combine(results) : results;
   },
 }));
 
@@ -326,5 +337,28 @@ describe("ThisWeek route", () => {
     render(<ThisWeekComponent />);
 
     expect(screen.getByText("Alice, Bob")).toBeInTheDocument();
+  });
+
+  it("shows error UI when all details queries fail and refetches on retry", async () => {
+    const user = userEvent.setup();
+    const refetch = vi.fn();
+    mocks.myList = [{ id: 1, media_type: "tv" }];
+    mocks.detailsResults = [
+      { data: undefined, isPending: false, isError: true, refetch },
+    ];
+    mocks.seasonResults = [];
+
+    render(<ThisWeekComponent />);
+
+    expect(
+      screen.getByText("Erro ao carregar episódios da semana."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Nenhum episódio estreia esta semana."),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tentar novamente" }));
+
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 });
