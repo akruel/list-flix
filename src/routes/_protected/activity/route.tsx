@@ -1,10 +1,11 @@
 import {
   useQueryClient,
+  useQueryErrorResetBoundary,
   useSuspenseInfiniteQuery,
 } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Bell, List, RefreshCw } from "lucide-react";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { ActivityCard } from "@/components/ActivityCard";
 import { ActivityFeedSkeleton } from "@/components/skeletons";
@@ -32,24 +33,29 @@ function ActivityPendingComponent() {
   );
 }
 
-function ActivityErrorComponent({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+function ActivityErrorComponent({ error }: { error: Error }) {
+  const router = useRouter();
+  const queryErrorResetBoundary = useQueryErrorResetBoundary();
+
   logger.error("Activity route error:", error);
+
+  useEffect(() => {
+    queryErrorResetBoundary.reset();
+  }, [queryErrorResetBoundary]);
+
+  const handleRetry = () => {
+    void router.invalidate();
+  };
 
   return (
     <div data-testid="route-activity" className="mx-auto max-w-lg">
-      <ActivityHeader onRefresh={reset} />
+      <ActivityHeader onRefresh={handleRetry} />
       <div className="flex flex-col items-center gap-4 py-20 text-center">
         <Bell className="h-12 w-12 text-muted-foreground/50" />
         <p className="text-sm text-muted-foreground">
           Não foi possível carregar as atividades.
         </p>
-        <Button variant="outline" size="sm" onClick={reset}>
+        <Button variant="outline" size="sm" onClick={handleRetry}>
           Tentar novamente
         </Button>
       </div>
