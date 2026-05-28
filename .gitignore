@@ -8,6 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 node_modules
+.pnpm-store
 dist
 dist-ssr
 coverage
@@ -37,3 +38,6 @@ test-results
 .agents/
 .opencode/
 skills-*.json
+
+# Local-only helper scripts (kept out of version control)
+scripts/

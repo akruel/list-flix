@@ -1,5 +1,5 @@
 import { logger } from "../lib/logger";
-import { useStore } from "../store/useStore";
+import { useTasteStore } from "../store/useTasteStore";
 import type { ContentItem } from "../types";
 import { ai } from "./ai";
 import { tmdb } from "./tmdb";
@@ -70,7 +70,7 @@ export const tasteService = {
       tasteSuggestions,
       tasteSuggestionsTimestamp,
       tasteSuggestionsScope,
-    } = useStore.getState();
+    } = useTasteStore.getState();
 
     if (
       !moodContext &&
@@ -91,7 +91,7 @@ export const tasteService = {
           ts: number;
         };
         if (Date.now() - parsed.ts < SUGGESTIONS_CACHE_TTL) {
-          useStore.getState().setTasteSuggestions(parsed.items, cacheKey);
+          useTasteStore.getState().setTasteSuggestions(parsed.items, cacheKey);
           return parsed.items;
         }
       }
@@ -145,7 +145,7 @@ export const tasteService = {
           JSON.stringify({ items: mediaFiltered, ts: Date.now() }),
         );
       }
-      useStore
+      useTasteStore
         .getState()
         .setTasteSuggestions(
           mediaFiltered,
@@ -166,7 +166,8 @@ export const tasteService = {
     listItemIds: { id: number; mediaType: "movie" | "tv" }[],
     signal?: AbortSignal,
   ): Promise<ContentItem[]> {
-    const { tasteSuggestions, tasteSuggestionsTimestamp } = useStore.getState();
+    const { tasteSuggestions, tasteSuggestionsTimestamp } =
+      useTasteStore.getState();
 
     if (
       tasteSuggestions &&
@@ -229,7 +230,7 @@ export const tasteService = {
 
       const filtered = suggestions.filter((item) => !knownIds.has(item.id));
 
-      useStore.getState().setTasteSuggestions(filtered);
+      useTasteStore.getState().setTasteSuggestions(filtered);
 
       return filtered;
     } catch (err) {
@@ -240,6 +241,6 @@ export const tasteService = {
   },
 
   clearCache(): void {
-    useStore.getState().clearTasteSuggestions();
+    useTasteStore.getState().clearTasteSuggestions();
   },
 };

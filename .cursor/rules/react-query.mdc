@@ -1,0 +1,104 @@
+---
+description: TanStack Query (React Query) conventions for ListFlix
+globs: src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# React Query (TanStack Query)
+
+We use `@tanstack/react-query` for server state. Zustand stores in `src/store/` hold only client/UI state (or optimistic local copies of server state); they do not own fetching.
+
+## Query factories
+
+Always co-locate queries with their service in a `*.queries.ts` file. Each factory returns an object compatible with `useQuery`, `useSuspenseQuery`, and `queryClient.ensureQueryData`.
+
+```ts
+// src/services/tmdb.queries.ts
+export const detailsQuery = (type: "movie" | "tv", id: number) => ({
+  queryKey: tmdbKeys.details(type, id),
+  queryFn: ({ signal }: { signal?: AbortSignal }) =>
+    tmdb.getDetails(id, type, signal),
+});
+```
+
+- Factory functions are named `<noun>Query`.
+- Export a `<service>Keys` object at the top of the file with a hierarchy (`all`, then nested helpers). Keys must be `as const` tuples so TS narrows them.
+- Pass `signal` from `queryFn`'s context whenever the underlying service supports abort. This lets React Query cancel inflight requests when components unmount or queries refetch.
+
+## Query key hierarchy
+
+Use these top-level prefixes:
+
+- `["tmdb", "details", type, id]`, `["tmdb", "season", tvId, seasonNumber]`, `["tmdb", "trending"]`, `["tmdb", "discover", filters]`
+- `["userContent"]`
+- `["lists"]`, `["lists", listId]`
+- `["listService", "sharedTvItems"]`, `["listService", "watchingContext", "batch", sortedItemIds]`
+- `["taste", scope]`
+- `["activity"]`
+
+Always derive nested keys from the parent: `[...listsKeys.all, id]`. Never inline magic strings.
+
+## When to use `useSuspenseQuery` vs `useQuery`
+
+- Route components whose loader calls `context.queryClient.ensureQueryData(...)` → use `useSuspenseQuery(...)` and rely on the route's `errorComponent` / `pendingComponent`.
+- Non-suspended components (cards, modals, side panels) → use `useQuery(...)` and handle `isLoading`/`isError` locally.
+- For dependent or batched fetches, prefer `useQueries` to keep one render pass.
+
+## Loaders and Router context
+
+`RouterContext` exposes `queryClient`. Prefer prefetching in the loader so the route renders synchronously:
+
+```ts
+export const Route = createFileRoute("/_protected/details/$type/$id")({
+  loader: ({ context, params }) =>
+    context.queryClient.ensureQueryData(
+      detailsQuery(params.type as "movie" | "tv", Number(params.id)),
+    ),
+  component: DetailsRouteComponent,
+  errorComponent: DetailsErrorComponent,
+});
+```
+
+## Mutations
+
+Live in `src/hooks/mutations/`, one file per mutation. Pattern:
+
+```ts
+export function useToggleWatchlist() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (item: ContentItem) => userContentService.addToWatchlist(item),
+    onMutate: async (item) => {
+      await queryClient.cancelQueries({ queryKey: userContentKeys.all });
+      const previous = useUserContentStore.getState().myList;
+      useUserContentStore.getState().addToList(item); // optimistic
+      return { previous };
+    },
+    onError: (_err, _item, context) => {
+      if (context) useUserContentStore.setState({ myList: context.previous });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: userContentKeys.all });
+    },
+  });
+}
+```
+
+Rules:
+
+- `onMutate` performs the optimistic update and returns a rollback snapshot.
+- `onError` restores the snapshot.
+- `onSettled` (or `onSuccess`) invalidates affected query keys to re-sync with the server.
+- Toast UX belongs in the component that calls the mutation, not in the hook. The hook only owns cache + optimistic state.
+- Each mutation hook is named `use<Verb><Noun>` and exported as a default-style `export function`.
+
+## Zustand store boundary
+
+- `useUserContentStore` keeps the optimistic copy of watchlist/watched/episodes — its actions are pure local writes; the network call lives in the mutation hook.
+- `useListsStore` exists only as a transition shim and is removed by the Lists vertical phase.
+- `useTasteStore` exists only as a transition shim and is removed by the Home/Taste vertical phase.
+- Never read server data via `useStore()` in new code; subscribe via `useQuery` / `useSuspenseQuery` instead.
+
+## Devtools
+
+`<ReactQueryDevtools />` is mounted in `src/main.tsx` behind `import.meta.env.DEV`. Don't import it in production code paths.

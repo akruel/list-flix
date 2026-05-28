@@ -6,7 +6,7 @@ import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/lib/logger";
 import { authService } from "@/services/auth";
-import { useStore } from "@/store/useStore";
+import { useUserContentStore } from "@/store/useUserContentStore";
 
 const FullScreenLoader = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -28,7 +28,9 @@ export const Route = createFileRoute("/_protected")({
 
 function ProtectedLayoutRouteComponent() {
   const { status, user } = useAuth();
-  const syncWithSupabase = useStore((state) => state.syncWithSupabase);
+  const syncWithSupabase = useUserContentStore(
+    (state) => state.syncWithSupabase,
+  );
   const location = useLocation();
 
   const [isSessionProcessing, setIsSessionProcessing] = useState(false);

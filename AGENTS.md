@@ -25,7 +25,7 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 ## Architecture
 
 - **Router**: TanStack Router (not react-router-dom). Auto-generated route tree at `src/routeTree.gen.ts`.
-- **State**: Zustand stores in `src/stores/`
+- **State**: Zustand stores in `src/store/`
 - **Backend**: Supabase (auth, DB, RLS policies in `supabase/`)
 - **UI**: Radix UI primitives + shadcn patterns (cva, clsx, tailwind-merge)
 

@@ -26,8 +26,8 @@ vi.mock("@/lib/logger", () => ({ logger: { error: vi.fn() } }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 const mockAddToList = vi.fn();
-vi.mock("@/store/useStore", () => ({
-  useStore: {
+vi.mock("@/store/useUserContentStore", () => ({
+  useUserContentStore: {
     getState: () => ({ addToList: mockAddToList }),
   },
 }));

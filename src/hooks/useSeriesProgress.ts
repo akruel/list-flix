@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useStore } from "../store/useStore";
+import { useUserContentStore } from "../store/useUserContentStore";
 
 interface SeriesProgress {
   watchedCount: number;
@@ -9,19 +9,24 @@ interface SeriesProgress {
 }
 
 /**
- * Hook to calculate the overall progress of a TV series
+ * Hook to calculate the overall progress of a TV series.
+ *
  * @param showId - The TMDB ID of the TV show
  * @param totalEpisodes - Total number of episodes in the series (from TMDB)
- * @returns Progress information including watched count, total count, and percentage
  */
 export const useSeriesProgress = (
   showId: number,
   totalEpisodes: number,
 ): SeriesProgress => {
-  const { getSeriesProgress } = useStore();
+  const watchedCount = useUserContentStore((s) => {
+    const showEpisodes = s.watchedEpisodes[showId] ?? {};
+    // Exclude specials (season 0)
+    return Object.values(showEpisodes).filter(
+      (metadata) => metadata.season_number !== 0,
+    ).length;
+  });
 
-  const progress = useMemo(() => {
-    const { watchedCount } = getSeriesProgress(showId);
+  return useMemo(() => {
     const percentage =
       totalEpisodes > 0 ? Math.round((watchedCount / totalEpisodes) * 100) : 0;
 
@@ -30,7 +35,5 @@ export const useSeriesProgress = (
       totalCount: totalEpisodes,
       percentage,
     };
-  }, [showId, totalEpisodes, getSeriesProgress]);
-
-  return progress;
+  }, [watchedCount, totalEpisodes]);
 };

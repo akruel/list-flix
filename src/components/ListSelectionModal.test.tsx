@@ -18,15 +18,39 @@ const mocks = vi.hoisted(() => ({
     fetchLists: vi.fn(),
     addToList: vi.fn(),
     removeFromList: vi.fn(),
-    isInList: vi.fn(),
+    myList: [] as Array<{ id: number; media_type: "movie" | "tv" }>,
   },
   getListsContainingContent: vi.fn(),
   removeListItem: vi.fn(),
   addListItem: vi.fn(),
 }));
 
-vi.mock("../store/useStore", () => ({
-  useStore: () => mocks.storeValue,
+vi.mock("../store/useListsStore", () => ({
+  useListsStore: (
+    selector: (state: {
+      lists: typeof mocks.storeValue.lists;
+      fetchLists: typeof mocks.storeValue.fetchLists;
+    }) => unknown,
+  ) =>
+    selector({
+      lists: mocks.storeValue.lists,
+      fetchLists: mocks.storeValue.fetchLists,
+    }),
+}));
+
+vi.mock("../store/useUserContentStore", () => ({
+  useUserContentStore: (
+    selector: (state: {
+      addToList: typeof mocks.storeValue.addToList;
+      removeFromList: typeof mocks.storeValue.removeFromList;
+      myList: typeof mocks.storeValue.myList;
+    }) => unknown,
+  ) =>
+    selector({
+      addToList: mocks.storeValue.addToList,
+      removeFromList: mocks.storeValue.removeFromList,
+      myList: mocks.storeValue.myList,
+    }),
 }));
 
 vi.mock("../services/listService", () => ({
@@ -79,8 +103,8 @@ describe("ListSelectionModal", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.storeValue.lists = [];
+    mocks.storeValue.myList = [];
     mocks.storeValue.fetchLists.mockResolvedValue(undefined);
-    mocks.storeValue.isInList.mockReturnValue(false);
     mocks.getListsContainingContent.mockResolvedValue({});
     mocks.removeListItem.mockResolvedValue(undefined);
     mocks.addListItem.mockResolvedValue(undefined);
@@ -121,7 +145,9 @@ describe("ListSelectionModal", () => {
       expectedCall: "add",
     },
   ])("toggles default list for $caseName", async ({ inList, expectedCall }) => {
-    mocks.storeValue.isInList.mockReturnValue(inList);
+    mocks.storeValue.myList = inList
+      ? [{ id: content.id, media_type: content.media_type }]
+      : [];
 
     render(<ListSelectionModal isOpen onClose={vi.fn()} content={content} />);
 

@@ -6,8 +6,11 @@ import type { ContentItem } from "../types";
 import { MovieCard } from "./MovieCard";
 
 const mocks = vi.hoisted(() => ({
-  isWatched: vi.fn(),
-  getSeriesMetadata: vi.fn(),
+  watchedIds: [] as number[],
+  seriesMetadataMap: {} as Record<
+    number,
+    { total_episodes: number; number_of_seasons: number } | undefined
+  >,
   useSeriesProgress: vi.fn(),
   getImageUrl: vi.fn(),
 }));
@@ -32,11 +35,17 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 
-vi.mock("../store/useStore", () => ({
-  useStore: () => ({
-    isWatched: mocks.isWatched,
-    getSeriesMetadata: mocks.getSeriesMetadata,
-  }),
+vi.mock("../store/useUserContentStore", () => ({
+  useUserContentStore: (
+    selector: (state: {
+      watchedIds: number[];
+      seriesMetadata: typeof mocks.seriesMetadataMap;
+    }) => unknown,
+  ) =>
+    selector({
+      watchedIds: mocks.watchedIds,
+      seriesMetadata: mocks.seriesMetadataMap,
+    }),
 }));
 
 vi.mock("../hooks/useSeriesProgress", () => ({
@@ -52,8 +61,8 @@ vi.mock("../services/tmdb", () => ({
 describe("MovieCard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.isWatched.mockReturnValue(false);
-    mocks.getSeriesMetadata.mockReturnValue(undefined);
+    mocks.watchedIds = [];
+    mocks.seriesMetadataMap = {};
     mocks.useSeriesProgress.mockReturnValue({ watchedCount: 0 });
     mocks.getImageUrl.mockReturnValue("https://img.local/poster.jpg");
   });
@@ -106,7 +115,7 @@ describe("MovieCard", () => {
   );
 
   it("shows watched badge when content is watched", () => {
-    mocks.isWatched.mockReturnValue(true);
+    mocks.watchedIds = [10];
 
     render(
       <MovieCard
@@ -177,7 +186,7 @@ describe("MovieCard", () => {
       shouldShow,
       expectedWidth,
     }) => {
-      mocks.getSeriesMetadata.mockReturnValue(metadata);
+      mocks.seriesMetadataMap = metadata ? { 30: metadata } : {};
       mocks.useSeriesProgress.mockReturnValue({ watchedCount });
 
       render(
@@ -316,7 +325,7 @@ describe("MovieCard", () => {
   });
 
   it("shows watching-with badge alongside watched badge", () => {
-    mocks.isWatched.mockReturnValue(true);
+    mocks.watchedIds = [10];
 
     render(
       <MovieCard

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 import { useSeriesProgress } from "../hooks/useSeriesProgress";
 import { tmdb } from "../services/tmdb";
-import { useStore } from "../store/useStore";
+import { useUserContentStore } from "../store/useUserContentStore";
 import type { ContentItem, WatchingContext } from "../types";
 
 interface MovieCardProps {
@@ -26,13 +26,12 @@ export function MovieCard({
   const date =
     item.media_type === "movie" ? item.release_date : item.first_air_date;
   const year = date ? new Date(date).getFullYear() : "N/A";
-  const { isWatched, getSeriesMetadata } = useStore();
-  const watched = isWatched(item.id);
+  const watched = useUserContentStore((s) => s.watchedIds.includes(item.id));
+  const seriesMetadata = useUserContentStore((s) =>
+    item.media_type === "tv" ? s.seriesMetadata[item.id] : undefined,
+  );
 
-  // Get progress for TV series
   const { watchedCount } = useSeriesProgress(item.id, 0);
-  const seriesMetadata =
-    item.media_type === "tv" ? getSeriesMetadata(item.id) : undefined;
 
   // Only show progress if:
   // 1. showProgress prop is true

@@ -1,0 +1,15 @@
+---
+description: TanStack Router file-based routing conventions
+globs: src/routes/**/*
+alwaysApply: false
+---
+
+# TanStack Router
+
+- Use `@tanstack/react-router` — never `react-router-dom`
+- Routes are file-based; the route tree is auto-generated at `src/routeTree.gen.ts` — do not edit it manually
+- Layout routes use `route.tsx` (e.g. `src/routes/_protected/route.tsx`)
+- Dynamic params use `$id.tsx` (e.g. `src/routes/_protected/lists/$id.tsx`)
+- Screen logic belongs in `-screen.tsx` files (e.g. `src/routes/_protected/lists/-screen.tsx`)
+- Protected routes live under `src/routes/_protected/`
+- Auth callback route: `src/routes/auth_/callback.tsx`
