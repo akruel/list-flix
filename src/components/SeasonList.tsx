@@ -14,12 +14,12 @@ import {
   useToggleEpisodeWatched,
   useToggleSeasonWatched,
 } from "@/hooks/mutations";
+import { useShowWatchedEpisodes } from "@/hooks/userContent";
 import { formatDate, parseLocalDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 
 import { useSeasonProgress } from "../hooks/useSeasonProgress";
 import { tmdb } from "../services/tmdb";
-import { useUserContentStore } from "../store/useUserContentStore";
 import type { Episode } from "../types";
 import { EpisodeListSkeleton } from "./skeletons";
 
@@ -41,13 +41,10 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const showWatchedEpisodes = useUserContentStore(
-    (s) => s.watchedEpisodes[tvId],
-  );
+  const showEpisodesMap = useShowWatchedEpisodes(tvId);
   const { mutate: mutateEpisodeWatched } = useToggleEpisodeWatched();
   const { mutate: mutateSeasonWatched } = useToggleSeasonWatched();
 
-  const showEpisodesMap = showWatchedEpisodes ?? {};
   const isEpisodeWatched = (episodeId: number) =>
     Object.hasOwn(showEpisodesMap, episodeId);
   const getSeasonProgress = (seasonNumber: number) => ({

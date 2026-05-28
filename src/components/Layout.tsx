@@ -1,7 +1,7 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Bell, CalendarDays, Home, List, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { LoginButton } from "./LoginButton";
 import { NotificationToggle } from "./NotificationToggle";
@@ -10,11 +10,14 @@ import { SearchModal } from "./SearchModal";
 export function Layout() {
   const location = useLocation();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [lastPathname, setLastPathname] = useState(location.pathname);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  // Close the search modal when the route changes by adjusting state during
+  // render (React's recommended alternative to a set-state-in-effect).
+  if (location.pathname !== lastPathname) {
+    setLastPathname(location.pathname);
     setIsSearchOpen(false);
-  }, [location.pathname]);
+  }
 
   const navItems = [
     { icon: Home, label: "Início", path: "/" },

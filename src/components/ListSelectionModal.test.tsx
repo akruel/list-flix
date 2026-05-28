@@ -29,13 +29,8 @@ vi.mock("@/hooks/mutations", () => ({
   useRemoveListItem: () => ({ mutateAsync: mocks.removeListItem }),
 }));
 
-vi.mock("../store/useUserContentStore", () => ({
-  useUserContentStore: (
-    selector: (state: { myList: typeof mocks.myList }) => unknown,
-  ) =>
-    selector({
-      myList: mocks.myList,
-    }),
+vi.mock("@/hooks/userContent", () => ({
+  useIsInList: (id: number) => mocks.myList.some((item) => item.id === id),
 }));
 
 vi.mock("../services/listService", () => ({

@@ -30,9 +30,9 @@ const mocks = vi.hoisted(() => ({
   getAllSharedTvItems: vi.fn(),
 }));
 
-vi.mock("@/store/useUserContentStore", () => ({
-  useUserContentStore: (selector: (s: typeof mocks) => unknown) =>
-    selector(mocks as unknown as Parameters<typeof selector>[0]),
+vi.mock("@/hooks/userContent", () => ({
+  useMyList: () => mocks.myList,
+  useWatchedEpisodes: () => mocks.watchedEpisodes,
 }));
 
 function pickMockResults(queries: Array<{ queryKey: readonly unknown[] }>) {

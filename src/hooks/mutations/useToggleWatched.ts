@@ -1,8 +1,11 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { type ContentType, userContentService } from "@/services/userContent";
-import { userContentKeys } from "@/services/userContent.queries";
-import { useUserContentStore } from "@/store/useUserContentStore";
+import {
+  emptyUserContent,
+  type UserContent,
+  userContentKeys,
+} from "@/services/userContent.queries";
 
 export type ToggleWatchedInput = {
   id: number;
@@ -23,17 +26,25 @@ export function useToggleWatched() {
     },
     onMutate: async ({ id, action }) => {
       await queryClient.cancelQueries({ queryKey: userContentKeys.all });
-      const previous = useUserContentStore.getState().watchedIds;
-      if (action === "watch") {
-        useUserContentStore.getState().markAsWatched(id);
-      } else {
-        useUserContentStore.getState().markAsUnwatched(id);
-      }
+      const previous = queryClient.getQueryData<UserContent>(
+        userContentKeys.all,
+      );
+      queryClient.setQueryData<UserContent>(userContentKeys.all, (old) => {
+        const base = old ?? emptyUserContent();
+        if (action === "watch") {
+          if (base.watchedIds.includes(id)) return base;
+          return { ...base, watchedIds: [...base.watchedIds, id] };
+        }
+        return {
+          ...base,
+          watchedIds: base.watchedIds.filter((watchedId) => watchedId !== id),
+        };
+      });
       return { previous };
     },
     onError: (_error, _variables, context) => {
-      if (context) {
-        useUserContentStore.setState({ watchedIds: context.previous });
+      if (context?.previous) {
+        queryClient.setQueryData(userContentKeys.all, context.previous);
       }
     },
     onSettled: () => {

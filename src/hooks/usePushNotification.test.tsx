@@ -1,4 +1,6 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { usePushNotification } from "./usePushNotification";
@@ -81,9 +83,18 @@ describe("usePushNotification", () => {
   let reg: ReturnType<typeof createMockRegistration>;
   let builder: ReturnType<typeof createQueryBuilder>;
   let subscription: MockPushSubscription;
+  let queryClient: QueryClient;
+
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
 
   beforeEach(() => {
     vi.clearAllMocks();
+
+    queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
 
     reg = createMockRegistration();
 
@@ -121,7 +132,7 @@ describe("usePushNotification", () => {
 
     mocks.useAuth.mockReturnValue({ user: null, status: "none" });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     expect(result.current.isSupported).toBe(false);
   });
@@ -129,7 +140,7 @@ describe("usePushNotification", () => {
   it("returns isSupported as true when browser APIs are available", () => {
     mocks.useAuth.mockReturnValue({ user: null, status: "none" });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     expect(result.current.isSupported).toBe(true);
   });
@@ -141,7 +152,7 @@ describe("usePushNotification", () => {
   it("sets isSubscribed to false when user is not authenticated", async () => {
     mocks.useAuth.mockReturnValue({ user: null, status: "none" });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isSubscribed).toBe(false);
@@ -159,7 +170,7 @@ describe("usePushNotification", () => {
       error: null,
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(mocks.supabaseFrom).toHaveBeenCalledWith("push_subscriptions");
@@ -177,7 +188,7 @@ describe("usePushNotification", () => {
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.isSubscribed).toBe(false);
@@ -195,7 +206,7 @@ describe("usePushNotification", () => {
       error: new Error("DB check error"),
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(mocks.supabaseFrom).toHaveBeenCalled();
@@ -217,7 +228,9 @@ describe("usePushNotification", () => {
       status: "authenticated",
     });
 
-    const { result, unmount } = renderHook(() => usePushNotification());
+    const { result, unmount } = renderHook(() => usePushNotification(), {
+      wrapper,
+    });
 
     await waitFor(() => {
       expect(mocks.supabaseFrom).toHaveBeenCalledWith("push_subscriptions");
@@ -253,7 +266,7 @@ describe("usePushNotification", () => {
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -275,7 +288,7 @@ describe("usePushNotification", () => {
       status: "authenticated",
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(false);
@@ -294,7 +307,7 @@ describe("usePushNotification", () => {
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -333,7 +346,7 @@ describe("usePushNotification", () => {
       status: "authenticated",
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -355,7 +368,7 @@ describe("usePushNotification", () => {
       status: "authenticated",
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -374,7 +387,7 @@ describe("usePushNotification", () => {
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -408,7 +421,7 @@ describe("usePushNotification", () => {
     const existingSub = { unsubscribe: vi.fn().mockResolvedValue(undefined) };
     reg.pushManager.getSubscription.mockResolvedValue(existingSub);
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -435,7 +448,7 @@ describe("usePushNotification", () => {
       unsubscribe: vi.fn().mockResolvedValue(undefined),
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -455,7 +468,7 @@ describe("usePushNotification", () => {
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
     builder.upsert.mockResolvedValue({ error: new Error("Upsert failed") });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -491,7 +504,7 @@ describe("usePushNotification", () => {
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -521,7 +534,7 @@ describe("usePushNotification", () => {
       error: null,
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -545,7 +558,7 @@ describe("usePushNotification", () => {
 
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -575,7 +588,7 @@ describe("usePushNotification", () => {
     const existingSub = { unsubscribe: vi.fn().mockResolvedValue(undefined) };
     reg.pushManager.getSubscription.mockResolvedValue(existingSub);
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);
@@ -598,7 +611,7 @@ describe("usePushNotification", () => {
 
     mocks.useAuth.mockReturnValue({ user: null, status: "none" });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     expect(result.current.swReady).toBe(false);
   });
@@ -618,7 +631,7 @@ describe("usePushNotification", () => {
       status: "authenticated",
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(false);
@@ -644,7 +657,7 @@ describe("usePushNotification", () => {
       status: "authenticated",
     });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(false);
@@ -663,7 +676,7 @@ describe("usePushNotification", () => {
     builder.maybeSingle.mockResolvedValue({ data: null, error: null });
     builder.upsert.mockResolvedValue({ error: new Error("Upsert failed") });
 
-    const { result } = renderHook(() => usePushNotification());
+    const { result } = renderHook(() => usePushNotification(), { wrapper });
 
     await waitFor(() => {
       expect(result.current.swReady).toBe(true);

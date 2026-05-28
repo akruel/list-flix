@@ -25,7 +25,7 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 ## Architecture
 
 - **Router**: TanStack Router (not react-router-dom). Auto-generated route tree at `src/routeTree.gen.ts`.
-- **State**: Zustand stores in `src/store/`
+- **State**: TanStack Query (React Query) is the single source of truth for server state (`*.queries.ts` factories + mutations in `src/hooks/mutations/`); UI state uses local React state. No global store — `src/store/` only holds one-time legacy `localStorage` cleanup (`migrate.ts`).
 - **Backend**: Supabase (auth, DB, RLS policies in `supabase/`)
 - **UI**: Radix UI primitives + shadcn patterns (cva, clsx, tailwind-merge)
 
@@ -42,6 +42,12 @@ Always run `format -> lint -> typecheck -> knip -> test` before submitting.
 - RLS and E2E require Docker running + Supabase CLI installed
 - E2E tests clean DB automatically before each run
 - CI uses Supabase CLI v2.100.1
+
+## Knip Conventions
+
+- `ignore` in [knip.json](knip.json) is for files outside the module graph only (configs, edge functions, public assets, test folders). Never use it to silence unused exports inside `src/` — it also hides "unused file" detection (this is how `ui/toast.tsx` died unnoticed).
+- To suppress a legitimately-unused export (e.g. shadcn surface kept for future use), add `/** @public */` directly above an inline `export const X = ...` declaration. The tag is **not** picked up inside grouped `export { ... }` blocks — convert to inline export when needed.
+- Unused files in `src/` should be deleted, not ignored. If you really need to keep one temporarily, add it to `entry` instead of `ignore` so future regressions stay visible.
 
 ## Commit Message Convention
 

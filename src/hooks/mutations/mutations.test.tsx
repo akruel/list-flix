@@ -6,7 +6,11 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { userContentService } from "@/services/userContent";
-import { useUserContentStore } from "@/store/useUserContentStore";
+import {
+  emptyUserContent,
+  type UserContent,
+  userContentKeys,
+} from "@/services/userContent.queries";
 
 import {
   useSaveSeriesMetadata,
@@ -37,13 +41,16 @@ const mockedService = userContentService as unknown as {
   saveSeriesMetadata: ReturnType<typeof vi.fn>;
 };
 
-function createWrapper() {
+function setup(initial: UserContent | null = emptyUserContent()) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
       mutations: { retry: false },
     },
   });
+  if (initial) {
+    queryClient.setQueryData(userContentKeys.all, initial);
+  }
 
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -51,48 +58,47 @@ function createWrapper() {
     );
   }
 
-  return Wrapper;
+  const getContent = () =>
+    queryClient.getQueryData<UserContent>(userContentKeys.all);
+
+  return { queryClient, Wrapper, getContent };
 }
 
 describe("watchlist mutation hooks", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    useUserContentStore.setState({
-      myList: [],
-      watchedIds: [],
-      watchedEpisodes: {},
-      seriesMetadata: {},
-    });
   });
 
   it("useToggleWatched marks and rolls back", async () => {
     mockedService.markAsWatched.mockResolvedValue(undefined);
     mockedService.markAsUnwatched.mockResolvedValue(undefined);
 
+    const { Wrapper, getContent } = setup();
     const { result } = renderHook(() => useToggleWatched(), {
-      wrapper: createWrapper(),
+      wrapper: Wrapper,
     });
 
     result.current.mutate({ id: 1, mediaType: "movie", action: "watch" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(useUserContentStore.getState().watchedIds).toEqual([1]);
+    expect(getContent()?.watchedIds).toEqual([1]);
 
     mockedService.markAsWatched.mockRejectedValue(new Error("fail"));
     result.current.mutate({ id: 2, mediaType: "tv", action: "watch" });
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(useUserContentStore.getState().watchedIds).toEqual([1]);
+    expect(getContent()?.watchedIds).toEqual([1]);
 
     result.current.mutate({ id: 1, mediaType: "movie", action: "unwatch" });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(useUserContentStore.getState().watchedIds).toEqual([]);
+    expect(getContent()?.watchedIds).toEqual([]);
   });
 
   it("useToggleEpisodeWatched updates episodes optimistically", async () => {
     mockedService.markAsWatched.mockResolvedValue(undefined);
     mockedService.markAsUnwatched.mockResolvedValue(undefined);
 
+    const { Wrapper, getContent, queryClient } = setup();
     const { result } = renderHook(() => useToggleEpisodeWatched(), {
-      wrapper: createWrapper(),
+      wrapper: Wrapper,
     });
 
     result.current.mutate({
@@ -103,7 +109,7 @@ describe("watchlist mutation hooks", () => {
       action: "watch",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(useUserContentStore.getState().watchedEpisodes[10]?.[100]).toEqual({
+    expect(getContent()?.watchedEpisodes[10]?.[100]).toEqual({
       season_number: 1,
       episode_number: 2,
     });
@@ -116,13 +122,11 @@ describe("watchlist mutation hooks", () => {
       action: "unwatch",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(useUserContentStore.getState().watchedEpisodes[10]).toEqual({});
+    expect(getContent()?.watchedEpisodes[10]).toEqual({});
 
-    useUserContentStore.setState({
+    queryClient.setQueryData<UserContent>(userContentKeys.all, {
+      ...emptyUserContent(),
       watchedEpisodes: { 10: { 100: { season_number: 1, episode_number: 2 } } },
-      myList: [],
-      watchedIds: [],
-      seriesMetadata: {},
     });
     mockedService.markAsWatched.mockRejectedValue(new Error("fail"));
     result.current.mutate({
@@ -133,7 +137,7 @@ describe("watchlist mutation hooks", () => {
       action: "watch",
     });
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(useUserContentStore.getState().watchedEpisodes[10]?.[100]).toEqual({
+    expect(getContent()?.watchedEpisodes[10]?.[100]).toEqual({
       season_number: 1,
       episode_number: 2,
     });
@@ -147,8 +151,9 @@ describe("watchlist mutation hooks", () => {
       { id: 201, season_number: 1, episode_number: 1 },
     ] as never;
 
+    const { Wrapper, getContent } = setup();
     const { result } = renderHook(() => useToggleSeasonWatched(), {
-      wrapper: createWrapper(),
+      wrapper: Wrapper,
     });
 
     result.current.mutate({
@@ -158,9 +163,7 @@ describe("watchlist mutation hooks", () => {
       action: "watch",
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(
-      useUserContentStore.getState().watchedEpisodes[5]?.[201],
-    ).toBeDefined();
+    expect(getContent()?.watchedEpisodes[5]?.[201]).toBeDefined();
 
     mockedService.markSeasonAsWatched.mockRejectedValue(new Error("fail"));
     result.current.mutate({
@@ -180,11 +183,76 @@ describe("watchlist mutation hooks", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
   });
 
+  it("seeds an empty cache and dedupes when no content is preloaded", async () => {
+    mockedService.markAsWatched.mockResolvedValue(undefined);
+
+    const { Wrapper, getContent } = setup(null);
+    const { result } = renderHook(() => useToggleWatched(), {
+      wrapper: Wrapper,
+    });
+
+    result.current.mutate({ id: 1, mediaType: "movie", action: "watch" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getContent()?.watchedIds).toEqual([1]);
+
+    result.current.mutate({ id: 1, mediaType: "movie", action: "watch" });
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(getContent()?.watchedIds).toEqual([1]);
+  });
+
+  it("seeds an empty cache for episode/season/metadata mutations", async () => {
+    mockedService.markAsWatched.mockResolvedValue(undefined);
+    mockedService.markSeasonAsWatched.mockResolvedValue(undefined);
+    mockedService.saveSeriesMetadata.mockResolvedValue(undefined);
+
+    const episode = setup(null);
+    const { result: episodeResult } = renderHook(
+      () => useToggleEpisodeWatched(),
+      { wrapper: episode.Wrapper },
+    );
+    episodeResult.current.mutate({
+      showId: 10,
+      episodeId: 100,
+      seasonNumber: 1,
+      episodeNumber: 1,
+      action: "watch",
+    });
+    await waitFor(() => expect(episodeResult.current.isSuccess).toBe(true));
+    expect(episode.getContent()?.watchedEpisodes[10]?.[100]).toBeDefined();
+
+    const season = setup(null);
+    const { result: seasonResult } = renderHook(
+      () => useToggleSeasonWatched(),
+      { wrapper: season.Wrapper },
+    );
+    seasonResult.current.mutate({
+      showId: 5,
+      seasonNumber: 1,
+      episodes: [{ id: 201, season_number: 1, episode_number: 1 }] as never,
+      action: "watch",
+    });
+    await waitFor(() => expect(seasonResult.current.isSuccess).toBe(true));
+    expect(season.getContent()?.watchedEpisodes[5]?.[201]).toBeDefined();
+
+    const metadata = setup(null);
+    const { result: metadataResult } = renderHook(
+      () => useSaveSeriesMetadata(),
+      { wrapper: metadata.Wrapper },
+    );
+    metadataResult.current.mutate({
+      showId: 7,
+      metadata: { total_episodes: 4, number_of_seasons: 1 },
+    });
+    await waitFor(() => expect(metadataResult.current.isSuccess).toBe(true));
+    expect(metadata.getContent()?.seriesMetadata[7]).toBeDefined();
+  });
+
   it("useSaveSeriesMetadata persists metadata optimistically", async () => {
     mockedService.saveSeriesMetadata.mockResolvedValue(undefined);
 
+    const { Wrapper, getContent } = setup();
     const { result } = renderHook(() => useSaveSeriesMetadata(), {
-      wrapper: createWrapper(),
+      wrapper: Wrapper,
     });
 
     result.current.mutate({
@@ -192,7 +260,7 @@ describe("watchlist mutation hooks", () => {
       metadata: { total_episodes: 12, number_of_seasons: 2 },
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(useUserContentStore.getState().seriesMetadata[7]).toEqual({
+    expect(getContent()?.seriesMetadata[7]).toEqual({
       total_episodes: 12,
       number_of_seasons: 2,
     });
@@ -203,6 +271,6 @@ describe("watchlist mutation hooks", () => {
       metadata: { total_episodes: 1, number_of_seasons: 1 },
     });
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(useUserContentStore.getState().seriesMetadata[8]).toBeUndefined();
+    expect(getContent()?.seriesMetadata[8]).toBeUndefined();
   });
 });

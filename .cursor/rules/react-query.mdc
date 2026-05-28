@@ -6,7 +6,7 @@ alwaysApply: false
 
 # React Query (TanStack Query)
 
-We use `@tanstack/react-query` for server state. Zustand stores in `src/store/` hold only client/UI state (or optimistic local copies of server state); they do not own fetching.
+We use `@tanstack/react-query` as the single source of truth for server state. There is no Zustand store: server data is read via `useQuery`/`useSuspenseQuery` and written via the mutation hooks in `src/hooks/mutations/`. Client/UI state lives in local React state (`useState`, router search params).
 
 ## Query factories
 
@@ -67,15 +67,25 @@ Live in `src/hooks/mutations/`, one file per mutation. Pattern:
 export function useToggleWatchlist() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (item: ContentItem) => userContentService.addToWatchlist(item),
-    onMutate: async (item) => {
+    mutationFn: ({ item, action }: ToggleWatchlistInput) =>
+      action === "add"
+        ? userContentService.addToWatchlist(item)
+        : userContentService.removeFromWatchlist(item.id),
+    onMutate: async ({ item, action }) => {
       await queryClient.cancelQueries({ queryKey: userContentKeys.all });
-      const previous = useUserContentStore.getState().myList;
-      useUserContentStore.getState().addToList(item); // optimistic
+      const previous = queryClient.getQueryData<UserContent>(userContentKeys.all);
+      queryClient.setQueryData<UserContent>(userContentKeys.all, (old) => {
+        const base = old ?? emptyUserContent(); // defensive: cache may be empty
+        return action === "add"
+          ? { ...base, watchlist: [...base.watchlist, item] }
+          : { ...base, watchlist: base.watchlist.filter((i) => i.id !== item.id) };
+      });
       return { previous };
     },
-    onError: (_err, _item, context) => {
-      if (context) useUserContentStore.setState({ myList: context.previous });
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(userContentKeys.all, context.previous);
+      }
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: userContentKeys.all });
@@ -92,12 +102,13 @@ Rules:
 - Toast UX belongs in the component that calls the mutation, not in the hook. The hook only owns cache + optimistic state.
 - Each mutation hook is named `use<Verb><Noun>` and exported as a default-style `export function`.
 
-## Zustand store boundary
+## Reading user content
 
-- `useUserContentStore` keeps the optimistic copy of watchlist/watched/episodes — its actions are pure local writes; the network call lives in the mutation hook.
-- `useListsStore` exists only as a transition shim and is removed by the Lists vertical phase.
-- Taste suggestions are pure server state owned by React Query (`tasteSuggestionsQuery`); no Zustand store backs them anymore.
-- Never read server data via `useStore()` in new code; subscribe via `useQuery` / `useSuspenseQuery` instead.
+User content (watchlist, watched, episodes, series metadata) is one React Query entry — `userContentQuery` (key `["userContent"]`), prefetched in the `_protected` route loader. There is no Zustand store backing it.
+
+- Read it through the `select`-based hooks in `src/hooks/userContent.ts`: `useMyList()`, `useWatchedIds()`, `useIsInList(id)`, `useIsWatched(id)`, `useWatchedEpisodes()`, `useShowWatchedEpisodes(showId)`, `useSeriesMetadata(id)`.
+- Each is `useQuery({ ...userContentQuery(), select })` with a stable empty fallback, so a component only re-renders when the slice it reads changes.
+- Optimistic writes go through `queryClient.setQueryData` in the mutation hooks (see above) — never reintroduce a global store for server data.
 
 ## Devtools
 

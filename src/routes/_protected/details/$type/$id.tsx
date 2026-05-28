@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { DetailsActions } from "@/components/details/DetailsActions";
 import { DetailsHero } from "@/components/details/DetailsHero";
@@ -9,11 +9,11 @@ import { ListSelectionModal } from "@/components/ListSelectionModal";
 import { SeasonList } from "@/components/SeasonList";
 import { DetailsSkeleton } from "@/components/skeletons";
 import { useSaveSeriesMetadata, useToggleWatched } from "@/hooks/mutations";
+import { useIsInList, useIsWatched } from "@/hooks/userContent";
 import { formatDateLong, getCountdownText } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { tmdb } from "@/services/tmdb";
 import { detailsQuery } from "@/services/tmdb.queries";
-import { useUserContentStore } from "@/store/useUserContentStore";
 
 export const Route = createFileRoute("/_protected/details/$type/$id")({
   beforeLoad: ({ params }) => {
@@ -66,38 +66,42 @@ function DetailsRouteComponent() {
   );
   const [showListModal, setShowListModal] = useState(false);
 
-  const isSaved = useUserContentStore((s) =>
-    s.myList.some((item) => item.id === numericId),
-  );
-  const watched = useUserContentStore((s) => s.watchedIds.includes(numericId));
+  const isSaved = useIsInList(numericId);
+  const watched = useIsWatched(numericId);
   const { mutate: toggleWatched } = useToggleWatched();
   const { mutate: saveSeriesMetadata } = useSaveSeriesMetadata();
-
-  useEffect(() => {
-    if (contentType === "tv" && details.seasons) {
-      const totalRegularEpisodes = details.seasons.reduce((acc, season) => {
-        if (season.season_number > 0) {
-          return acc + season.episode_count;
-        }
-        return acc;
-      }, 0);
-
-      saveSeriesMetadata({
-        showId: numericId,
-        metadata: {
-          total_episodes: totalRegularEpisodes,
-          number_of_seasons: details.number_of_seasons || 0,
-        },
-      });
-    }
-  }, [contentType, details, numericId, saveSeriesMetadata]);
 
   const providers = details["watch/providers"]?.results?.BR;
   const flatrate = providers?.flatrate || [];
   const rent = providers?.rent || [];
   const buy = providers?.buy || [];
 
+  // Cache the show's episode/season counts in series_cache when the user
+  // intentionally starts tracking it, so list cards can render progress
+  // without refetching full details. Kept out of a render effect on purpose.
+  const persistSeriesMetadata = () => {
+    if (contentType !== "tv" || !details.seasons) return;
+    const totalRegularEpisodes = details.seasons.reduce(
+      (acc, season) =>
+        season.season_number > 0 ? acc + season.episode_count : acc,
+      0,
+    );
+    saveSeriesMetadata({
+      showId: numericId,
+      metadata: {
+        total_episodes: totalRegularEpisodes,
+        number_of_seasons: details.number_of_seasons || 0,
+      },
+    });
+  };
+
+  const handleToggleList = () => {
+    persistSeriesMetadata();
+    setShowListModal(true);
+  };
+
   const handleToggleWatched = () => {
+    persistSeriesMetadata();
     toggleWatched({
       id: details.id,
       mediaType: details.media_type,
@@ -114,7 +118,7 @@ function DetailsRouteComponent() {
           <DetailsActions
             isSaved={isSaved}
             watched={watched}
-            onToggleList={() => setShowListModal(true)}
+            onToggleList={handleToggleList}
             onToggleWatched={handleToggleWatched}
           />
 
