@@ -211,6 +211,18 @@ describe("ListDetailsView", () => {
     expect(screen.getByTestId("list-details-skeleton")).toBeInTheDocument();
   });
 
+  it("renders per-item skeletons while TMDB content is pending", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails());
+    mocks.tmdbGetDetails.mockImplementation(() => new Promise(() => {}));
+
+    renderListDetails("list-1");
+
+    expect(
+      await screen.findByTestId("list-item-content-skeleton"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Conteúdo indisponível")).not.toBeInTheDocument();
+  });
+
   it("renders fallback error state when loading fails", async () => {
     mocks.getListDetails.mockRejectedValue(new Error("failed"));
 
@@ -596,6 +608,35 @@ describe("ListDetailsView", () => {
     expect(
       screen.getByRole("button", { name: /Copiado!/i }),
     ).toBeInTheDocument();
+  });
+
+  it("shows error toast when copying share URL fails", async () => {
+    mocks.getListDetails.mockResolvedValue(createListDetails({ items: [] }));
+    mocks.getShareUrl.mockReturnValue(
+      "https://listflix.local/lists/list-1/join?role=viewer",
+    );
+    Object.defineProperty(window.navigator, "clipboard", {
+      value: {
+        writeText: vi.fn().mockRejectedValue(new Error("denied")),
+      },
+      configurable: true,
+    });
+
+    renderListDetails("list-1");
+
+    await screen.findByText("Minha Lista");
+    await userEvent.click(
+      screen.getByRole("button", { name: /Compartilhar como Visualizador/i }),
+    );
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        "Não foi possível copiar o link",
+      );
+    });
+    expect(
+      screen.queryByRole("button", { name: /Copiado!/i }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([

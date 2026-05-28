@@ -42,9 +42,14 @@ export function CustomLists() {
     e.preventDefault();
     if (!newListName.trim()) return;
 
-    await createList.mutateAsync(newListName);
-    setNewListName("");
-    setIsCreating(false);
+    try {
+      await createList.mutateAsync(newListName);
+      setNewListName("");
+      setIsCreating(false);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Erro ao criar lista");
+    }
   };
 
   const handleDelete = async () => {

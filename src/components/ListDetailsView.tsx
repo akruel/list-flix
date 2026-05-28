@@ -53,10 +53,14 @@ export function ListDetailsView({ id }: ListDetailsViewProps) {
   });
 
   const itemsWithContent: ListItemWithContent[] = (data?.items ?? []).map(
-    (item, index) => ({
-      ...item,
-      content: tmdbResults[index]?.data,
-    }),
+    (item, index) => {
+      const result = tmdbResults[index];
+      return {
+        ...item,
+        content: result?.data,
+        isContentLoading: !!result?.isPending,
+      };
+    },
   );
 
   if (!id || isLoading) {

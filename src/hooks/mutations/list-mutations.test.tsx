@@ -253,7 +253,7 @@ describe("list mutation hooks", () => {
   });
 
   describe("useAddListItems", () => {
-    it("calls listService.addListItems and invalidates detail + all keys", async () => {
+    it("calls listService.addListItems and invalidates detail + containingContent per item", async () => {
       mockedService.addListItems.mockResolvedValue(undefined);
       const { queryClient, Wrapper } = createWrapper();
       const invalidateSpy = vi.spyOn(queryClient, "invalidateQueries");
@@ -275,7 +275,10 @@ describe("list mutation hooks", () => {
         queryKey: listsKeys.detail("list-1"),
       });
       expect(invalidateSpy).toHaveBeenCalledWith({
-        queryKey: listsKeys.all,
+        queryKey: listsKeys.containingContent(1, "movie"),
+      });
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: listsKeys.containingContent(2, "tv"),
       });
     });
   });

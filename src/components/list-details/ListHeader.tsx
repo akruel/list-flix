@@ -75,9 +75,14 @@ export function ListHeader({ list, itemsCount }: ListHeaderProps) {
 
   const handleShare = async (role: "editor" | "viewer") => {
     const url = listService.getShareUrl(list.id, role);
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      copiedTimerRef.current = setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      logger.error(err);
+      toast.error("Não foi possível copiar o link");
+    }
   };
 
   const handleEditorShareClick = () => {

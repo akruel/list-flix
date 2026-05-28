@@ -5,11 +5,15 @@ import { toast } from "sonner";
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
 import { MovieCard } from "@/components/MovieCard";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useRemoveListItem } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
 import type { ContentItem, ListItem } from "@/types";
 
-export type ListItemWithContent = ListItem & { content?: ContentItem };
+export type ListItemWithContent = ListItem & {
+  content?: ContentItem;
+  isContentLoading?: boolean;
+};
 
 interface ListItemsGridProps {
   listId: string;
@@ -61,6 +65,11 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
           <div key={item.id} className="group relative">
             {item.content ? (
               <MovieCard item={item.content} showProgress={true} />
+            ) : item.isContentLoading ? (
+              <Skeleton
+                data-testid="list-item-content-skeleton"
+                className="aspect-[2/3] rounded-xl"
+              />
             ) : (
               <div className="flex aspect-[2/3] items-center justify-center rounded-lg bg-muted p-4 text-center">
                 <p className="text-muted-foreground">Conteúdo indisponível</p>

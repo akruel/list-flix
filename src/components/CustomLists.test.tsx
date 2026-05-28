@@ -184,6 +184,26 @@ describe("CustomLists", () => {
     });
   });
 
+  it("shows error toast when manual list creation fails", async () => {
+    mocks.createList.mockRejectedValueOnce(new Error("create failed"));
+
+    renderCustomLists();
+
+    await userEvent.click(
+      screen.getByRole("button", { name: /Lista Manual/i }),
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText("Nome da Lista"),
+      "Minha Lista",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Criar" }));
+
+    await waitFor(() => {
+      expect(mocks.toastError).toHaveBeenCalledWith("Erro ao criar lista");
+    });
+    expect(screen.getByPlaceholderText("Nome da Lista")).toBeInTheDocument();
+  });
+
   it("does not create list when manual name is empty", async () => {
     renderCustomLists();
 

@@ -15,11 +15,15 @@ export function useAddListItems() {
   return useMutation({
     mutationFn: ({ listId, items }: AddListItemsInput) =>
       listService.addListItems(listId, items),
-    onSettled: (_data, _error, { listId }) => {
+    onSettled: (_data, _error, { listId, items }) => {
       void queryClient.invalidateQueries({
         queryKey: listsKeys.detail(listId),
       });
-      void queryClient.invalidateQueries({ queryKey: listsKeys.all });
+      for (const item of items) {
+        void queryClient.invalidateQueries({
+          queryKey: listsKeys.containingContent(item.id, item.media_type),
+        });
+      }
     },
   });
 }
