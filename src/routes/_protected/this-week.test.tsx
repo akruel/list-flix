@@ -79,8 +79,7 @@ vi.mock("@/services/tmdb", () => ({
 }));
 
 vi.mock("@/lib/date-utils", () => ({
-  isDateInCurrentWeek: (...args: unknown[]) =>
-    mocks.isDateInCurrentWeek(...args),
+  isDateInCurrentWeek: (date: string) => mocks.isDateInCurrentWeek(date),
   getDateKey: (date: string) => date.slice(0, 10),
   getDayLabel: (key: string) => `Day(${key})`,
   getFormattedDate: (key: string) => key,
