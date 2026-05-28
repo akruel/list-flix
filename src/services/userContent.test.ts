@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { supabase } from "../lib/supabase";
-import { tmdb } from "./tmdb";
 import { userContentService } from "./userContent";
 
 vi.mock("../lib/supabase", () => ({
@@ -14,12 +13,6 @@ vi.mock("../lib/supabase", () => ({
   },
 }));
 
-vi.mock("./tmdb", () => ({
-  tmdb: {
-    getDetails: vi.fn(),
-  },
-}));
-
 type MockFn = ReturnType<typeof vi.fn>;
 
 const mockedSupabase = supabase as unknown as {
@@ -28,23 +21,18 @@ const mockedSupabase = supabase as unknown as {
   rpc: MockFn;
 };
 
-const mockedTmdb = tmdb as unknown as {
-  getDetails: MockFn;
-};
-
-function thenableEqChain<T>(result: T) {
-  const chain: {
-    eq: MockFn;
-    then: Promise<T>["then"];
-  } = {
-    eq: vi.fn(),
-    then: vi.fn(),
-  };
-  chain.eq.mockReturnValue(chain);
-  chain.then = (onFulfilled, onRejected) =>
-    Promise.resolve(result).then(onFulfilled, onRejected);
-  return chain;
-}
+const watchlistMetadataKeys = [
+  "tmdb_id",
+  "media_type",
+  "title",
+  "name",
+  "poster_path",
+  "backdrop_path",
+  "vote_average",
+  "release_date",
+  "first_air_date",
+  "overview",
+] as const;
 
 describe("userContentService", () => {
   beforeEach(() => {
@@ -65,7 +53,7 @@ describe("userContentService", () => {
     expect(mockedSupabase.from).not.toHaveBeenCalled();
   });
 
-  it("syncLocalData inserts only missing items", async () => {
+  it("syncLocalData inserts only missing items with full watchlist metadata", async () => {
     const inserts: Record<string, unknown[]> = {};
 
     mockedSupabase.from.mockImplementation((table: string) => ({
@@ -79,11 +67,7 @@ describe("userContentService", () => {
               : { data: [{ tmdb_episode_id: 1001 }] },
         ),
       insert: vi.fn().mockImplementation((payload: unknown[]) => {
-        if (Object.hasOwn(inserts, table)) {
-          inserts[table] = payload;
-        } else {
-          inserts[table as keyof typeof inserts] = payload as never;
-        }
+        inserts[table] = payload;
         return Promise.resolve({ error: null });
       }),
     }));
@@ -91,7 +75,16 @@ describe("userContentService", () => {
     await userContentService.syncLocalData(
       [
         { id: 10, media_type: "movie", title: "Existing" },
-        { id: 11, media_type: "tv", name: "New item" },
+        {
+          id: 11,
+          media_type: "tv",
+          name: "New item",
+          poster_path: "/p.jpg",
+          backdrop_path: "/b.jpg",
+          vote_average: 8.1,
+          first_air_date: "2024-01-02",
+          overview: "Synopsis",
+        },
       ],
       [20, 21],
       {
@@ -105,6 +98,17 @@ describe("userContentService", () => {
     expect(inserts.watchlists).toHaveLength(1);
     expect(inserts.watched_movies).toHaveLength(1);
     expect(inserts.watched_episodes).toHaveLength(1);
+
+    const watchlistInsert = (
+      inserts.watchlists as Record<string, unknown>[]
+    )[0];
+    for (const key of watchlistMetadataKeys) {
+      expect(watchlistInsert).toHaveProperty(key);
+    }
+    expect(watchlistInsert.user_id).toBe("user-1");
+    expect(watchlistInsert.tmdb_id).toBe(11);
+    expect(watchlistInsert.name).toBe("New item");
+    expect(watchlistInsert.poster_path).toBe("/p.jpg");
   });
 
   it("syncLocalData logs when insert operations return errors", async () => {
@@ -150,7 +154,7 @@ describe("userContentService", () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it("getUserContent maps rows without self-heal when metadata exists", async () => {
+  it("getUserContent maps watchlist rows directly without lazy lookups", async () => {
     mockedSupabase.from.mockImplementation((table: string) => ({
       select: vi.fn().mockResolvedValue(
         table === "watchlists"
@@ -161,6 +165,9 @@ describe("userContentService", () => {
                   media_type: "movie",
                   title: "Movie",
                   poster_path: "/x.jpg",
+                  vote_average: 7.4,
+                  release_date: "2024-01-01",
+                  overview: "Synopsis",
                 },
               ],
               error: null,
@@ -190,7 +197,20 @@ describe("userContentService", () => {
 
     const result = await userContentService.getUserContent();
 
-    expect(result.watchlist).toHaveLength(1);
+    expect(result.watchlist).toEqual([
+      {
+        id: 10,
+        media_type: "movie",
+        title: "Movie",
+        name: undefined,
+        poster_path: "/x.jpg",
+        backdrop_path: undefined,
+        vote_average: 7.4,
+        release_date: "2024-01-01",
+        first_air_date: undefined,
+        overview: "Synopsis",
+      },
+    ]);
     expect(result.watchedIds).toEqual([10]);
     expect(result.watchedEpisodes[100]?.[1001]).toEqual({
       season_number: 1,
@@ -200,6 +220,19 @@ describe("userContentService", () => {
       total_episodes: 10,
       number_of_seasons: 1,
     });
+  });
+
+  it("getUserContent returns empty watchlist when watchlist data is null", async () => {
+    mockedSupabase.from.mockImplementation(() => ({
+      select: vi.fn().mockResolvedValue({ data: null, error: null }),
+    }));
+
+    const result = await userContentService.getUserContent();
+
+    expect(result.watchlist).toEqual([]);
+    expect(result.watchedIds).toEqual([]);
+    expect(result.watchedEpisodes).toEqual({});
+    expect(result.seriesMetadata).toEqual({});
   });
 
   it("getUserContent handles null watched and cache rows without crashing", async () => {
@@ -231,83 +264,49 @@ describe("userContentService", () => {
     expect(result.seriesMetadata).toEqual({});
   });
 
-  it.each([
-    {
-      caseName: "self-heal success",
-      getDetailsError: null,
-      expectedTitle: "Healed title",
-    },
-    {
-      caseName: "self-heal fallback on tmdb error",
-      getDetailsError: new Error("tmdb failed"),
-      expectedTitle: "Error loading",
-    },
-  ])(
-    "getUserContent handles $caseName",
-    async ({ getDetailsError, expectedTitle }) => {
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-      const consoleLogSpy = vi
-        .spyOn(console, "log")
-        .mockImplementation(() => {});
+  it("addToWatchlist persists every metadata column from the input item", async () => {
+    let captured: Record<string, unknown> | undefined;
+    mockedSupabase.from.mockImplementation(() => ({
+      insert: vi.fn().mockImplementation((payload: Record<string, unknown>) => {
+        captured = payload;
+        return Promise.resolve({ error: null });
+      }),
+    }));
 
-      mockedSupabase.from.mockImplementation((table: string) => {
-        if (table === "watchlists") {
-          return {
-            select: vi.fn().mockResolvedValue({
-              data: [
-                { tmdb_id: 55, media_type: "movie", title: null, name: null },
-              ],
-              error: null,
-            }),
-            update: vi.fn().mockImplementation(() =>
-              thenableEqChain({
-                data: null,
-                error: null,
-              }),
-            ),
-          };
-        }
+    await userContentService.addToWatchlist({
+      id: 42,
+      media_type: "tv",
+      title: undefined,
+      name: "Show",
+      poster_path: "/poster.jpg",
+      backdrop_path: "/bd.jpg",
+      vote_average: 8.5,
+      release_date: undefined,
+      first_air_date: "2024-03-04",
+      overview: "Plot",
+    });
 
-        return {
-          select: vi.fn().mockResolvedValue({ data: [], error: null }),
-        };
-      });
-
-      if (getDetailsError) {
-        mockedTmdb.getDetails.mockRejectedValue(getDetailsError);
-      } else {
-        mockedTmdb.getDetails.mockResolvedValue({
-          id: 55,
-          media_type: "movie",
-          title: "Healed title",
-          poster_path: "/healed.jpg",
-        });
-      }
-
-      const result = await userContentService.getUserContent();
-
-      expect(result.watchlist[0]?.title).toBe(expectedTitle);
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(getDetailsError ? 1 : 0);
-      if (!getDetailsError) {
-        await new Promise((resolve) => setTimeout(resolve, 0));
-      }
-      const logMatcher = expect.stringContaining("[ListFlix INFO]");
-      expect(consoleLogSpy.mock.calls).toEqual(
-        getDetailsError ? [] : [[logMatcher, "Self-healed 1 watchlist items"]],
-      );
-
-      consoleErrorSpy.mockRestore();
-      consoleLogSpy.mockRestore();
-    },
-  );
+    expect(captured).toBeDefined();
+    expect(mockedSupabase.from).toHaveBeenCalledWith("watchlists");
+    for (const key of watchlistMetadataKeys) {
+      expect(captured).toHaveProperty(key);
+    }
+    expect(captured?.tmdb_id).toBe(42);
+    expect(captured?.media_type).toBe("tv");
+    expect(captured?.name).toBe("Show");
+    expect(captured?.poster_path).toBe("/poster.jpg");
+    expect(captured?.first_air_date).toBe("2024-03-04");
+  });
 
   it.each([
     {
       caseName: "addToWatchlist",
       run: () =>
-        userContentService.addToWatchlist({ id: 1, media_type: "movie" }),
+        userContentService.addToWatchlist({
+          id: 1,
+          media_type: "movie",
+          title: "Movie",
+        }),
       expected: undefined,
     },
     {
@@ -342,7 +341,11 @@ describe("userContentService", () => {
     {
       caseName: "addToWatchlist logs insert error",
       run: () =>
-        userContentService.addToWatchlist({ id: 1, media_type: "movie" }),
+        userContentService.addToWatchlist({
+          id: 1,
+          media_type: "movie",
+          title: "Movie",
+        }),
       mockFrom: () => ({
         insert: vi
           .fn()
