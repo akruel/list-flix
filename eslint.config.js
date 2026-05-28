@@ -62,6 +62,7 @@ export default defineConfig([
       "react/jsx-no-target-blank": "error",
       "react/self-closing-comp": "warn",
       "react/jsx-no-leaked-render": "warn",
+      "react-hooks/exhaustive-deps": "error",
       "@typescript-eslint/no-restricted-types": [
         "warn",
         {

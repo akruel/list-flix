@@ -35,6 +35,14 @@ vi.mock("@/hooks/userContent", () => ({
   useWatchedEpisodes: () => mocks.watchedEpisodes,
 }));
 
+vi.mock("@/contexts/SearchModalContext", () => ({
+  useSearchModal: () => ({
+    isOpen: false,
+    openSearch: vi.fn(),
+    closeSearch: vi.fn(),
+  }),
+}));
+
 function pickMockResults(queries: Array<{ queryKey: readonly unknown[] }>) {
   if (queries.length === 0) return [];
   const firstKey = queries[0]?.queryKey?.[1];
@@ -159,10 +167,9 @@ describe("ThisWeek route", () => {
     expect(
       screen.getByText(/Você ainda não adicionou nenhuma série/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Buscar séries" })).toHaveAttribute(
-      "data-to",
-      "/search",
-    );
+    expect(
+      screen.getByRole("button", { name: "Buscar séries" }),
+    ).toBeInTheDocument();
   });
 
   it("shows loading skeleton while details queries are pending", () => {

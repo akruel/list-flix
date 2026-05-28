@@ -1,8 +1,22 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SeasonList } from "./SeasonList";
+
+function renderSeasonList(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, staleTime: 60_000, refetchOnWindowFocus: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
 
 const mocks = vi.hoisted(() => ({
   getSeasonDetails: vi.fn(),
@@ -120,9 +134,7 @@ describe("SeasonList", () => {
   });
 
   it("renders seasons sorted by number", () => {
-    const renderComponent = () =>
-      render(<SeasonList tvId={100} seasons={seasons} />);
-    renderComponent();
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     const seasonHeadings = screen
       .getAllByRole("heading", { level: 3 })
@@ -131,7 +143,7 @@ describe("SeasonList", () => {
   });
 
   it("renders N/A when season air_date is missing", () => {
-    render(
+    renderSeasonList(
       <SeasonList
         tvId={100}
         seasons={[
@@ -151,25 +163,29 @@ describe("SeasonList", () => {
   });
 
   it("expands season and loads episodes", async () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
 
     await waitFor(() => {
-      expect(mocks.getSeasonDetails).toHaveBeenCalledWith(100, 1);
+      expect(mocks.getSeasonDetails).toHaveBeenCalledWith(
+        100,
+        1,
+        expect.any(AbortSignal),
+      );
     });
     expect(await screen.findByText("Episode 1")).toBeInTheDocument();
   });
 
   it("marks season as watched without refetch when expanded episodes already belong to same season", async () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
     await screen.findByText("Episode 1");
 
     mocks.getSeasonDetails.mockClear();
     const seasonToggleButtons = screen.getAllByRole("button", {
-      name: /Marcar como/i,
+      name: /Marcar temporada como/i,
     });
     await userEvent.click(seasonToggleButtons[0]);
 
@@ -183,7 +199,7 @@ describe("SeasonList", () => {
   });
 
   it("collapses season when clicking expanded season again", async () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
     await screen.findByText("Episode 1");
@@ -193,8 +209,8 @@ describe("SeasonList", () => {
     expect(screen.queryByText("Episode 1")).not.toBeInTheDocument();
   });
 
-  it("re-fetches episodes on re-expand", async () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+  it("uses cached episodes on re-expand without refetching", async () => {
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
     await screen.findByText("Episode 1");
@@ -203,10 +219,8 @@ describe("SeasonList", () => {
     await userEvent.click(screen.getByText("Season 1"));
     await userEvent.click(screen.getByText("Season 1"));
 
-    await waitFor(() => {
-      expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(2);
-    });
     expect(await screen.findByText("Episode 1")).toBeInTheDocument();
+    expect(mocks.getSeasonDetails).toHaveBeenCalledTimes(1);
   });
 
   it("renders watched season with green styling and Eye icon", () => {
@@ -214,10 +228,10 @@ describe("SeasonList", () => {
       100: buildWatchedEpisodes({ 1: 2, 2: 2 }),
     };
 
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     const buttons = screen.getAllByRole("button", {
-      name: /Marcar como não assistido/i,
+      name: /Marcar temporada como não assistida/i,
     });
     expect(buttons.length).toBeGreaterThan(0);
 
@@ -226,15 +240,19 @@ describe("SeasonList", () => {
   });
 
   it("fetches season details when marking as watched without expanding", async () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     const seasonToggleButtons = screen.getAllByRole("button", {
-      name: /Marcar como/i,
+      name: /Marcar temporada como/i,
     });
     await userEvent.click(seasonToggleButtons[0]);
 
     await waitFor(() => {
-      expect(mocks.getSeasonDetails).toHaveBeenCalledWith(100, 1);
+      expect(mocks.getSeasonDetails).toHaveBeenCalledWith(
+        100,
+        1,
+        expect.any(AbortSignal),
+      );
     });
     await waitFor(() => {
       expect(mocks.mutateSeasonWatched).toHaveBeenCalledWith({
@@ -268,10 +286,10 @@ describe("SeasonList", () => {
         100: buildWatchedEpisodes({ 1: watchedCount }),
       };
 
-      render(<SeasonList tvId={100} seasons={seasons} />);
+      renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
       const seasonToggleButtons = screen.getAllByRole("button", {
-        name: /Marcar como/i,
+        name: /Marcar temporada como/i,
       });
       await userEvent.click(seasonToggleButtons[0]);
 
@@ -306,7 +324,7 @@ describe("SeasonList", () => {
         ],
       });
 
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
     expect(
@@ -323,10 +341,10 @@ describe("SeasonList", () => {
   it("shows toast error when season details fail on watched toggle", async () => {
     mocks.getSeasonDetails.mockRejectedValue(new Error("season failed"));
 
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     const seasonToggleButtons = screen.getAllByRole("button", {
-      name: /Marcar como/i,
+      name: /Marcar temporada como/i,
     });
     await userEvent.click(seasonToggleButtons[0]);
 
@@ -343,7 +361,7 @@ describe("SeasonList", () => {
       .mockImplementation(() => {});
     mocks.getSeasonDetails.mockRejectedValue(new Error("expand failed"));
 
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
 
@@ -358,7 +376,7 @@ describe("SeasonList", () => {
   });
 
   it("clears stale episodes when expanding a new season", async () => {
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
     expect(await screen.findByText("Episode 1")).toBeInTheDocument();
@@ -371,7 +389,7 @@ describe("SeasonList", () => {
     ).toBeInTheDocument();
 
     const seasonToggleButtons = screen.getAllByRole("button", {
-      name: /Marcar como/i,
+      name: /Marcar temporada como/i,
     });
     await userEvent.click(seasonToggleButtons[1]);
 
@@ -397,7 +415,7 @@ describe("SeasonList", () => {
       ],
     });
 
-    render(<SeasonList tvId={100} seasons={seasons} />);
+    renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
     await userEvent.click(screen.getByText("Season 1"));
 
@@ -417,7 +435,7 @@ describe("SeasonList", () => {
         percentage: 50,
       });
 
-      render(
+      renderSeasonList(
         <SeasonList
           tvId={100}
           seasons={[
@@ -457,7 +475,7 @@ describe("SeasonList", () => {
         ? { 100: { 101: { season_number: 1, episode_number: 1 } } }
         : {};
 
-      render(<SeasonList tvId={100} seasons={seasons} />);
+      renderSeasonList(<SeasonList tvId={100} seasons={seasons} />);
 
       await userEvent.click(screen.getByText("Season 1"));
       expect(await screen.findByText("Episode 1")).toBeInTheDocument();
@@ -465,7 +483,7 @@ describe("SeasonList", () => {
       const episodeRow = screen.getByTestId("episode-row-101");
       expect(episodeRow).not.toBeNull();
       const episodeButton = within(episodeRow).getByRole("button", {
-        name: /Marcar como/i,
+        name: /Marcar episódio como/i,
       });
       await userEvent.click(episodeButton);
 

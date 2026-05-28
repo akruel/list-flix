@@ -1,3 +1,4 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
@@ -17,6 +18,7 @@ import {
 import { useShowWatchedEpisodes } from "@/hooks/userContent";
 import { formatDate, parseLocalDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
+import { seasonQuery } from "@/services/tmdb.queries";
 
 import { useSeasonProgress } from "../hooks/useSeasonProgress";
 import { tmdb } from "../services/tmdb";
@@ -37,9 +39,20 @@ interface SeasonListProps {
 
 export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const {
+    data: seasonData,
+    isPending: isSeasonLoading,
+    isError: isSeasonError,
+    refetch: refetchSeason,
+  } = useQuery({
+    ...seasonQuery(tvId, expandedSeason ?? 0),
+    enabled: expandedSeason !== null,
+    refetchOnMount: false,
+  });
+
+  const episodes = seasonData?.episodes ?? [];
 
   const showEpisodesMap = useShowWatchedEpisodes(tvId);
   const { mutate: mutateEpisodeWatched } = useToggleEpisodeWatched();
@@ -58,7 +71,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     seasonNumber: number,
     totalEpisodes: number,
   ) => {
-    e.stopPropagation(); // Prevent expanding/collapsing
+    e.stopPropagation();
 
     const { watchedCount } = getSeasonProgress(seasonNumber);
     const isFullyWatched = watchedCount === totalEpisodes && totalEpisodes > 0;
@@ -75,7 +88,9 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
         let seasonEpisodes = episodes;
         const isCurrentSeason = expandedSeason === seasonNumber;
         if (!isCurrentSeason || episodes.length === 0) {
-          const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
+          const data = await queryClient.fetchQuery(
+            seasonQuery(tvId, seasonNumber),
+          );
           seasonEpisodes = data.episodes;
         }
 
@@ -92,25 +107,13 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     }
   };
 
-  const handleExpandSeason = async (seasonNumber: number) => {
-    if (expandedSeason === seasonNumber && !error) {
+  const handleExpandSeason = (seasonNumber: number) => {
+    if (expandedSeason === seasonNumber) {
       setExpandedSeason(null);
       return;
     }
 
     setExpandedSeason(seasonNumber);
-    setError(null);
-    setEpisodes([]);
-    setLoading(true);
-    try {
-      const data = await tmdb.getSeasonDetails(tvId, seasonNumber);
-      setEpisodes(data.episodes);
-    } catch (err) {
-      logger.error("Error fetching episodes:", err);
-      setError("Erro ao carregar episódios. Tente novamente.");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleToggleEpisodeWatched = (episode: Episode) => {
@@ -124,12 +127,10 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
     });
   };
 
-  // Filter out season 0 (Specials) if desired, or keep it. Usually season 0 is specials.
   const sortedSeasons = [...seasons].sort(
     (a, b) => a.season_number - b.season_number,
   );
 
-  // Component to show progress for a season
   function SeasonProgress({
     seasonNumber,
     totalEpisodes,
@@ -143,9 +144,6 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
 
     const progressPercentage =
       totalEpisodes > 0 ? (progress.watchedCount / totalEpisodes) * 100 : 0;
-    // Shadcn Progress doesn't support custom colors easily via props, using default primary color.
-    // If needed, we can use utility classes or inline styles on the indicator if exposed,
-    // but standard Shadcn Progress is clean.
 
     return (
       <div className="flex w-full max-w-[200px] items-center gap-2 text-xs">
@@ -219,11 +217,11 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                         ? "text-green-500 hover:bg-green-500/10 hover:text-green-600"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
-                    title={
+                    aria-label={
                       getSeasonProgress(season.season_number).watchedCount ===
                       season.episode_count
-                        ? "Marcar como não assistido"
-                        : "Marcar como assistido"
+                        ? "Marcar temporada como não assistida"
+                        : "Marcar temporada como assistida"
                     }
                   >
                     {getSeasonProgress(season.season_number).watchedCount ===
@@ -234,7 +232,15 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                     )}
                   </Button>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label={
+                        expandedSeason === season.season_number
+                          ? "Recolher temporada"
+                          : "Expandir temporada"
+                      }
+                    >
                       {expandedSeason === season.season_number ? (
                         <ChevronUp className="h-4 w-4" />
                       ) : (
@@ -247,17 +253,20 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
 
               <CollapsibleContent>
                 <div className="border-t border-border bg-muted/30">
-                  {loading ? (
+                  {expandedSeason === season.season_number &&
+                  isSeasonLoading ? (
                     <EpisodeListSkeleton />
-                  ) : error ? (
+                  ) : expandedSeason === season.season_number &&
+                    isSeasonError ? (
                     <div className="flex flex-col items-center gap-3 p-6 text-center">
-                      <p className="text-sm text-muted-foreground">{error}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Erro ao carregar episódios. Tente novamente.
+                      </p>
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
-                          if (expandedSeason !== null)
-                            handleExpandSeason(expandedSeason);
+                          void refetchSeason();
                         }}
                       >
                         Tentar novamente
@@ -265,87 +274,88 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                     </div>
                   ) : (
                     <div className="divide-y divide-border">
-                      {episodes.map((episode) => {
-                        const isWatched = isEpisodeWatched(episode.id);
-                        return (
-                          <div
-                            key={episode.id}
-                            className="p-3 transition-colors hover:bg-accent/50 md:p-4"
-                            data-testid={`episode-row-${episode.id}`}
-                          >
-                            <div className="flex gap-3 md:gap-4">
-                              <div className="relative aspect-video w-24 flex-shrink-0 overflow-hidden rounded bg-muted md:w-32">
-                                {episode.still_path ? (
-                                  <img
-                                    src={tmdb.getImageUrl(
-                                      episode.still_path,
-                                      "w300",
-                                    )}
-                                    alt={episode.name}
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : (
-                                  <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
-                                    Sem imagem
-                                  </div>
-                                )}
-                                <div className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white md:px-1.5 md:text-[10px]">
-                                  Ep. {episode.episode_number}
-                                </div>
-                              </div>
-
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="min-w-0 flex-1">
-                                    <h4 className="truncate pr-2 text-sm font-medium text-foreground md:text-base">
-                                      {episode.name}
-                                    </h4>
-                                    <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-xs">
-                                      <span className="flex items-center gap-1">
-                                        <Calendar size={12} />
-                                        {formatDate(episode.air_date)}
-                                      </span>
-                                      <span>•</span>
-                                      <span>
-                                        {episode.vote_average.toFixed(1)} ★
-                                      </span>
+                      {expandedSeason === season.season_number &&
+                        episodes.map((episode) => {
+                          const isWatched = isEpisodeWatched(episode.id);
+                          return (
+                            <div
+                              key={episode.id}
+                              className="p-3 transition-colors hover:bg-accent/50 md:p-4"
+                              data-testid={`episode-row-${episode.id}`}
+                            >
+                              <div className="flex gap-3 md:gap-4">
+                                <div className="relative aspect-video w-24 flex-shrink-0 overflow-hidden rounded bg-muted md:w-32">
+                                  {episode.still_path ? (
+                                    <img
+                                      src={tmdb.getImageUrl(
+                                        episode.still_path,
+                                        "w300",
+                                      )}
+                                      alt={episode.name}
+                                      className="h-full w-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+                                      Sem imagem
                                     </div>
+                                  )}
+                                  <div className="absolute left-1 top-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium text-white md:px-1.5 md:text-[10px]">
+                                    Ep. {episode.episode_number}
                                   </div>
-
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() =>
-                                      handleToggleEpisodeWatched(episode)
-                                    }
-                                    className={`h-8 w-8 flex-shrink-0 rounded-full ${
-                                      isWatched
-                                        ? "text-green-500 hover:bg-green-500/10 hover:text-green-600"
-                                        : "text-muted-foreground hover:text-foreground"
-                                    }`}
-                                    title={
-                                      isWatched
-                                        ? "Marcar como não assistido"
-                                        : "Marcar como assistido"
-                                    }
-                                  >
-                                    {isWatched ? (
-                                      <Eye size={16} />
-                                    ) : (
-                                      <EyeOff size={16} />
-                                    )}
-                                  </Button>
                                 </div>
 
-                                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground md:text-sm">
-                                  {episode.overview ||
-                                    "Sinopse não disponível."}
-                                </p>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <h4 className="truncate pr-2 text-sm font-medium text-foreground md:text-base">
+                                        {episode.name}
+                                      </h4>
+                                      <div className="mt-1 flex items-center gap-1.5 text-[10px] text-muted-foreground md:gap-2 md:text-xs">
+                                        <span className="flex items-center gap-1">
+                                          <Calendar size={12} />
+                                          {formatDate(episode.air_date)}
+                                        </span>
+                                        <span>•</span>
+                                        <span>
+                                          {episode.vote_average.toFixed(1)} ★
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        handleToggleEpisodeWatched(episode)
+                                      }
+                                      className={`h-8 w-8 flex-shrink-0 rounded-full ${
+                                        isWatched
+                                          ? "text-green-500 hover:bg-green-500/10 hover:text-green-600"
+                                          : "text-muted-foreground hover:text-foreground"
+                                      }`}
+                                      aria-label={
+                                        isWatched
+                                          ? "Marcar episódio como não assistido"
+                                          : "Marcar episódio como assistido"
+                                      }
+                                    >
+                                      {isWatched ? (
+                                        <Eye size={16} />
+                                      ) : (
+                                        <EyeOff size={16} />
+                                      )}
+                                    </Button>
+                                  </div>
+
+                                  <p className="mt-2 line-clamp-2 text-xs text-muted-foreground md:text-sm">
+                                    {episode.overview ||
+                                      "Sinopse não disponível."}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })}
                     </div>
                   )}
                 </div>

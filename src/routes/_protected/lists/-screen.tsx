@@ -13,7 +13,18 @@ import { useToggleWatchlist } from "@/hooks/mutations";
 import { useMyList, useWatchedIds } from "@/hooks/userContent";
 import { logger } from "@/lib/logger";
 import { watchingContextBatchQuery } from "@/services/listService.queries";
+import { userContentQuery } from "@/services/userContent.queries";
 import type { ContentItem } from "@/types";
+
+function getSeriesWatchedCount(
+  watchedEpisodes: Record<number, Record<number, { season_number: number }>>,
+  showId: number,
+): number {
+  const showEpisodes = watchedEpisodes[showId] ?? {};
+  return Object.values(showEpisodes).filter(
+    (metadata) => metadata.season_number !== 0,
+  ).length;
+}
 
 type FilterType = "all" | "watched" | "unwatched";
 type TabType = "watchlist" | "custom";
@@ -45,6 +56,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
     [myList],
   );
 
+  const { data: userContent } = useQuery(userContentQuery());
   const watchingContextResult = useQuery({
     ...watchingContextBatchQuery(watchingContextItems),
     enabled: activeTab === "watchlist" && watchingContextItems.length > 0,
@@ -122,6 +134,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
 
       <div className="mb-8 flex gap-4 border-b border-gray-800 pb-1">
         <button
+          type="button"
           data-testid="lists-tab-watchlist"
           onClick={() => handleTabChange("watchlist")}
           className={`relative px-2 pb-3 text-sm font-medium transition-colors ${
@@ -139,6 +152,7 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
           )}
         </button>
         <button
+          type="button"
           data-testid="lists-tab-custom"
           onClick={() => handleTabChange("custom")}
           className={`relative px-2 pb-3 text-sm font-medium transition-colors ${
@@ -162,7 +176,9 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
           <div className="mb-6">
             <div className="flex w-full rounded-lg bg-gray-900 p-0.5 md:w-auto">
               <button
+                type="button"
                 data-testid="lists-filter-all"
+                aria-pressed={filter === "all"}
                 onClick={() => setFilter("all")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-medium transition-colors md:gap-2 md:px-4 md:py-2 md:text-sm ${
                   filter === "all"
@@ -177,7 +193,9 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                 </span>
               </button>
               <button
+                type="button"
                 data-testid="lists-filter-watched"
+                aria-pressed={filter === "watched"}
                 onClick={() => setFilter("watched")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-medium transition-colors md:gap-2 md:px-4 md:py-2 md:text-sm ${
                   filter === "watched"
@@ -192,7 +210,9 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                 </span>
               </button>
               <button
+                type="button"
                 data-testid="lists-filter-unwatched"
+                aria-pressed={filter === "unwatched"}
                 onClick={() => setFilter("unwatched")}
                 className={`flex flex-1 items-center justify-center gap-1.5 rounded-[7px] px-2 py-1.5 text-xs font-medium transition-colors md:gap-2 md:px-4 md:py-2 md:text-sm ${
                   filter === "unwatched"
@@ -215,6 +235,8 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                 <Users size={14} />
               </span>
               <button
+                type="button"
+                aria-pressed={activeMemberFilter === null}
                 onClick={() => setMemberFilter(null)}
                 className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                   activeMemberFilter === null
@@ -227,6 +249,8 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
               {allMembers.map((name) => (
                 <button
                   key={name}
+                  type="button"
+                  aria-pressed={activeMemberFilter === name}
                   onClick={() => setMemberFilter(name)}
                   className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                     activeMemberFilter === name
@@ -248,13 +272,23 @@ export function MyListScreen({ listId, initialTab }: MyListScreenProps) {
                     item={item}
                     showProgress={true}
                     watchingWith={watchingContextMap[item.id]}
+                    watched={watchedIdSet.has(item.id)}
+                    seriesMetadata={userContent?.seriesMetadata[item.id]}
+                    seriesWatchedCount={
+                      userContent
+                        ? getSeriesWatchedCount(
+                            userContent.watchedEpisodes,
+                            item.id,
+                          )
+                        : 0
+                    }
                   />
                   <Button
                     variant="destructive"
                     size="icon"
                     onClick={() => setItemToRemove(item)}
-                    className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-                    title="Remover da lista"
+                    className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full opacity-100 transition-opacity focus-visible:opacity-100 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                    aria-label="Remover da lista"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

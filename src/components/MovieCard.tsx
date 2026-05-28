@@ -7,35 +7,38 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useIsWatched, useSeriesMetadata } from "../hooks/userContent";
 import { useSeriesProgress } from "../hooks/useSeriesProgress";
 import { tmdb } from "../services/tmdb";
-import type { ContentItem, WatchingContext } from "../types";
+import type { ContentItem, SeriesMetadata, WatchingContext } from "../types";
 
 interface MovieCardProps {
   item: ContentItem;
   showProgress?: boolean;
   disableLink?: boolean;
   watchingWith?: WatchingContext[];
+  watched?: boolean;
+  seriesMetadata?: SeriesMetadata;
+  seriesWatchedCount?: number;
 }
 
-export function MovieCard({
+interface MovieCardInnerProps extends MovieCardProps {
+  watched: boolean;
+  seriesMetadata?: SeriesMetadata;
+  watchedCount: number;
+}
+
+function MovieCardInner({
   item,
   showProgress = false,
   disableLink = false,
   watchingWith,
-}: MovieCardProps) {
+  watched,
+  seriesMetadata,
+  watchedCount,
+}: MovieCardInnerProps) {
   const title = item.media_type === "movie" ? item.title : item.name;
   const date =
     item.media_type === "movie" ? item.release_date : item.first_air_date;
   const year = date ? new Date(date).getFullYear() : "N/A";
-  const watched = useIsWatched(item.id);
-  const seriesMetadata = useSeriesMetadata(item.id);
 
-  const { watchedCount } = useSeriesProgress(item.id, 0);
-
-  // Only show progress if:
-  // 1. showProgress prop is true
-  // 2. It's a TV series
-  // 3. We have metadata available
-  // 4. There are watched episodes
   const shouldShowProgress =
     showProgress &&
     item.media_type === "tv" &&
@@ -94,7 +97,7 @@ export function MovieCard({
           </div>
         )}
         {!disableLink && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
             <Badge
               variant="secondary"
               className="px-4 py-2 text-sm font-semibold"
@@ -132,4 +135,48 @@ export function MovieCard({
       {cardContent}
     </Link>
   );
+}
+
+function MovieCardWithQueries(
+  props: Omit<
+    MovieCardProps,
+    "watched" | "seriesMetadata" | "seriesWatchedCount"
+  >,
+) {
+  const watched = useIsWatched(props.item.id);
+  const seriesMetadata = useSeriesMetadata(props.item.id);
+  const { watchedCount } = useSeriesProgress(props.item.id, 0);
+
+  return (
+    <MovieCardInner
+      {...props}
+      watched={watched}
+      seriesMetadata={seriesMetadata}
+      watchedCount={watchedCount}
+    />
+  );
+}
+
+export function MovieCard({
+  watched,
+  seriesMetadata,
+  seriesWatchedCount,
+  ...props
+}: MovieCardProps) {
+  if (
+    watched !== undefined ||
+    seriesMetadata !== undefined ||
+    seriesWatchedCount !== undefined
+  ) {
+    return (
+      <MovieCardInner
+        {...props}
+        watched={watched ?? false}
+        seriesMetadata={seriesMetadata}
+        watchedCount={seriesWatchedCount ?? 0}
+      />
+    );
+  }
+
+  return <MovieCardWithQueries {...props} />;
 }

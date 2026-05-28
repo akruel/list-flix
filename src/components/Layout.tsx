@@ -1,23 +1,30 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import clsx from "clsx";
 import { Bell, CalendarDays, Home, List, Plus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef } from "react";
+
+import {
+  SearchModalProvider,
+  useSearchModal,
+} from "@/contexts/SearchModalContext";
 
 import { LoginButton } from "./LoginButton";
 import { NotificationToggle } from "./NotificationToggle";
 import { SearchModal } from "./SearchModal";
 
-export function Layout() {
+function LayoutContent() {
   const location = useLocation();
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [lastPathname, setLastPathname] = useState(location.pathname);
+  const { isOpen: isSearchOpen, openSearch, closeSearch } = useSearchModal();
+  const previousPathname = useRef(location.pathname);
 
-  // Close the search modal when the route changes by adjusting state during
-  // render (React's recommended alternative to a set-state-in-effect).
-  if (location.pathname !== lastPathname) {
-    setLastPathname(location.pathname);
-    setIsSearchOpen(false);
-  }
+  useEffect(() => {
+    if (previousPathname.current === location.pathname) {
+      return;
+    }
+
+    previousPathname.current = location.pathname;
+    closeSearch();
+  }, [closeSearch, location.pathname]);
 
   const navItems = [
     { icon: Home, label: "Início", path: "/" },
@@ -69,10 +76,11 @@ export function Layout() {
       </header>
 
       <button
+        type="button"
         data-testid="search-open-button"
-        onClick={() => setIsSearchOpen(true)}
-        className="fixed bottom-6 right-6 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg transition-colors hover:bg-purple-500 md:flex"
-        title="Buscar"
+        onClick={openSearch}
+        aria-label="Buscar"
+        className="fixed bottom-6 right-6 z-40 hidden h-14 w-14 items-center justify-center rounded-full bg-purple-600 text-white shadow-lg transition-colors hover:bg-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background md:flex"
       >
         <Plus size={24} />
       </button>
@@ -105,10 +113,11 @@ export function Layout() {
             );
           })}
           <button
+            type="button"
             data-testid="search-open-button-mobile"
-            onClick={() => setIsSearchOpen(true)}
-            className="flex h-11 w-11 items-center justify-center justify-self-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500"
-            title="Buscar"
+            onClick={openSearch}
+            aria-label="Buscar"
+            className="flex h-11 w-11 items-center justify-center justify-self-center rounded-full bg-purple-600 text-white transition-colors hover:bg-purple-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             <Plus size={22} />
           </button>
@@ -134,10 +143,15 @@ export function Layout() {
         </div>
       </nav>
 
-      <SearchModal
-        isOpen={isSearchOpen}
-        onClose={() => setIsSearchOpen(false)}
-      />
+      <SearchModal isOpen={isSearchOpen} onClose={closeSearch} />
     </div>
+  );
+}
+
+export function Layout() {
+  return (
+    <SearchModalProvider>
+      <LayoutContent />
+    </SearchModalProvider>
   );
 }

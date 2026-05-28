@@ -16,6 +16,7 @@ export function DetailsActions({
   return (
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
       <button
+        type="button"
         data-testid="details-add-button"
         onClick={onToggleList}
         className={`flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-colors ${
@@ -28,6 +29,7 @@ export function DetailsActions({
         {isSaved ? "Salvo" : "Adicionar"}
       </button>
       <button
+        type="button"
         data-testid="details-toggle-watched-button"
         onClick={onToggleWatched}
         className={`flex items-center justify-center gap-2 rounded-xl py-3 font-semibold transition-colors ${
@@ -39,7 +41,10 @@ export function DetailsActions({
         {watched ? <Eye size={20} /> : <EyeOff size={20} />}
         {watched ? "Assistido" : "Marcar"}
       </button>
-      <button className="flex items-center justify-center gap-2 rounded-xl bg-gray-800 py-3 font-semibold text-white transition-colors hover:bg-gray-700">
+      <button
+        type="button"
+        className="flex items-center justify-center gap-2 rounded-xl bg-gray-800 py-3 font-semibold text-white transition-colors hover:bg-gray-700"
+      >
         <Share2 size={20} /> Compartilhar
       </button>
     </div>

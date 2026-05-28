@@ -29,6 +29,10 @@ vi.mock("@/services/userContent", () => ({
   userContentService: {},
 }));
 
+vi.mock("@/hooks/userContent", () => ({
+  useWatchedIds: () => [],
+}));
+
 vi.mock("../services/listService", () => ({
   listService: {
     getListDetails: (...args: unknown[]) => mocks.getListDetails(...args),
@@ -292,7 +296,7 @@ describe("ListDetailsView", () => {
 
     expect(await screen.findByText("Movie One")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(screen.getByRole("button", { name: "Remover item" }));
 
     expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
 
@@ -334,7 +338,7 @@ describe("ListDetailsView", () => {
     renderListDetails("list-1");
 
     expect(await screen.findByText("TV Show One")).toBeInTheDocument();
-    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(screen.getByRole("button", { name: "Remover item" }));
 
     expect(
       screen.getByText(
@@ -354,7 +358,7 @@ describe("ListDetailsView", () => {
       await screen.findByText("Conteúdo indisponível"),
     ).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(screen.getByRole("button", { name: "Remover item" }));
 
     expect(
       screen.getByText(/Tem certeza que deseja remover "este item" da lista/i),
@@ -373,7 +377,7 @@ describe("ListDetailsView", () => {
 
     expect(await screen.findByText("no title")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(screen.getByRole("button", { name: "Remover item" }));
 
     expect(
       screen.getByText(/Tem certeza que deseja remover "este item" da lista/i),
@@ -398,7 +402,7 @@ describe("ListDetailsView", () => {
 
     expect(await screen.findByText("Movie One")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(screen.getByRole("button", { name: "Remover item" }));
     await userEvent.click(
       screen.getByRole("button", { name: "Confirmar exclusao" }),
     );
@@ -429,7 +433,7 @@ describe("ListDetailsView", () => {
 
     expect(await screen.findByText("Movie One")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByTitle("Remover item"));
+    await userEvent.click(screen.getByRole("button", { name: "Remover item" }));
     expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: "Fechar modal" }));
@@ -530,7 +534,9 @@ describe("ListDetailsView", () => {
 
       await screen.findByText("Movie One");
 
-      expect(!!screen.queryByTitle("Remover item")).toBe(canEdit);
+      expect(!!screen.queryByRole("button", { name: "Remover item" })).toBe(
+        canEdit,
+      );
     },
   );
 
@@ -675,7 +681,9 @@ describe("ListDetailsView", () => {
       renderListDetails("list-1");
 
       await screen.findByText("Movie One");
-      await userEvent.click(screen.getByTitle("Remover item"));
+      await userEvent.click(
+        screen.getByRole("button", { name: "Remover item" }),
+      );
 
       expect(screen.getByTestId("modal-Remover item")).toBeInTheDocument();
 
