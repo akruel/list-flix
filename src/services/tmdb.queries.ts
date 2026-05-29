@@ -1,4 +1,5 @@
-import { getMoodDiscoverParams } from "./moods";
+import { getMoodDiscoverParams } from "@/lib/moods";
+
 import { tmdb } from "./tmdb";
 
 export const tmdbKeys = {

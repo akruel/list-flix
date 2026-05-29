@@ -12,7 +12,7 @@ import { useSaveSeriesMetadata, useToggleWatched } from "@/hooks/mutations";
 import { useIsInList, useIsWatched } from "@/hooks/userContent";
 import { formatDateLong, getCountdownText } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { tmdb } from "@/services/tmdb";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
 import { detailsQuery } from "@/services/tmdb.queries";
 
 export const Route = createFileRoute("/_protected/details/$type/$id")({
@@ -211,7 +211,7 @@ function DetailsRouteComponent() {
                     <div className="mb-2 h-24 w-24 overflow-hidden rounded-full bg-gray-800">
                       {actor.profile_path ? (
                         <img
-                          src={tmdb.getImageUrl(actor.profile_path, "w300")}
+                          src={getTmdbImageUrl(actor.profile_path, "w300")}
                           alt={actor.name}
                           className="h-full w-full object-cover"
                         />

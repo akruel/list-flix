@@ -12,7 +12,19 @@ import { ListItemsGrid } from "./ListItemsGrid";
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
   watchedIds: [10] as number[],
-  getUserContent: vi.fn(),
+  userContent: {
+    watchlist: [],
+    watchedIds: [10],
+    watchedEpisodes: {
+      10: {
+        1: { season_number: 1, episode_number: 1 },
+        2: { season_number: 0, episode_number: 1 },
+      },
+    },
+    seriesMetadata: {
+      10: { total_episodes: 10, number_of_seasons: 1 },
+    },
+  },
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -22,13 +34,8 @@ vi.mock("@/hooks/mutations", () => ({
 }));
 
 vi.mock("@/hooks/userContent", () => ({
+  useUserContent: () => mocks.userContent,
   useWatchedIds: () => mocks.watchedIds,
-}));
-
-vi.mock("@/services/userContent", () => ({
-  userContentService: {
-    getUserContent: (...args: unknown[]) => mocks.getUserContent(...args),
-  },
 }));
 
 vi.mock("@/components/MovieCard", () => ({
@@ -116,7 +123,7 @@ describe("ListItemsGrid", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.mutateAsync.mockResolvedValue(undefined);
-    mocks.getUserContent.mockResolvedValue({
+    mocks.userContent = {
       watchlist: [],
       watchedIds: [10],
       watchedEpisodes: {
@@ -128,7 +135,7 @@ describe("ListItemsGrid", () => {
       seriesMetadata: {
         10: { total_episodes: 10, number_of_seasons: 1 },
       },
-    });
+    };
   });
 
   it("passes watched and series progress props from user content", async () => {

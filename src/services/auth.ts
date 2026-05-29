@@ -1,20 +1,13 @@
+import {
+  consumePostLoginTarget,
+  getPostLoginTarget,
+  savePostLoginTarget,
+} from "@/lib/auth-post-login";
+
 import { supabase } from "../lib/supabase";
 import type { AuthProvider, UserProfile } from "../types";
 
-const AUTH_POST_LOGIN_TARGET_KEY = "auth_post_login_target";
-
-const normalizePathname = (path: string): string => {
-  const [pathname] = path.split("?");
-  return pathname;
-};
-
-const isInvitePath = (path: string): boolean => {
-  return /^\/lists\/[^/]+\/join$/.test(normalizePathname(path));
-};
-
 export const authService = {
-  AUTH_POST_LOGIN_TARGET_KEY,
-
   async signInWithGoogle() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -88,21 +81,15 @@ export const authService = {
   },
 
   savePostLoginTarget(path: string) {
-    if (isInvitePath(path)) {
-      localStorage.setItem(AUTH_POST_LOGIN_TARGET_KEY, path);
-    }
+    savePostLoginTarget(path);
   },
 
   getPostLoginTarget() {
-    const target = localStorage.getItem(AUTH_POST_LOGIN_TARGET_KEY);
-    if (!target) return null;
-    return isInvitePath(target) ? target : null;
+    return getPostLoginTarget();
   },
 
   consumePostLoginTarget() {
-    const target = this.getPostLoginTarget();
-    localStorage.removeItem(AUTH_POST_LOGIN_TARGET_KEY);
-    return target;
+    return consumePostLoginTarget();
   },
 
   async ensureDisplayName() {

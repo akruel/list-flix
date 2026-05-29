@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -8,9 +7,8 @@ import { MovieCard } from "@/components/MovieCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRemoveListItem } from "@/hooks/mutations";
-import { useWatchedIds } from "@/hooks/userContent";
+import { useUserContent, useWatchedIds } from "@/hooks/userContent";
 import { logger } from "@/lib/logger";
-import { userContentQuery } from "@/services/userContent.queries";
 import type { ContentItem, ListItem } from "@/types";
 
 export type ListItemWithContent = ListItem & {
@@ -28,7 +26,7 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
   const removeListItem = useRemoveListItem();
   const watchedIds = useWatchedIds();
   const watchedIdSet = useMemo(() => new Set(watchedIds), [watchedIds]);
-  const { data: userContent } = useQuery(userContentQuery());
+  const userContent = useUserContent();
   const [itemToRemove, setItemToRemove] = useState<ListItemWithContent | null>(
     null,
   );
@@ -39,8 +37,7 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
     return listItem.content.title || listItem.content.name;
   };
 
-  const handleConfirmRemoveItem = async () => {
-    const item = itemToRemove!;
+  const handleConfirmRemoveItem = async (item: ListItemWithContent) => {
     try {
       setIsRemovingItem(true);
       await removeListItem.mutateAsync({
@@ -116,20 +113,18 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
         )}
       </div>
 
-      <DeleteConfirmationModal
-        isOpen={!!itemToRemove}
-        onClose={handleItemRemoveModalClose}
-        onConfirm={() => {
-          void handleConfirmRemoveItem();
-        }}
-        title="Remover item"
-        description={
-          itemToRemove
-            ? `Tem certeza que deseja remover "${getRemoveItemName(itemToRemove) ?? "este item"}" da lista?`
-            : ""
-        }
-        isDeleting={isRemovingItem}
-      />
+      {itemToRemove ? (
+        <DeleteConfirmationModal
+          isOpen
+          onClose={handleItemRemoveModalClose}
+          onConfirm={() => {
+            void handleConfirmRemoveItem(itemToRemove);
+          }}
+          title="Remover item"
+          description={`Tem certeza que deseja remover "${getRemoveItemName(itemToRemove) ?? "este item"}" da lista?`}
+          isDeleting={isRemovingItem}
+        />
+      ) : null}
     </>
   );
 }

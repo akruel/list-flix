@@ -1,5 +1,7 @@
 import axios from "axios";
 
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
+
 import type {
   ContentDetails,
   ContentItem,
@@ -119,10 +121,7 @@ export const tmdb = {
   getImageUrl: (
     path: string | null | undefined,
     size: "w300" | "w500" | "original" = "w500",
-  ) => {
-    if (!path) return "https://via.placeholder.com/500x750?text=No+Image";
-    return `https://image.tmdb.org/t/p/${size}${path}`;
-  },
+  ) => getTmdbImageUrl(path, size),
 
   getGenres: async (): Promise<{ id: number; name: string }[]> => {
     if (genresCache && Date.now() - genresCache.timestamp < GENRES_CACHE_TTL) {

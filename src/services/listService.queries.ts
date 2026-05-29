@@ -1,4 +1,8 @@
+import { logger } from "@/lib/logger";
+
 import { listService } from "./listService";
+
+type SharedTvItem = Awaited<ReturnType<typeof listService.getAllSharedTvItems>>;
 
 export const listServiceKeys = {
   all: ["listService"] as const,
@@ -15,6 +19,18 @@ export const listServiceKeys = {
 export const sharedTvItemsQuery = () => ({
   queryKey: listServiceKeys.sharedTvItems(),
   queryFn: () => listService.getAllSharedTvItems(),
+});
+
+export const sharedTvItemsSafeQuery = () => ({
+  ...sharedTvItemsQuery(),
+  queryFn: async (): Promise<SharedTvItem> => {
+    try {
+      return await listService.getAllSharedTvItems();
+    } catch (err) {
+      logger.error("Erro ao buscar séries de listas compartilhadas:", err);
+      return [];
+    }
+  },
 });
 
 export const watchingContextBatchQuery = (

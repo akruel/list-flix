@@ -5,7 +5,8 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { sharedTvItemsSafeQuery } from "./-this-week.queries";
+import { sharedTvItemsSafeQuery } from "@/services/listService.queries";
+
 import { ThisWeekComponent, ThisWeekErrorComponent } from "./this-week";
 
 type MockQueryResult<T = unknown> = {
@@ -120,6 +121,20 @@ vi.mock("@/services/listService", () => ({
 }));
 
 vi.mock("@/services/listService.queries", () => ({
+  sharedTvItemsSafeQuery: () => ({
+    queryKey: ["listService", "sharedTvItems"] as const,
+    queryFn: async () => {
+      try {
+        return await mocks.getAllSharedTvItems();
+      } catch (err) {
+        mocks.loggerError(
+          "Erro ao buscar séries de listas compartilhadas:",
+          err,
+        );
+        return [];
+      }
+    },
+  }),
   sharedTvItemsQuery: () => ({
     queryKey: ["listService", "sharedTvItems"] as const,
   }),

@@ -30,7 +30,18 @@ vi.mock("@/services/userContent", () => ({
 }));
 
 vi.mock("@/hooks/userContent", () => ({
+  useUserContent: () => ({
+    watchlist: [],
+    watchedIds: [],
+    watchedEpisodes: {},
+    seriesMetadata: {},
+  }),
   useWatchedIds: () => [],
+}));
+
+vi.mock("@/lib/list-share", () => ({
+  getListShareUrl: (...args: unknown[]) =>
+    mocks.getShareUrl(...(args as [string, "editor" | "viewer"])),
 }));
 
 vi.mock("../services/listService", () => ({
@@ -40,8 +51,6 @@ vi.mock("../services/listService", () => ({
     deleteList: (...args: unknown[]) => mocks.deleteList(...args),
     removeListMember: (...args: unknown[]) => mocks.removeListMember(...args),
     updateList: (...args: unknown[]) => mocks.updateList(...args),
-    getShareUrl: (...args: unknown[]) =>
-      mocks.getShareUrl(...(args as [string, "editor" | "viewer"])),
   },
 }));
 

@@ -10,10 +10,10 @@ import { useEffect, useMemo } from "react";
 import { ActivityCard } from "@/components/ActivityCard";
 import { ActivityFeedSkeleton } from "@/components/skeletons";
 import { Button } from "@/components/ui/button";
+import { groupActivities } from "@/lib/activity";
 import { getDayGroupLabel, getDayKeyFromIso } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
 import { activityFeedQuery, activityKeys } from "@/services/activity.queries";
-import { groupActivities } from "@/services/activityService";
 import type { GroupedActivity } from "@/types";
 
 export const Route = createFileRoute("/_protected/activity")({

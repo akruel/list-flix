@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { logger } from "@/lib/logger";
-import { supabase } from "@/lib/supabase";
+import { pushSubscriptionService } from "@/services/pushSubscriptions";
 
 const pushSubscriptionKey = (userId: string | undefined) =>
   ["pushSubscription", userId] as const;
@@ -72,18 +72,7 @@ export function usePushNotification() {
   // setQueryData. Keyed on the user id so it resets automatically on logout.
   const { data: isSubscribed = false } = useQuery({
     queryKey: pushSubscriptionKey(userId),
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("push_subscriptions")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (error) {
-        logger.error("Failed to check push subscription:", error);
-        return false;
-      }
-      return !!data;
-    },
+    queryFn: () => pushSubscriptionService.hasSubscription(userId as string),
     enabled: isAuth && !!userId && swReady,
   });
 
@@ -133,21 +122,16 @@ export function usePushNotification() {
         throw new Error("Invalid push subscription");
       }
 
-      const { error: upsertError } = await supabase
-        .from("push_subscriptions")
-        .upsert(
-          {
-            user_id: user.id,
-            endpoint,
-            p256dh: keys.p256dh,
-            auth: keys.auth,
-          },
-          { onConflict: "user_id" },
-        );
-
-      if (upsertError) {
+      try {
+        await pushSubscriptionService.saveSubscription({
+          userId: user.id,
+          endpoint,
+          p256dh: keys.p256dh,
+          auth: keys.auth,
+        });
+      } catch (error) {
         await subscription.unsubscribe();
-        throw upsertError;
+        throw error;
       }
 
       queryClient.setQueryData(pushSubscriptionKey(user.id), true);
@@ -173,12 +157,7 @@ export function usePushNotification() {
         }
       }
 
-      const { error } = await supabase
-        .from("push_subscriptions")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
+      await pushSubscriptionService.removeSubscription(user.id);
 
       queryClient.setQueryData(pushSubscriptionKey(user.id), false);
     } catch (error) {

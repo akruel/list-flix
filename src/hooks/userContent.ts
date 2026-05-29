@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { userContentQuery } from "@/services/userContent.queries";
+import {
+  type UserContent,
+  userContentQuery,
+} from "@/services/userContent.queries";
 import type {
   ContentItem,
   SeriesMetadata,
@@ -16,6 +19,11 @@ const EMPTY_LIST: ContentItem[] = [];
 const EMPTY_IDS: number[] = [];
 const EMPTY_SHOW_EPISODES: WatchedEpisodesMap = {};
 const EMPTY_EPISODES: AllWatchedEpisodes = {};
+
+export function useUserContent(): UserContent | undefined {
+  const { data } = useQuery(userContentQuery());
+  return data;
+}
 
 export function useMyList(): ContentItem[] {
   const { data } = useQuery({

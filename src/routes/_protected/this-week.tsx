@@ -14,12 +14,13 @@ import {
   isDateInCurrentWeek,
 } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { watchingContextBatchQuery } from "@/services/listService.queries";
-import { tmdb } from "@/services/tmdb";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
+import {
+  sharedTvItemsSafeQuery,
+  watchingContextBatchQuery,
+} from "@/services/listService.queries";
 import { detailsQuery, seasonQuery } from "@/services/tmdb.queries";
 import type { ContentDetails, ContentItem, Episode } from "@/types";
-
-import { sharedTvItemsSafeQuery } from "./-this-week.queries";
 
 // The route-level errorComponent is a safety net for unexpected loader failures
 // only. The tolerant sharedTvItemsSafeQuery means it should almost never
@@ -316,7 +317,7 @@ export function ThisWeekComponent() {
                       <div className="h-20 w-14 flex-shrink-0 overflow-hidden rounded bg-muted">
                         {item.showPoster ? (
                           <img
-                            src={tmdb.getImageUrl(item.showPoster, "w300")}
+                            src={getTmdbImageUrl(item.showPoster, "w300")}
                             alt={item.showName}
                             className="h-full w-full object-cover"
                           />

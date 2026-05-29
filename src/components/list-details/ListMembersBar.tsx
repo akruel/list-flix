@@ -24,8 +24,7 @@ export function ListMembersBar({ list, members }: ListMembersBarProps) {
     setMemberToRemove(null);
   };
 
-  const handleRemoveMember = async () => {
-    const removedMember = memberToRemove!;
+  const handleRemoveMember = async (removedMember: ListMember) => {
     try {
       setIsRemovingMember(true);
       await removeListMember.mutateAsync({
@@ -81,20 +80,18 @@ export function ListMembersBar({ list, members }: ListMembersBarProps) {
         ))}
       </div>
 
-      <DeleteConfirmationModal
-        isOpen={!!memberToRemove}
-        onClose={handleMemberModalClose}
-        onConfirm={() => {
-          void handleRemoveMember();
-        }}
-        title="Remover membro"
-        description={
-          memberToRemove
-            ? `Tem certeza que deseja remover ${memberToRemove.member_name || "este membro"} desta lista? Essa pessoa poderá entrar novamente usando um convite.`
-            : ""
-        }
-        isDeleting={isRemovingMember}
-      />
+      {memberToRemove ? (
+        <DeleteConfirmationModal
+          isOpen
+          onClose={handleMemberModalClose}
+          onConfirm={() => {
+            void handleRemoveMember(memberToRemove);
+          }}
+          title="Remover membro"
+          description={`Tem certeza que deseja remover ${memberToRemove.member_name || "este membro"} desta lista? Essa pessoa poderá entrar novamente usando um convite.`}
+          isDeleting={isRemovingMember}
+        />
+      ) : null}
     </div>
   );
 }

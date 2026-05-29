@@ -4,7 +4,7 @@ import { toast } from "sonner";
 
 import { useToggleWatchlist } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
-import { tmdb } from "@/services/tmdb";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
 import type { ContentItem } from "@/types";
 
 interface SearchResultItemProps {
@@ -17,7 +17,7 @@ export function SearchResultItem({ item }: SearchResultItemProps) {
   const date =
     item.media_type === "movie" ? item.release_date : item.first_air_date;
   const year = date ? new Date(date).getFullYear() : "—";
-  const posterUrl = tmdb.getImageUrl(item.poster_path, "w300");
+  const posterUrl = getTmdbImageUrl(item.poster_path, "w300");
   const typeLabel = item.media_type === "movie" ? "Filme" : "Série";
 
   const handleAdd = () => {

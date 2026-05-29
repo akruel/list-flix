@@ -17,14 +17,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { useJoinList } from "@/hooks/mutations";
 import { logger } from "@/lib/logger";
-import { authService } from "@/services/auth";
+import { userProfileQuery } from "@/services/auth.queries";
 import { listNameQuery } from "@/services/list.queries";
 
 const joinSearchSchema = z.object({
   role: z.enum(["editor", "viewer"]).catch("viewer"),
 });
-
-const userProfileQueryKey = ["auth", "userProfile"] as const;
 
 export const Route = createFileRoute("/_protected/lists/$id/join")({
   validateSearch: joinSearchSchema,
@@ -71,11 +69,7 @@ function JoinListRouteComponent() {
   );
 
   const listNameResult = useQuery(listNameQuery(id));
-  const profileResult = useQuery({
-    queryKey: userProfileQueryKey,
-    queryFn: () => authService.getUserProfile(),
-    retry: false,
-  });
+  const profileResult = useQuery(userProfileQuery());
 
   const [memberNameOverride, setMemberNameOverride] = useState<string | null>(
     null,

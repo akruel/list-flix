@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 
 import { Layout } from "@/components/Layout";
 import { useAuth } from "@/contexts/AuthContext";
+import { savePostLoginTarget } from "@/lib/auth-post-login";
 import { logger } from "@/lib/logger";
-import { authService } from "@/services/auth";
 import { userContentQuery } from "@/services/userContent.queries";
 
 const FullScreenLoader = () => (
@@ -17,9 +17,7 @@ const FullScreenLoader = () => (
 export const Route = createFileRoute("/_protected")({
   beforeLoad: ({ context, location }) => {
     if (context.auth.status === "none") {
-      authService.savePostLoginTarget(
-        `${location.pathname}${window.location.search}`,
-      );
+      savePostLoginTarget(`${location.pathname}${window.location.search}`);
       throw redirect({ to: "/auth" });
     }
   },
@@ -31,7 +29,7 @@ export const Route = createFileRoute("/_protected")({
 });
 
 function ProtectedLayoutRouteComponent() {
-  const { status, user } = useAuth();
+  const { finalizePostLogin, status, user } = useAuth();
   const finalizedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -44,10 +42,10 @@ function ProtectedLayoutRouteComponent() {
     if (!userId || finalizedUserIdRef.current === userId) return;
 
     finalizedUserIdRef.current = userId;
-    void authService.finalizePostLogin().catch((error) => {
+    void finalizePostLogin().catch((error) => {
       logger.error("finalizePostLogin failed:", error);
     });
-  }, [status, user?.id]);
+  }, [finalizePostLogin, status, user?.id]);
 
   if (status !== "authenticated") {
     return <FullScreenLoader />;

@@ -3,10 +3,10 @@ import { Check, Star, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
 
 import { useIsWatched, useSeriesMetadata } from "../hooks/userContent";
 import { useSeriesProgress } from "../hooks/useSeriesProgress";
-import { tmdb } from "../services/tmdb";
 import type { ContentItem, SeriesMetadata, WatchingContext } from "../types";
 
 interface MovieCardProps {
@@ -54,7 +54,7 @@ function MovieCardInner({
     <Card className="group relative overflow-hidden border-0 bg-card shadow-lg transition-transform duration-200 hover:scale-105">
       <div className="relative aspect-[2/3] w-full">
         <img
-          src={tmdb.getImageUrl(item.poster_path, "w500")}
+          src={getTmdbImageUrl(item.poster_path, "w500")}
           alt={title}
           className="h-full w-full object-cover"
           loading="lazy"

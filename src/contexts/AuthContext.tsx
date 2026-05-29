@@ -30,6 +30,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   signInWithOtp: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
+  finalizePostLogin: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -115,6 +116,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       signInWithGoogle: () => authService.signInWithGoogle(),
       signInWithOtp: (email: string) => authService.signInWithOtp(email),
       signOut: () => authService.signOut(),
+      finalizePostLogin: () => authService.finalizePostLogin(),
     }),
     [refreshProfile, status, user],
   );

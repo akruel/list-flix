@@ -15,9 +15,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
+import { consumePostLoginTarget } from "@/lib/auth-post-login";
 import { logger } from "@/lib/logger";
 import { getPostLoginDestination } from "@/lib/postLoginNavigation";
-import { authService } from "@/services/auth";
 
 export const Route = createFileRoute("/auth")({
   component: AuthRouteComponent,
@@ -34,9 +34,7 @@ function AuthRouteComponent() {
 
   useEffect(() => {
     if (status === "authenticated") {
-      const target = getPostLoginDestination(
-        authService.consumePostLoginTarget(),
-      );
+      const target = getPostLoginDestination(consumePostLoginTarget());
       navigate({ ...target, replace: true });
     }
   }, [navigate, status]);

@@ -1,7 +1,7 @@
 import { Clock, Star } from "lucide-react";
 
 import { parseLocalDate } from "@/lib/date-utils";
-import { tmdb } from "@/services/tmdb";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
 import type { ContentDetails } from "@/types";
 
 interface DetailsHeroProps {
@@ -21,7 +21,7 @@ export function DetailsHero({ details }: DetailsHeroProps) {
     <div className="relative h-[40vh] w-full md:h-[60vh]">
       <div className="absolute inset-0">
         <img
-          src={tmdb.getImageUrl(details.backdrop_path || "", "original")}
+          src={getTmdbImageUrl(details.backdrop_path || "", "original")}
           alt={title}
           className="h-full w-full object-cover"
         />
@@ -30,7 +30,7 @@ export function DetailsHero({ details }: DetailsHeroProps) {
 
       <div className="container absolute bottom-0 left-0 right-0 mx-auto flex flex-col items-end gap-6 p-4 md:flex-row">
         <img
-          src={tmdb.getImageUrl(details.poster_path || "", "w300")}
+          src={getTmdbImageUrl(details.poster_path || "", "w300")}
           alt={title}
           className="hidden w-48 rounded-lg shadow-2xl md:block"
         />

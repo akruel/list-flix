@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useMyList, useWatchedIds } from "@/hooks/userContent";
 import { deriveHomeTrending } from "@/lib/home-trending";
 import { logger } from "@/lib/logger";
-import { MOODS } from "@/services/moods";
+import { MOODS } from "@/lib/moods";
 import { tasteSuggestionsQuery } from "@/services/taste.queries";
 import { discoverQuery, trendingQuery } from "@/services/tmdb.queries";
 

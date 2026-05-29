@@ -1,4 +1,3 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Calendar, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
@@ -16,12 +15,12 @@ import {
   useToggleSeasonWatched,
 } from "@/hooks/mutations";
 import { useShowWatchedEpisodes } from "@/hooks/userContent";
+import { useFetchSeasonDetails, useSeasonDetails } from "@/hooks/useTmdb";
 import { formatDate, parseLocalDate } from "@/lib/date-utils";
 import { logger } from "@/lib/logger";
-import { seasonQuery } from "@/services/tmdb.queries";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
 
 import { useSeasonProgress } from "../hooks/useSeasonProgress";
-import { tmdb } from "../services/tmdb";
 import type { Episode } from "../types";
 import { EpisodeListSkeleton } from "./skeletons";
 
@@ -39,18 +38,14 @@ interface SeasonListProps {
 
 export function SeasonList({ tvId, seasons }: SeasonListProps) {
   const [expandedSeason, setExpandedSeason] = useState<number | null>(null);
-  const queryClient = useQueryClient();
+  const fetchSeasonDetails = useFetchSeasonDetails(tvId);
 
   const {
     data: seasonData,
     isPending: isSeasonLoading,
     isError: isSeasonError,
     refetch: refetchSeason,
-  } = useQuery({
-    ...seasonQuery(tvId, expandedSeason ?? 0),
-    enabled: expandedSeason !== null,
-    refetchOnMount: false,
-  });
+  } = useSeasonDetails(tvId, expandedSeason);
 
   const episodes = seasonData?.episodes ?? [];
 
@@ -88,9 +83,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
         let seasonEpisodes = episodes;
         const isCurrentSeason = expandedSeason === seasonNumber;
         if (!isCurrentSeason || episodes.length === 0) {
-          const data = await queryClient.fetchQuery(
-            seasonQuery(tvId, seasonNumber),
-          );
+          const data = await fetchSeasonDetails(seasonNumber);
           seasonEpisodes = data.episodes;
         }
 
@@ -173,7 +166,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                   <div className="flex flex-1 cursor-pointer items-center gap-4">
                     {season.poster_path ? (
                       <img
-                        src={tmdb.getImageUrl(season.poster_path, "w300")}
+                        src={getTmdbImageUrl(season.poster_path, "w300")}
                         alt={season.name}
                         className="h-16 w-12 rounded object-cover"
                       />
@@ -287,7 +280,7 @@ export function SeasonList({ tvId, seasons }: SeasonListProps) {
                                 <div className="relative aspect-video w-24 flex-shrink-0 overflow-hidden rounded bg-muted md:w-32">
                                   {episode.still_path ? (
                                     <img
-                                      src={tmdb.getImageUrl(
+                                      src={getTmdbImageUrl(
                                         episode.still_path,
                                         "w300",
                                       )}
