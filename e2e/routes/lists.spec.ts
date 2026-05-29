@@ -94,16 +94,12 @@ async function openListDetailsFromCard(
   return getListIdFromUrl(page.url());
 }
 
-async function copyEditorShareLink(page: Page): Promise<string> {
+async function copyShareLink(
+  page: Page,
+  role: "editor" | "viewer",
+): Promise<string> {
   await page.getByTestId("list-details-share-trigger").click();
-  await page.getByTestId("list-details-share-editor").click();
-  await expect(page.getByRole("button", { name: "Copiado!" })).toBeVisible();
-  return readClipboardStub(page);
-}
-
-async function copyViewerShareLink(page: Page): Promise<string> {
-  await page.getByTestId("list-details-share-trigger").click();
-  await page.getByTestId("list-details-share-viewer").click();
+  await page.getByTestId(`list-details-share-${role}`).click();
   await expect(page.getByRole("button", { name: "Copiado!" })).toBeVisible();
   return readClipboardStub(page);
 }
@@ -270,35 +266,35 @@ test(`[${SCENARIO_IDS.LIST_SMART_EXAMPLE_CHIPS}] fills prompt when clicking exam
   expect(textareaValue.length).toBeGreaterThan(0);
 });
 
-test(`[${SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK}] copies editor invite link from list share menu`, async ({
-  page,
-}) => {
-  const listName = `Lista Share ${randomUUID().slice(0, 8)}`;
+const shareLinkCopyCases = [
+  {
+    scenarioId: SCENARIO_IDS.LIST_SHARE_COPY_EDITOR_LINK,
+    role: "editor" as const,
+    listNamePrefix: "Lista Share",
+  },
+  {
+    scenarioId: SCENARIO_IDS.LIST_SHARE_COPY_VIEWER_LINK,
+    role: "viewer" as const,
+    listNamePrefix: "Lista Share Viewer",
+  },
+];
 
-  await installClipboardStub(page);
-  await signIn(page);
-  await openCustomLists(page);
-  await createManualList(page, listName);
-  const createdListId = await openListDetailsFromCard(page, listName);
-  const inviteLink = await copyEditorShareLink(page);
+for (const { scenarioId, role, listNamePrefix } of shareLinkCopyCases) {
+  test(`[${scenarioId}] copies ${role} invite link from list share menu`, async ({
+    page,
+  }) => {
+    const listName = `${listNamePrefix} ${randomUUID().slice(0, 8)}`;
 
-  expect(inviteLink).toContain(`/lists/${createdListId}/join?role=editor`);
-});
+    await installClipboardStub(page);
+    await signIn(page);
+    await openCustomLists(page);
+    await createManualList(page, listName);
+    const createdListId = await openListDetailsFromCard(page, listName);
+    const inviteLink = await copyShareLink(page, role);
 
-test(`[${SCENARIO_IDS.LIST_SHARE_COPY_VIEWER_LINK}] copies viewer invite link from list share menu`, async ({
-  page,
-}) => {
-  const listName = `Lista Share Viewer ${randomUUID().slice(0, 8)}`;
-
-  await installClipboardStub(page);
-  await signIn(page);
-  await openCustomLists(page);
-  await createManualList(page, listName);
-  const createdListId = await openListDetailsFromCard(page, listName);
-  const inviteLink = await copyViewerShareLink(page);
-
-  expect(inviteLink).toContain(`/lists/${createdListId}/join?role=viewer`);
-});
+    expect(inviteLink).toContain(`/lists/${createdListId}/join?role=${role}`);
+  });
+}
 
 test(`[${SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN}] shares list and joins invite in a second guest session`, async ({
   page,
@@ -311,7 +307,7 @@ test(`[${SCENARIO_IDS.LIST_SHARE_OPEN_LINK_AND_JOIN}] shares list and joins invi
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
-  const inviteLink = await copyEditorShareLink(page);
+  const inviteLink = await copyShareLink(page, "editor");
 
   const invitedContext = await browser.newContext();
   const invitedPage = await invitedContext.newPage();
@@ -370,7 +366,7 @@ test(`[${SCENARIO_IDS.LISTS_JOIN_VIEWER_READ_ONLY}] joins invite as viewer and k
   await openCustomLists(page);
   await createManualList(page, listName);
   const createdListId = await openListDetailsFromCard(page, listName);
-  const inviteLink = await copyViewerShareLink(page);
+  const inviteLink = await copyShareLink(page, "viewer");
 
   const invitedContext = await browser.newContext();
   const invitedPage = await invitedContext.newPage();

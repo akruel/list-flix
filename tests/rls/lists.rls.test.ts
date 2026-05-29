@@ -49,47 +49,45 @@ async function teardownFixture(fixture: ListsFixture): Promise<void> {
   await deleteUsers(fixture.users);
 }
 
+type ListRole = "owner" | "editor" | "viewer" | "outsider";
+
+const listSelectAllowedRoles: ListRole[] = ["owner", "editor", "viewer"];
+const listUpdateDeniedRoles: ListRole[] = ["editor", "viewer", "outsider"];
+
 describe.sequential("RLS: lists policies", () => {
-  it("allows owner, editor, and viewer to select the list, but not outsider", async () => {
+  it.each(listSelectAllowedRoles)(
+    "allows %s to select the list",
+    async (role) => {
+      const fixture = await createListsFixture();
+
+      try {
+        const result = await fixture[role].client
+          .from("lists")
+          .select("id,name")
+          .eq("id", fixture.listId)
+          .single();
+
+        expect(result.error).toBeNull();
+        expect(result.data).not.toBeNull();
+        expect(result.data?.id).toBe(fixture.listId);
+      } finally {
+        await teardownFixture(fixture);
+      }
+    },
+  );
+
+  it("blocks outsider from selecting the list", async () => {
     const fixture = await createListsFixture();
 
     try {
-      const ownerSelect = await fixture.owner.client
+      const result = await fixture.outsider.client
         .from("lists")
         .select("id,name")
         .eq("id", fixture.listId)
         .single();
 
-      expect(ownerSelect.error).toBeNull();
-      expect(ownerSelect.data).not.toBeNull();
-      expect(ownerSelect.data?.id).toBe(fixture.listId);
-
-      const editorSelect = await fixture.editor.client
-        .from("lists")
-        .select("id,name")
-        .eq("id", fixture.listId)
-        .single();
-
-      expect(editorSelect.error).toBeNull();
-      expect(editorSelect.data).not.toBeNull();
-
-      const viewerSelect = await fixture.viewer.client
-        .from("lists")
-        .select("id,name")
-        .eq("id", fixture.listId)
-        .single();
-
-      expect(viewerSelect.error).toBeNull();
-      expect(viewerSelect.data).not.toBeNull();
-
-      const outsiderSelect = await fixture.outsider.client
-        .from("lists")
-        .select("id,name")
-        .eq("id", fixture.listId)
-        .single();
-
-      expect(outsiderSelect.error).not.toBeNull();
-      expect(outsiderSelect.data).toBeNull();
+      expect(result.error).not.toBeNull();
+      expect(result.data).toBeNull();
     } finally {
       await teardownFixture(fixture);
     }
@@ -106,52 +104,45 @@ describe.sequential("RLS: lists policies", () => {
     expect(insertResult.error).not.toBeNull();
   });
 
-  it("allows only the owner to update the list name", async () => {
+  it("allows owner to update the list name", async () => {
     const fixture = await createListsFixture();
 
     try {
       const newName = `updated-${randomUUID()}`;
 
-      const ownerUpdate = await fixture.owner.client
+      const result = await fixture.owner.client
         .from("lists")
         .update({ name: newName })
         .eq("id", fixture.listId)
         .select("name")
         .single();
 
-      expect(ownerUpdate.error).toBeNull();
-      expect(ownerUpdate.data?.name).toBe(newName);
-
-      const editorUpdate = await fixture.editor.client
-        .from("lists")
-        .update({ name: `editor-${randomUUID()}` })
-        .eq("id", fixture.listId)
-        .select("name")
-        .single();
-
-      expect(editorUpdate.error).not.toBeNull();
-
-      const viewerUpdate = await fixture.viewer.client
-        .from("lists")
-        .update({ name: `viewer-${randomUUID()}` })
-        .eq("id", fixture.listId)
-        .select("name")
-        .single();
-
-      expect(viewerUpdate.error).not.toBeNull();
-
-      const outsiderUpdate = await fixture.outsider.client
-        .from("lists")
-        .update({ name: `outsider-${randomUUID()}` })
-        .eq("id", fixture.listId)
-        .select("name")
-        .single();
-
-      expect(outsiderUpdate.error).not.toBeNull();
+      expect(result.error).toBeNull();
+      expect(result.data?.name).toBe(newName);
     } finally {
       await teardownFixture(fixture);
     }
   });
+
+  it.each(listUpdateDeniedRoles)(
+    "blocks %s from updating the list name",
+    async (role) => {
+      const fixture = await createListsFixture();
+
+      try {
+        const result = await fixture[role].client
+          .from("lists")
+          .update({ name: `${role}-${randomUUID()}` })
+          .eq("id", fixture.listId)
+          .select("name")
+          .single();
+
+        expect(result.error).not.toBeNull();
+      } finally {
+        await teardownFixture(fixture);
+      }
+    },
+  );
 
   it("allows only the owner to delete the list", async () => {
     const fixture = await createListsFixture();
