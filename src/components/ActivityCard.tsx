@@ -17,7 +17,7 @@ function Avatar({ name, avatarUrl }: AvatarProps) {
         .trim()
         .split(/\s+/)
         .slice(0, 2)
-        .map((s) => s[0]!.toUpperCase())
+        .map((s) => s.charAt(0).toUpperCase())
         .join("")
     : "?";
 

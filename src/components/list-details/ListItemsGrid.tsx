@@ -37,8 +37,7 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
     return listItem.content.title || listItem.content.name;
   };
 
-  const handleConfirmRemoveItem = async () => {
-    const item = itemToRemove!;
+  const handleConfirmRemoveItem = async (item: ListItemWithContent) => {
     try {
       setIsRemovingItem(true);
       await removeListItem.mutateAsync({
@@ -114,20 +113,18 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
         )}
       </div>
 
-      <DeleteConfirmationModal
-        isOpen={!!itemToRemove}
-        onClose={handleItemRemoveModalClose}
-        onConfirm={() => {
-          void handleConfirmRemoveItem();
-        }}
-        title="Remover item"
-        description={
-          itemToRemove
-            ? `Tem certeza que deseja remover "${getRemoveItemName(itemToRemove) ?? "este item"}" da lista?`
-            : ""
-        }
-        isDeleting={isRemovingItem}
-      />
+      {itemToRemove ? (
+        <DeleteConfirmationModal
+          isOpen
+          onClose={handleItemRemoveModalClose}
+          onConfirm={() => {
+            void handleConfirmRemoveItem(itemToRemove);
+          }}
+          title="Remover item"
+          description={`Tem certeza que deseja remover "${getRemoveItemName(itemToRemove) ?? "este item"}" da lista?`}
+          isDeleting={isRemovingItem}
+        />
+      ) : null}
     </>
   );
 }

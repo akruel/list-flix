@@ -35,9 +35,8 @@ const validTvGenreIds = new Set([
   10767, 10768, 37,
 ]);
 
-const moodsTvGenreIds: Record<string, number[]> = {};
-for (const mood of MOODS) {
-  moodsTvGenreIds[mood.key] = mood.genreIds
+function getTvGenreIdsForMood(mood: Mood): number[] {
+  return mood.genreIds
     .map((id) => genreIdTvMap.get(id) ?? id)
     .filter((id) => validTvGenreIds.has(id));
 }
@@ -57,7 +56,7 @@ export function getMoodDiscoverParams(
   if (!mood) return {};
 
   const isTv = mediaType === "tv";
-  const genreIds = isTv ? moodsTvGenreIds[key]! : mood.genreIds;
+  const genreIds = isTv ? getTvGenreIdsForMood(mood) : mood.genreIds;
 
   const params: Record<string, unknown> = {
     sort_by: "popularity.desc",
