@@ -12,10 +12,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { getMagicSearchResults } from "@/hooks/useMagicSearch";
 import { logger } from "@/lib/logger";
 
-import { ai } from "../services/ai";
-import { tmdb } from "../services/tmdb";
 import type { ContentItem } from "../types";
 import { MovieCard } from "./MovieCard";
 
@@ -66,25 +65,14 @@ export function MagicSearchModal({
     setIsLoading(true);
     try {
       setLoadingStep("analyzing");
-      const suggestion = await ai.getSuggestions(prompt);
-
-      setSuggestedName(suggestion.suggested_list_name);
-      setLoadingStep("searching");
-
-      const searchPromises = suggestion.items.map(async (item) => {
-        return tmdb.findBestMatch(item.title, item.media_type, item.year);
-      });
-
-      const rawItems = (await Promise.all(searchPromises)).filter(
-        (item): item is ContentItem => !!item,
+      const suggestion = await getMagicSearchResults(prompt, () =>
+        setLoadingStep("searching"),
       );
 
-      const items = Array.from(
-        new Map(rawItems.map((item) => [item.id, item])).values(),
-      );
+      setSuggestedName(suggestion.suggestedName);
 
-      setResults(items);
-      setSelectedIds(new Set(items.map((item) => item.id)));
+      setResults(suggestion.items);
+      setSelectedIds(new Set(suggestion.items.map((item) => item.id)));
       setStep("results");
     } catch (error) {
       logger.error(error);

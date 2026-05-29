@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   listServiceKeys,
   sharedTvItemsQuery,
+  sharedTvItemsSafeQuery,
   watchingContextBatchQuery,
 } from "./listService.queries";
 
@@ -38,6 +39,30 @@ describe("listService.queries", () => {
     expect(query.queryKey).toEqual(["listService", "sharedTvItems"]);
     await query.queryFn();
     expect(listService.getAllSharedTvItems).toHaveBeenCalledOnce();
+  });
+
+  it("sharedTvItemsSafeQuery returns shared items when service succeeds", async () => {
+    const { listService } = await import("./listService");
+    const items = [{ content_id: 10, content_type: "tv" }];
+    vi.mocked(listService.getAllSharedTvItems).mockResolvedValueOnce(
+      items as Awaited<ReturnType<typeof listService.getAllSharedTvItems>>,
+    );
+
+    const query = sharedTvItemsSafeQuery();
+
+    expect(query.queryKey).toEqual(["listService", "sharedTvItems"]);
+    await expect(query.queryFn()).resolves.toEqual(items);
+  });
+
+  it("sharedTvItemsSafeQuery returns an empty list when service fails", async () => {
+    const { listService } = await import("./listService");
+    vi.mocked(listService.getAllSharedTvItems).mockRejectedValueOnce(
+      new Error("failed"),
+    );
+
+    const query = sharedTvItemsSafeQuery();
+
+    await expect(query.queryFn()).resolves.toEqual([]);
   });
 
   it("watchingContextBatchQuery passes items and gates with enabled", async () => {

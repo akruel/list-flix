@@ -44,10 +44,8 @@ vi.mock("../hooks/useSeriesProgress", () => ({
   useSeriesProgress: (...args: unknown[]) => mocks.useSeriesProgress(...args),
 }));
 
-vi.mock("../services/tmdb", () => ({
-  tmdb: {
-    getImageUrl: (...args: unknown[]) => mocks.getImageUrl(...args),
-  },
+vi.mock("@/lib/tmdb-images", () => ({
+  getTmdbImageUrl: (...args: unknown[]) => mocks.getImageUrl(...args),
 }));
 
 describe("MovieCard", () => {

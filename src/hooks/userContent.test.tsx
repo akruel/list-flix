@@ -17,6 +17,7 @@ import {
   useMyList,
   useSeriesMetadata,
   useShowWatchedEpisodes,
+  useUserContent,
   useWatchedEpisodes,
   useWatchedIds,
 } from "./userContent";
@@ -84,6 +85,16 @@ describe("userContent read hooks", () => {
       wrapper: seeded(),
     });
     expect(ready.current).toEqual(sample.watchlist);
+  });
+
+  it("useUserContent returns the whole server-state snapshot", async () => {
+    const queryClient = makeClient();
+    const { result } = renderHook(() => useUserContent(), {
+      wrapper: wrapperFor(queryClient),
+    });
+
+    expect(result.current).toBeUndefined();
+    await waitFor(() => expect(result.current).toEqual(sample));
   });
 
   it("useWatchedIds returns watched ids, and [] while loading", () => {

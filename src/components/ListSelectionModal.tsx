@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Check, Globe, Loader2, Lock } from "lucide-react";
 import { useState } from "react";
 
@@ -15,14 +14,11 @@ import {
   useRemoveListItem,
   useToggleWatchlist,
 } from "@/hooks/mutations";
+import { useLists, useListsContainingContent } from "@/hooks/useListQueries";
 import { useIsInList } from "@/hooks/userContent";
 import { logger } from "@/lib/logger";
-import {
-  listsContainingContentQuery,
-  listsQuery,
-} from "@/services/list.queries";
+import type { ContentItem } from "@/types";
 
-import type { ContentItem } from "../types";
 import { ListSelectionModalSkeleton } from "./skeletons";
 
 interface ListSelectionModalProps {
@@ -36,14 +32,12 @@ export function ListSelectionModal({
   onClose,
   content,
 }: ListSelectionModalProps) {
-  const listsResult = useQuery({
-    ...listsQuery(),
-    enabled: isOpen,
-  });
-  const membershipResult = useQuery({
-    ...listsContainingContentQuery(content.id, content.media_type),
-    enabled: isOpen,
-  });
+  const listsResult = useLists(isOpen);
+  const membershipResult = useListsContainingContent(
+    content.id,
+    content.media_type,
+    isOpen,
+  );
 
   const { mutate: toggleWatchlist } = useToggleWatchlist();
   const addListItem = useAddListItem();

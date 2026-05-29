@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
+import { consumePostLoginTarget } from "@/lib/auth-post-login";
 import { logger } from "@/lib/logger";
 import { getPostLoginDestination } from "@/lib/postLoginNavigation";
-import { authService } from "@/services/auth";
 
 type CallbackState = "loading" | "error";
 
@@ -16,15 +16,13 @@ export const Route = createFileRoute("/auth_/callback")({
 
 function AuthCallbackRouteComponent() {
   const navigate = useNavigate();
-  const { status } = useAuth();
+  const { finalizePostLogin, status } = useAuth();
 
   const [state, setState] = useState<CallbackState>("loading");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const redirectAfterLogin = useCallback(() => {
-    const target = getPostLoginDestination(
-      authService.consumePostLoginTarget(),
-    );
+    const target = getPostLoginDestination(consumePostLoginTarget());
     navigate({ ...target, replace: true });
   }, [navigate]);
 
@@ -40,7 +38,7 @@ function AuthCallbackRouteComponent() {
 
     const finalize = async () => {
       try {
-        await authService.finalizePostLogin();
+        await finalizePostLogin();
         if (cancelled) return;
 
         redirectAfterLogin();
@@ -58,7 +56,7 @@ function AuthCallbackRouteComponent() {
     return () => {
       cancelled = true;
     };
-  }, [navigate, redirectAfterLogin, status]);
+  }, [finalizePostLogin, navigate, redirectAfterLogin, status]);
 
   if (state === "error") {
     return (

@@ -1,10 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
 import { Search, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
+import { useTmdbSearch } from "@/hooks/useTmdb";
 import { logger } from "@/lib/logger";
-import { tmdb } from "@/services/tmdb";
 
 import { SearchResultItem } from "./SearchResultItem";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
@@ -22,12 +21,10 @@ export function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
   const debouncedQuery = useDebouncedValue(query.trim(), 500);
 
-  const { data, isFetching, error } = useQuery({
-    queryKey: ["search", debouncedQuery],
-    queryFn: ({ signal }) => tmdb.search(debouncedQuery, { page: 1, signal }),
-    enabled: isOpen && debouncedQuery.length > 0,
-    select: (response) => response.results,
-  });
+  const { data, isFetching, error } = useTmdbSearch(
+    debouncedQuery,
+    isOpen && debouncedQuery.length > 0,
+  );
 
   useEffect(() => {
     if (error) {

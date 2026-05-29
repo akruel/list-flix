@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   signInWithGoogle: vi.fn(),
   signInWithOtp: vi.fn(),
   signOut: vi.fn(),
+  finalizePostLogin: vi.fn(),
 }));
 
 vi.mock("../lib/supabase", () => ({
@@ -36,6 +37,7 @@ vi.mock("../services/auth", () => ({
     signInWithGoogle: (...args: unknown[]) => mocks.signInWithGoogle(...args),
     signInWithOtp: (...args: unknown[]) => mocks.signInWithOtp(...args),
     signOut: (...args: unknown[]) => mocks.signOut(...args),
+    finalizePostLogin: (...args: unknown[]) => mocks.finalizePostLogin(...args),
   },
 }));
 
@@ -47,6 +49,7 @@ function AuthConsumer() {
     signInWithGoogle,
     signInWithOtp,
     signOut,
+    finalizePostLogin,
   } = useAuth();
 
   return (
@@ -68,6 +71,9 @@ function AuthConsumer() {
       <button type="button" onClick={() => void signOut()}>
         signout
       </button>
+      <button type="button" onClick={() => void finalizePostLogin()}>
+        finalize
+      </button>
     </div>
   );
 }
@@ -86,6 +92,7 @@ describe("AuthContext", () => {
     mocks.signInWithGoogle.mockResolvedValue(undefined);
     mocks.signInWithOtp.mockResolvedValue(undefined);
     mocks.signOut.mockResolvedValue(undefined);
+    mocks.finalizePostLogin.mockResolvedValue(undefined);
     mocks.onAuthStateChange.mockImplementation(
       (callback: (event: string, session: unknown) => void) => {
         mocks.authStateChangeCallback = callback;
@@ -300,10 +307,12 @@ describe("AuthContext", () => {
     await userEvent.click(screen.getByRole("button", { name: "google" }));
     await userEvent.click(screen.getByRole("button", { name: "otp" }));
     await userEvent.click(screen.getByRole("button", { name: "signout" }));
+    await userEvent.click(screen.getByRole("button", { name: "finalize" }));
 
     expect(mocks.signInWithGoogle).toHaveBeenCalledOnce();
     expect(mocks.signInWithOtp).toHaveBeenCalledWith("alice@example.com");
     expect(mocks.signOut).toHaveBeenCalledOnce();
+    expect(mocks.finalizePostLogin).toHaveBeenCalledOnce();
   });
 
   it("unsubscribes from auth listener on unmount", async () => {

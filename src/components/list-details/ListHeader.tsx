@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { useDeleteList, useUpdateList } from "@/hooks/mutations";
+import { getListShareUrl } from "@/lib/list-share";
 import { logger } from "@/lib/logger";
-import { listService } from "@/services/listService";
 import type { List } from "@/types";
 
 interface ListHeaderProps {
@@ -74,7 +74,7 @@ export function ListHeader({ list, itemsCount }: ListHeaderProps) {
   };
 
   const handleShare = async (role: "editor" | "viewer") => {
-    const url = listService.getShareUrl(list.id, role);
+    const url = getListShareUrl(list.id, role);
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);

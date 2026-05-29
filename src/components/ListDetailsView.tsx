@@ -1,11 +1,9 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { listDetailsQuery } from "@/services/list.queries";
-import { detailsQuery } from "@/services/tmdb.queries";
+import { useListDetails, useListItemDetails } from "@/hooks/useListQueries";
 
 import { ListHeader } from "./list-details/ListHeader";
 import {
@@ -44,13 +42,9 @@ const ListDetailsSkeleton = () => (
 
 export function ListDetailsView({ id }: ListDetailsViewProps) {
   const navigate = useNavigate();
-  const { data, isLoading, isError } = useQuery(listDetailsQuery(id));
+  const { data, isLoading, isError } = useListDetails(id);
 
-  const tmdbResults = useQueries({
-    queries: (data?.items ?? []).map((item) =>
-      detailsQuery(item.content_type, item.content_id),
-    ),
-  });
+  const tmdbResults = useListItemDetails(data?.items ?? []);
 
   const itemsWithContent: ListItemWithContent[] = (data?.items ?? []).map(
     (item, index) => {

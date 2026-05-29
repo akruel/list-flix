@@ -1,3 +1,5 @@
+import { getListShareUrl } from "@/lib/list-share";
+
 import { supabase } from "../lib/supabase";
 import type {
   ContentItem,
@@ -220,7 +222,7 @@ export const listService = {
   },
 
   getShareUrl(listId: string, role: "editor" | "viewer"): string {
-    return `${window.location.origin}/lists/${listId}/join?role=${role}`;
+    return getListShareUrl(listId, role);
   },
 
   async getListName(listId: string): Promise<string> {

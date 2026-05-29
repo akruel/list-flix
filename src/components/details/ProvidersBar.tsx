@@ -1,4 +1,4 @@
-import { tmdb } from "@/services/tmdb";
+import { getTmdbImageUrl } from "@/lib/tmdb-images";
 import type { Provider } from "@/types";
 
 interface ProvidersBarProps {
@@ -76,7 +76,7 @@ function ProviderLogo({ provider }: { provider: Provider }) {
   return (
     <div className="group relative" title={provider.provider_name}>
       <img
-        src={tmdb.getImageUrl(provider.logo_path, "w300")}
+        src={getTmdbImageUrl(provider.logo_path, "w300")}
         alt={provider.provider_name}
         className="h-12 w-12 rounded-lg shadow-sm transition-transform group-hover:scale-110"
       />

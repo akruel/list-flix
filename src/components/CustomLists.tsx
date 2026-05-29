@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ChevronDown, Plus, Sparkles, Trash2, Users } from "lucide-react";
 import React, { useState } from "react";
@@ -19,15 +18,15 @@ import {
   useCreateList,
   useDeleteList,
 } from "@/hooks/mutations";
+import { useLists } from "@/hooks/useListQueries";
 import { logger } from "@/lib/logger";
-import { listsQuery } from "@/services/list.queries";
 import type { ContentItem } from "@/types";
 
 import { DeleteConfirmationModal } from "./DeleteConfirmationModal";
 import { MagicSearchModal } from "./MagicSearchModal";
 
 export function CustomLists() {
-  const { data: lists = [] } = useQuery(listsQuery());
+  const { data: lists = [] } = useLists();
   const createList = useCreateList();
   const addListItems = useAddListItems();
   const deleteList = useDeleteList();
