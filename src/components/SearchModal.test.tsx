@@ -64,15 +64,31 @@ describe("SearchModal", () => {
   });
 
   it("does not render when isOpen is false", () => {
-    const { container } = renderModal(
-      <SearchModal isOpen={false} onClose={vi.fn()} />,
-    );
-    expect(container.innerHTML).toBe("");
+    renderModal(<SearchModal isOpen={false} onClose={vi.fn()} />);
+    expect(screen.queryByTestId("search-modal-input")).not.toBeInTheDocument();
   });
 
   it("renders when isOpen is true", () => {
     renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
     expect(screen.getByTestId("search-modal-input")).toBeInTheDocument();
+  });
+
+  it("does not focus input when modal is closed", () => {
+    const focusSpy = vi.spyOn(HTMLInputElement.prototype, "focus");
+
+    renderModal(<SearchModal isOpen={false} onClose={vi.fn()} />);
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
+  });
+
+  it("focuses input when modal opens", () => {
+    const focusSpy = vi.spyOn(HTMLInputElement.prototype, "focus");
+
+    renderModal(<SearchModal isOpen={true} onClose={vi.fn()} />);
+
+    expect(focusSpy).toHaveBeenCalled();
+    focusSpy.mockRestore();
   });
 
   it("calls onClose when X button is clicked", async () => {

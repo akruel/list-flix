@@ -127,7 +127,20 @@ describe("tmdb service", () => {
       id: 1,
       episodes: [],
     });
-    expect(mocks.get).toHaveBeenCalledWith("/tv/33/season/2");
+    expect(mocks.get).toHaveBeenCalledWith("/tv/33/season/2", {});
+  });
+
+  it("getSeasonDetails passes abort signal when provided", async () => {
+    mocks.get.mockResolvedValue({
+      data: { id: 1, episodes: [] },
+    });
+    const controller = new AbortController();
+
+    await tmdb.getSeasonDetails(33, 2, controller.signal);
+
+    expect(mocks.get).toHaveBeenCalledWith("/tv/33/season/2", {
+      signal: controller.signal,
+    });
   });
 
   it.each([

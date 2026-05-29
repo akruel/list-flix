@@ -55,7 +55,9 @@ describe("SearchResultItem", () => {
   it("renders add button", () => {
     render(<SearchResultItem item={mockItem} />);
 
-    expect(screen.getByTitle("Adicionar à lista")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Adicionar à lista" }),
+    ).toBeInTheDocument();
   });
 
   it("shows success toast when mutation succeeds", async () => {
@@ -68,7 +70,7 @@ describe("SearchResultItem", () => {
 
     render(<SearchResultItem item={mockItem} />);
 
-    await user.click(screen.getByTitle("Adicionar à lista"));
+    await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
 
     const { toast } = await import("sonner");
     expect(toast.success).toHaveBeenCalledWith(
@@ -80,7 +82,7 @@ describe("SearchResultItem", () => {
     const user = userEvent.setup();
     render(<SearchResultItem item={mockItem} />);
 
-    await user.click(screen.getByTitle("Adicionar à lista"));
+    await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
 
     expect(mockMutate).toHaveBeenCalledWith(
       { item: mockItem, action: "add" },
@@ -136,7 +138,7 @@ describe("SearchResultItem", () => {
 
     render(<SearchResultItem item={mockItem} />);
 
-    await user.click(screen.getByTitle("Adicionar à lista"));
+    await user.click(screen.getByRole("button", { name: "Adicionar à lista" }));
 
     const { logger } = await import("@/lib/logger");
     const { toast } = await import("sonner");

@@ -21,7 +21,8 @@ export const detailsQuery = (type: "movie" | "tv", id: number) => ({
 
 export const seasonQuery = (tvId: number, seasonNumber: number) => ({
   queryKey: tmdbKeys.season(tvId, seasonNumber),
-  queryFn: () => tmdb.getSeasonDetails(tvId, seasonNumber),
+  queryFn: ({ signal }: { signal?: AbortSignal }) =>
+    tmdb.getSeasonDetails(tvId, seasonNumber, signal),
 });
 
 export const trendingQuery = (timeWindow: "day" | "week" = "week") => ({

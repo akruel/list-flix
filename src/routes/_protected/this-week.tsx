@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useSearchModal } from "@/contexts/SearchModalContext";
 import { useMyList, useWatchedEpisodes } from "@/hooks/userContent";
 import {
   getDateKey,
@@ -81,6 +82,7 @@ export function ThisWeekErrorComponent({ error }: { error: Error }) {
 }
 
 export function ThisWeekComponent() {
+  const { openSearch } = useSearchModal();
   const myList = useMyList();
   const watchedEpisodes = useWatchedEpisodes();
 
@@ -280,8 +282,8 @@ export function ThisWeekComponent() {
           <p className="text-muted-foreground">
             Você ainda não adicionou nenhuma série à sua lista.
           </p>
-          <Button asChild>
-            <Link to="/search">Buscar séries</Link>
+          <Button type="button" onClick={openSearch}>
+            Buscar séries
           </Button>
         </div>
       )}

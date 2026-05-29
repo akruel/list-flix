@@ -105,9 +105,13 @@ export const tmdb = {
   getSeasonDetails: async (
     tvId: number,
     seasonNumber: number,
+    signal?: AbortSignal,
   ): Promise<SeasonDetails> => {
     const response = await tmdbClient.get<SeasonDetails>(
       `/tv/${tvId}/season/${seasonNumber}`,
+      {
+        ...(signal ? { signal } : {}),
+      },
     );
     return response.data;
   },

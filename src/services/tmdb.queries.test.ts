@@ -50,8 +50,13 @@ describe("tmdb.queries", () => {
     const query = seasonQuery(11, 3);
     expect(query.queryKey).toEqual(["tmdb", "season", 11, 3]);
 
-    await query.queryFn();
-    expect(tmdb.getSeasonDetails).toHaveBeenCalledWith(11, 3);
+    const controller = new AbortController();
+    await query.queryFn({ signal: controller.signal });
+    expect(tmdb.getSeasonDetails).toHaveBeenCalledWith(
+      11,
+      3,
+      controller.signal,
+    );
   });
 
   it("trendingQuery defaults to week and calls tmdb.getTrending", async () => {

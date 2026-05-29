@@ -1,5 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DeleteConfirmationModal } from "@/components/DeleteConfirmationModal";
@@ -7,7 +8,9 @@ import { MovieCard } from "@/components/MovieCard";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useRemoveListItem } from "@/hooks/mutations";
+import { useWatchedIds } from "@/hooks/userContent";
 import { logger } from "@/lib/logger";
+import { userContentQuery } from "@/services/userContent.queries";
 import type { ContentItem, ListItem } from "@/types";
 
 export type ListItemWithContent = ListItem & {
@@ -23,6 +26,9 @@ interface ListItemsGridProps {
 
 export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
   const removeListItem = useRemoveListItem();
+  const watchedIds = useWatchedIds();
+  const watchedIdSet = useMemo(() => new Set(watchedIds), [watchedIds]);
+  const { data: userContent } = useQuery(userContentQuery());
   const [itemToRemove, setItemToRemove] = useState<ListItemWithContent | null>(
     null,
   );
@@ -64,7 +70,17 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
         {items.map((item) => (
           <div key={item.id} className="group relative">
             {item.content ? (
-              <MovieCard item={item.content} showProgress={true} />
+              <MovieCard
+                item={item.content}
+                showProgress={true}
+                watched={watchedIdSet.has(item.content.id)}
+                seriesMetadata={userContent?.seriesMetadata[item.content.id]}
+                seriesWatchedCount={
+                  Object.values(
+                    userContent?.watchedEpisodes[item.content.id] ?? {},
+                  ).filter((metadata) => metadata.season_number !== 0).length
+                }
+              />
             ) : item.isContentLoading ? (
               <Skeleton
                 data-testid="list-item-content-skeleton"
@@ -81,8 +97,8 @@ export function ListItemsGrid({ listId, items, canEdit }: ListItemsGridProps) {
                 variant="destructive"
                 size="icon"
                 onClick={() => setItemToRemove(item)}
-                className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100"
-                title="Remover item"
+                className="absolute right-2 top-2 z-10 h-8 w-8 rounded-full opacity-100 transition-opacity focus-visible:opacity-100 md:opacity-0 md:group-focus-within:opacity-100 md:group-hover:opacity-100"
+                aria-label="Remover item"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>

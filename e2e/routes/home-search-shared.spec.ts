@@ -83,7 +83,9 @@ test(`[${SCENARIO_IDS.SEARCH_MODAL_ADD_ITEM}] adds item to watchlist from search
   await expect(page.getByTestId("search-modal-input")).toBeVisible();
   await page.getByTestId("search-modal-input").fill("mock movie");
 
-  const addButton = page.getByTitle("Adicionar à lista").first();
+  const addButton = page
+    .getByRole("button", { name: "Adicionar à lista" })
+    .first();
   await expect(addButton).toBeVisible();
   await addButton.click();
 

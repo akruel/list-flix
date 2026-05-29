@@ -122,6 +122,60 @@ describe("MovieCard", () => {
     expect(screen.getByTestId("watched-badge")).toBeInTheDocument();
   });
 
+  it("renders with explicit watched and series props without hook queries", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 40,
+          media_type: "tv",
+          name: "Series",
+          first_air_date: "2020-01-01",
+        }}
+        watched={true}
+        seriesMetadata={{ total_episodes: 10, number_of_seasons: 2 }}
+        seriesWatchedCount={5}
+        showProgress
+      />,
+    );
+
+    expect(screen.getByTestId("watched-badge")).toBeInTheDocument();
+    expect(screen.getByTestId("progress-fill")).toHaveStyle({ width: "50%" });
+  });
+
+  it.each([
+    {
+      caseName: "series metadata only",
+      props: {
+        seriesMetadata: {
+          total_episodes: 10,
+          number_of_seasons: 1,
+        },
+      },
+    },
+    {
+      caseName: "series watched count only",
+      props: { seriesWatchedCount: 2 },
+    },
+    {
+      caseName: "explicit unwatched flag",
+      props: { watched: false },
+    },
+  ])("uses parent props when $caseName is provided", ({ props }) => {
+    render(
+      <MovieCard
+        item={{
+          id: 41,
+          media_type: "tv",
+          name: "Parent Props Show",
+        }}
+        {...props}
+      />,
+    );
+
+    expect(screen.getByText("Parent Props Show")).toBeInTheDocument();
+    expect(screen.queryByTestId("watched-badge")).not.toBeInTheDocument();
+  });
+
   it.each([
     {
       caseName: "tv progress shown",

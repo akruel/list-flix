@@ -86,16 +86,12 @@ function HomeRouteComponent() {
     }
   }, [moodError]);
 
-  const trending = useMemo(
-    () =>
-      deriveHomeTrending({
-        selectedMood,
-        selectedMediaType,
-        trendingDefault,
-        moodResults: moodQueries.map((q) => q.data),
-      }),
-    [moodQueries, selectedMediaType, selectedMood, trendingDefault],
-  );
+  const trending = deriveHomeTrending({
+    selectedMood,
+    selectedMediaType,
+    trendingDefault,
+    moodResults: moodQueries.map((q) => q.data),
+  });
 
   const tasteEnabled =
     Boolean(userId) && (myList.length > 0 || watchedIds.length > 0);
@@ -113,6 +109,14 @@ function HomeRouteComponent() {
   });
 
   const tasteSuggestions = tasteResult.data ?? [];
+  const excludedFromTasteIds = useMemo(
+    () => new Set([...myList.map((item) => item.id), ...watchedIds]),
+    [myList, watchedIds],
+  );
+  const filteredTasteSuggestions = tasteSuggestions.filter(
+    (item) => !excludedFromTasteIds.has(item.id),
+  );
+  const watchedIdSet = useMemo(() => new Set(watchedIds), [watchedIds]);
   const suggestionsLoading = tasteEnabled && tasteResult.isLoading;
 
   const dataYears = useMemo(() => {
@@ -147,7 +151,8 @@ function HomeRouteComponent() {
     : trending;
 
   const showForYou =
-    !decadeFilter && (suggestionsLoading || tasteSuggestions.length > 0);
+    !decadeFilter &&
+    (suggestionsLoading || filteredTasteSuggestions.length > 0);
   const showInitialLoading = moodLoading && trending.length === 0;
 
   return (
@@ -162,6 +167,8 @@ function HomeRouteComponent() {
         ).map((option) => (
           <button
             key={option.label}
+            type="button"
+            aria-pressed={selectedMediaType === option.key}
             onClick={() => {
               setDecadeFilter(null);
               setSelectedMediaType(
@@ -183,6 +190,8 @@ function HomeRouteComponent() {
         {MOODS.map((mood) => (
           <button
             key={mood.key}
+            type="button"
+            aria-pressed={selectedMood === mood.key}
             onClick={() => {
               setDecadeFilter(null);
               setSelectedMood(selectedMood === mood.key ? null : mood.key);
@@ -203,6 +212,8 @@ function HomeRouteComponent() {
           {displayDecades.map(([decade, count]) => (
             <button
               key={decade}
+              type="button"
+              aria-pressed={decadeFilter === decade}
               onClick={() =>
                 setDecadeFilter(decadeFilter === decade ? null : decade)
               }
@@ -234,11 +245,11 @@ function HomeRouteComponent() {
                 </div>
               ))}
             </div>
-          ) : tasteSuggestions.length > 0 ? (
+          ) : filteredTasteSuggestions.length > 0 ? (
             <div className="flex gap-4 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {tasteSuggestions.map((item) => (
+              {filteredTasteSuggestions.map((item) => (
                 <div key={item.id} className="w-36 shrink-0 sm:w-40">
-                  <MovieCard item={item} />
+                  <MovieCard item={item} watched={watchedIdSet.has(item.id)} />
                 </div>
               ))}
             </div>
@@ -269,7 +280,11 @@ function HomeRouteComponent() {
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {displayedResults.map((item) => (
-            <MovieCard key={item.id} item={item} />
+            <MovieCard
+              key={item.id}
+              item={item}
+              watched={watchedIdSet.has(item.id)}
+            />
           ))}
         </div>
       )}
