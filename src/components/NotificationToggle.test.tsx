@@ -34,17 +34,36 @@ vi.mock("lucide-react", () => ({
 
 import { NotificationToggle } from "./NotificationToggle";
 
+interface PushMockOverrides {
+  isSupported?: boolean;
+  swReady?: boolean;
+  swChecked?: boolean;
+  isSubscribed?: boolean;
+  isSubscribing?: boolean;
+  isUnsubscribing?: boolean;
+  subscribe?: ReturnType<typeof vi.fn>;
+  unsubscribe?: ReturnType<typeof vi.fn>;
+}
+
+function mockPushNotification(overrides: PushMockOverrides = {}): void {
+  mocks.usePushNotification.mockReturnValue({
+    isSupported: true,
+    swReady: true,
+    swChecked: true,
+    isSubscribed: false,
+    isSubscribing: false,
+    isUnsubscribing: false,
+    subscribe: vi.fn(),
+    unsubscribe: vi.fn(),
+    ...overrides,
+  });
+}
+
 describe("NotificationToggle", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.useAuth.mockReturnValue({ status: "authenticated" });
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
+    mockPushNotification({
       subscribe: vi.fn().mockResolvedValue(undefined),
       unsubscribe: vi.fn().mockResolvedValue(undefined),
     });
@@ -54,140 +73,66 @@ describe("NotificationToggle", () => {
     vi.unstubAllGlobals();
   });
 
-  it("returns null when push is not supported", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: false,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
+  it.each([
+    {
+      caseName: "push is not supported",
+      pushOverrides: { isSupported: false },
+    },
+    {
+      caseName: "service worker check has not completed yet",
+      pushOverrides: { swReady: false, swChecked: false },
+    },
+    {
+      caseName: "service worker is not available",
+      pushOverrides: { swReady: false },
+    },
+    {
+      caseName: "user is not logged in",
+      pushOverrides: {},
+      authStatus: "none" as const,
+    },
+  ])("returns null when $caseName", ({ pushOverrides, authStatus }) => {
+    if (authStatus) {
+      mocks.useAuth.mockReturnValue({ status: authStatus });
+    }
+    mockPushNotification(pushOverrides);
 
     const { container } = render(<NotificationToggle />);
     expect(container.innerHTML).toBe("");
   });
 
-  it("returns null when service worker check has not completed yet", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: false,
-      swChecked: false,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
-
-    const { container } = render(<NotificationToggle />);
-    expect(container.innerHTML).toBe("");
-  });
-
-  it("returns null when service worker is not available", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: false,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
-
-    const { container } = render(<NotificationToggle />);
-    expect(container.innerHTML).toBe("");
-  });
-
-  it("returns null when user is not logged in", () => {
-    mocks.useAuth.mockReturnValue({ status: "none" });
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
-
-    const { container } = render(<NotificationToggle />);
-    expect(container.innerHTML).toBe("");
-  });
-
-  it("renders Bell icon when not subscribed", () => {
-    render(<NotificationToggle />);
-
-    expect(screen.getByTestId("bell-icon")).toBeInTheDocument();
-  });
-
-  it("renders BellOff icon when subscribed", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: true,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
+  it.each([
+    {
+      caseName: "Bell icon when not subscribed",
+      pushOverrides: { isSubscribed: false },
+      expectedTestId: "bell-icon",
+    },
+    {
+      caseName: "BellOff icon when subscribed",
+      pushOverrides: { isSubscribed: true },
+      expectedTestId: "bell-off-icon",
+    },
+    {
+      caseName: "Loader when subscribing",
+      pushOverrides: { isSubscribed: true, isUnsubscribing: true },
+      expectedTestId: "loader-icon",
+    },
+    {
+      caseName: "Loader when unsubscribing",
+      pushOverrides: { isSubscribing: true },
+      expectedTestId: "loader-icon",
+    },
+  ])("renders $caseName", ({ pushOverrides, expectedTestId }) => {
+    mockPushNotification(pushOverrides);
 
     render(<NotificationToggle />);
 
-    expect(screen.getByTestId("bell-off-icon")).toBeInTheDocument();
-  });
-
-  it("renders Loader when subscribing", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: true,
-      isSubscribing: false,
-      isUnsubscribing: true,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
-
-    render(<NotificationToggle />);
-
-    expect(screen.getByTestId("loader-icon")).toBeInTheDocument();
-  });
-
-  it("renders Loader when unsubscribing", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: true,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
-
-    render(<NotificationToggle />);
-
-    expect(screen.getByTestId("loader-icon")).toBeInTheDocument();
+    expect(screen.getByTestId(expectedTestId)).toBeInTheDocument();
   });
 
   it("calls subscribe on click when not subscribed", async () => {
     const subscribe = vi.fn().mockResolvedValue(undefined);
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe,
-      unsubscribe: vi.fn(),
-    });
+    mockPushNotification({ subscribe });
 
     render(<NotificationToggle />);
     await userEvent.click(screen.getByRole("button"));
@@ -198,16 +143,7 @@ describe("NotificationToggle", () => {
 
   it("calls unsubscribe on click when subscribed", async () => {
     const unsubscribe = vi.fn().mockResolvedValue(undefined);
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: true,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe,
-    });
+    mockPushNotification({ isSubscribed: true, unsubscribe });
 
     render(<NotificationToggle />);
     await userEvent.click(screen.getByRole("button"));
@@ -216,80 +152,47 @@ describe("NotificationToggle", () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith("Notificações desativadas");
   });
 
-  it("shows error toast when subscribe fails with permission denied", async () => {
-    const subscribe = vi.fn().mockRejectedValue(new Error("Permission denied"));
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
+  it.each([
+    {
+      caseName: "subscribe fails with permission denied",
       isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe,
-      unsubscribe: vi.fn(),
-    });
-
-    render(<NotificationToggle />);
-    await userEvent.click(screen.getByRole("button"));
-
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Permissão negada. Verifique as configurações do navegador.",
-    );
-  });
-
-  it("shows generic error toast when subscribe fails with other error", async () => {
-    const subscribe = vi.fn().mockRejectedValue(new Error("Something else"));
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
+      methodKey: "subscribe" as const,
+      errorMessage: "Permission denied",
+      expectedToast:
+        "Permissão negada. Verifique as configurações do navegador.",
+    },
+    {
+      caseName: "subscribe fails with other error",
       isSubscribed: false,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe,
-      unsubscribe: vi.fn(),
-    });
-
-    render(<NotificationToggle />);
-    await userEvent.click(screen.getByRole("button"));
-
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Erro ao ativar notificações",
-    );
-  });
-
-  it("shows error toast when unsubscribe fails", async () => {
-    const unsubscribe = vi.fn().mockRejectedValue(new Error("fail"));
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
+      methodKey: "subscribe" as const,
+      errorMessage: "Something else",
+      expectedToast: "Erro ao ativar notificações",
+    },
+    {
+      caseName: "unsubscribe fails",
       isSubscribed: true,
-      isSubscribing: false,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe,
-    });
+      methodKey: "unsubscribe" as const,
+      errorMessage: "fail",
+      expectedToast: "Erro ao desativar notificações",
+    },
+  ])(
+    "shows error toast when $caseName",
+    async ({ isSubscribed, methodKey, errorMessage, expectedToast }) => {
+      const failing = vi.fn().mockRejectedValue(new Error(errorMessage));
+      mockPushNotification({
+        isSubscribed,
+        [methodKey]: failing,
+      });
 
-    render(<NotificationToggle />);
-    await userEvent.click(screen.getByRole("button"));
+      render(<NotificationToggle />);
+      await userEvent.click(screen.getByRole("button"));
 
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      "Erro ao desativar notificações",
-    );
-  });
+      expect(mocks.toastError).toHaveBeenCalledWith(expectedToast);
+    },
+  );
 
   it("disables button while busy", () => {
-    mocks.usePushNotification.mockReturnValue({
-      isSupported: true,
-      swReady: true,
-      swChecked: true,
-      isSubscribed: false,
-      isSubscribing: true,
-      isUnsubscribing: false,
-      subscribe: vi.fn(),
-      unsubscribe: vi.fn(),
-    });
+    mockPushNotification({ isSubscribing: true });
 
     render(<NotificationToggle />);
 
