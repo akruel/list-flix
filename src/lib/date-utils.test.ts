@@ -30,10 +30,6 @@ describe("formatDate", () => {
     const result = formatDate("2025-05-10");
     expect(result).toBe("10/05/2025");
   });
-
-  it("returns TBA for empty string", () => {
-    expect(formatDate("")).toBe("TBA");
-  });
 });
 
 describe("formatDateLong", () => {
@@ -44,9 +40,14 @@ describe("formatDateLong", () => {
     expect(result).toContain("maio");
     expect(result).toContain("2025");
   });
+});
 
-  it("returns TBA for empty string", () => {
-    expect(formatDateLong("")).toBe("TBA");
+describe("TBA fallback for empty input", () => {
+  it.each([
+    { name: "formatDate", fn: formatDate },
+    { name: "formatDateLong", fn: formatDateLong },
+  ])("$name returns TBA for empty string", ({ fn }) => {
+    expect(fn("")).toBe("TBA");
   });
 });
 
@@ -59,31 +60,24 @@ describe("getCountdownText", () => {
     vi.useRealTimers();
   });
 
-  it("returns Estreia hoje for today", () => {
-    const today = new Date();
-    const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    expect(getCountdownText(dateStr)).toBe("Estreia hoje!");
-  });
+  function buildDateStringFromOffset(daysOffset: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() + daysOffset);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
 
-  it("returns Estreia amanhã for tomorrow", () => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    const dateStr = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, "0")}-${String(tomorrow.getDate()).padStart(2, "0")}`;
-    expect(getCountdownText(dateStr)).toBe("Estreia amanhã!");
-  });
-
-  it("returns Faltam X dias for future dates", () => {
-    const future = new Date();
-    future.setDate(future.getDate() + 5);
-    const dateStr = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, "0")}-${String(future.getDate()).padStart(2, "0")}`;
-    expect(getCountdownText(dateStr)).toBe("Faltam 5 dias");
-  });
-
-  it("returns Já disponível for past dates", () => {
-    const past = new Date();
-    past.setDate(past.getDate() - 3);
-    const dateStr = `${past.getFullYear()}-${String(past.getMonth() + 1).padStart(2, "0")}-${String(past.getDate()).padStart(2, "0")}`;
-    expect(getCountdownText(dateStr)).toBe("Já disponível");
+  it.each([
+    { caseName: "today", daysOffset: 0, expected: "Estreia hoje!" },
+    { caseName: "tomorrow", daysOffset: 1, expected: "Estreia amanhã!" },
+    { caseName: "future (5 days)", daysOffset: 5, expected: "Faltam 5 dias" },
+    { caseName: "past (-3 days)", daysOffset: -3, expected: "Já disponível" },
+  ])("returns $expected for $caseName", ({ daysOffset, expected }) => {
+    expect(getCountdownText(buildDateStringFromOffset(daysOffset))).toBe(
+      expected,
+    );
   });
 });
 
@@ -150,29 +144,40 @@ describe("getRelativeTime", () => {
     vi.useRealTimers();
   });
 
-  it('returns "agora" for timestamps less than 1 minute ago', () => {
-    vi.setSystemTime(new Date("2026-05-22T10:00:30Z"));
-    expect(getRelativeTime("2026-05-22T10:00:00Z")).toBe("agora");
-  });
-
-  it('returns "há Xmin" for timestamps within the last hour', () => {
-    vi.setSystemTime(new Date("2026-05-22T10:15:00Z"));
-    expect(getRelativeTime("2026-05-22T10:00:00Z")).toBe("há 15min");
-  });
-
-  it('returns "há Xh" for timestamps within the last 24 hours', () => {
-    vi.setSystemTime(new Date("2026-05-22T12:00:00Z"));
-    expect(getRelativeTime("2026-05-22T10:00:00Z")).toBe("há 2h");
-  });
-
-  it('returns "ontem" for timestamps exactly 1 day ago', () => {
-    vi.setSystemTime(new Date("2026-05-22T10:00:00Z"));
-    expect(getRelativeTime("2026-05-21T10:00:00Z")).toBe("ontem");
-  });
-
-  it('returns "há X dias" for timestamps 2–6 days ago', () => {
-    vi.setSystemTime(new Date("2026-05-22T10:00:00Z"));
-    expect(getRelativeTime("2026-05-19T10:00:00Z")).toBe("há 3 dias");
+  it.each([
+    {
+      caseName: "less than 1 minute ago",
+      now: "2026-05-22T10:00:30Z",
+      input: "2026-05-22T10:00:00Z",
+      expected: "agora" as const,
+    },
+    {
+      caseName: "within the last hour",
+      now: "2026-05-22T10:15:00Z",
+      input: "2026-05-22T10:00:00Z",
+      expected: "há 15min" as const,
+    },
+    {
+      caseName: "within the last 24 hours",
+      now: "2026-05-22T12:00:00Z",
+      input: "2026-05-22T10:00:00Z",
+      expected: "há 2h" as const,
+    },
+    {
+      caseName: "exactly 1 day ago",
+      now: "2026-05-22T10:00:00Z",
+      input: "2026-05-21T10:00:00Z",
+      expected: "ontem" as const,
+    },
+    {
+      caseName: "2-6 days ago",
+      now: "2026-05-22T10:00:00Z",
+      input: "2026-05-19T10:00:00Z",
+      expected: "há 3 dias" as const,
+    },
+  ])("returns $expected for $caseName", ({ now, input, expected }) => {
+    vi.setSystemTime(new Date(now));
+    expect(getRelativeTime(input)).toBe(expected);
   });
 
   it("returns a formatted date for timestamps older than 7 days", () => {
@@ -192,12 +197,19 @@ describe("getDayGroupLabel", () => {
     vi.useRealTimers();
   });
 
-  it('returns "Hoje" for today', () => {
-    expect(getDayGroupLabel("2026-05-22T08:00:00Z")).toBe("Hoje");
-  });
-
-  it('returns "Ontem" for yesterday', () => {
-    expect(getDayGroupLabel("2026-05-21T20:00:00Z")).toBe("Ontem");
+  it.each([
+    {
+      caseName: "today",
+      input: "2026-05-22T08:00:00Z",
+      expected: "Hoje",
+    },
+    {
+      caseName: "yesterday",
+      input: "2026-05-21T20:00:00Z",
+      expected: "Ontem",
+    },
+  ])("returns $expected for $caseName", ({ input, expected }) => {
+    expect(getDayGroupLabel(input)).toBe(expected);
   });
 
   it("returns formatted date for older dates", () => {

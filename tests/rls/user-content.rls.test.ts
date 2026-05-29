@@ -65,90 +65,148 @@ async function teardownFixture(fixture: UserContentFixture): Promise<void> {
   await deleteUsers(fixture.users);
 }
 
-describe.sequential("RLS: watchlists policies", () => {
-  it("allows user to view and delete their own watchlist entries, blocks other users", async () => {
-    const fixture = await createUserContentFixture();
+type UserContentTable = "watchlists" | "watched_movies" | "watched_episodes";
 
-    try {
-      const ownSelect = await fixture.userA.client
-        .from("watchlists")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
-        .single();
+interface UserContentTableCase {
+  table: UserContentTable;
+  label: string;
+  idColumn: string;
+  getOwnedId: (fixture: UserContentFixture) => number;
+  getCrossUserInsertPayload: (
+    fixture: UserContentFixture,
+  ) => Record<string, unknown>;
+}
 
-      expect(ownSelect.error).toBeNull();
-      expect(ownSelect.data).not.toBeNull();
+const userContentTableCases: UserContentTableCase[] = [
+  {
+    table: "watchlists",
+    label: "watchlist entries",
+    idColumn: "tmdb_id",
+    getOwnedId: (fixture) => fixture.watchlistTmdbId,
+    getCrossUserInsertPayload: (fixture) => ({
+      user_id: fixture.userA.id,
+      tmdb_id: Math.floor(Math.random() * 100000),
+      media_type: "movie",
+      title: "Cross-user attempt",
+    }),
+  },
+  {
+    table: "watched_movies",
+    label: "watched movies",
+    idColumn: "tmdb_id",
+    getOwnedId: (fixture) => fixture.movieTmdbId,
+    getCrossUserInsertPayload: (fixture) => ({
+      user_id: fixture.userA.id,
+      tmdb_id: Math.floor(Math.random() * 100000),
+    }),
+  },
+  {
+    table: "watched_episodes",
+    label: "watched episodes",
+    idColumn: "tmdb_episode_id",
+    getOwnedId: (fixture) => fixture.episodeTmdbId,
+    getCrossUserInsertPayload: (fixture) => ({
+      user_id: fixture.userA.id,
+      tmdb_episode_id: Math.floor(Math.random() * 100000),
+      tmdb_show_id: Math.floor(Math.random() * 100000),
+      season_number: 1,
+      episode_number: 1,
+    }),
+  },
+];
 
-      const otherSelect = await fixture.userB.client
-        .from("watchlists")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
-        .single();
+describe.sequential("RLS: user-content CRUD policies", () => {
+  it.each(userContentTableCases)(
+    "allows user to view and delete their own $label, blocks other users",
+    async ({ table, idColumn, getOwnedId }) => {
+      const fixture = await createUserContentFixture();
+      const ownedId = getOwnedId(fixture);
 
-      expect(otherSelect.error).not.toBeNull();
-      expect(otherSelect.data).toBeNull();
+      try {
+        const ownSelect = await fixture.userA.client
+          .from(table)
+          .select(idColumn)
+          .eq(idColumn, ownedId)
+          .single();
 
-      const ownDelete = await fixture.userA.client
-        .from("watchlists")
-        .delete()
-        .eq("tmdb_id", fixture.watchlistTmdbId);
+        expect(ownSelect.error).toBeNull();
+        expect(ownSelect.data).not.toBeNull();
 
-      expect(ownDelete.error).toBeNull();
+        const otherSelect = await fixture.userB.client
+          .from(table)
+          .select(idColumn)
+          .eq(idColumn, ownedId)
+          .single();
 
-      const confirmDeleted = await fixture.userA.client
-        .from("watchlists")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
-        .single();
+        expect(otherSelect.error).not.toBeNull();
+        expect(otherSelect.data).toBeNull();
 
-      expect(confirmDeleted.error).not.toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
+        const ownDelete = await fixture.userA.client
+          .from(table)
+          .delete()
+          .eq(idColumn, ownedId);
 
-  it("prevents user from inserting on behalf of another user", async () => {
-    const fixture = await createUserContentFixture();
+        expect(ownDelete.error).toBeNull();
 
-    try {
-      const insertForOther = await fixture.userB.client
-        .from("watchlists")
-        .insert({
-          user_id: fixture.userA.id,
-          tmdb_id: Math.floor(Math.random() * 100000),
-          media_type: "movie",
-          title: "Cross-user attempt",
-        });
+        const confirmDeleted = await fixture.userA.client
+          .from(table)
+          .select(idColumn)
+          .eq(idColumn, ownedId)
+          .single();
 
-      expect(insertForOther.error).not.toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
+        expect(confirmDeleted.error).not.toBeNull();
+      } finally {
+        await teardownFixture(fixture);
+      }
+    },
+  );
 
-  it("prevents user from deleting another users watchlist entry", async () => {
-    const fixture = await createUserContentFixture();
+  it.each(userContentTableCases)(
+    "prevents user from inserting $label on behalf of another user",
+    async ({ table, getCrossUserInsertPayload }) => {
+      const fixture = await createUserContentFixture();
 
-    try {
-      const otherDelete = await fixture.userB.client
-        .from("watchlists")
-        .delete()
-        .eq("tmdb_id", fixture.watchlistTmdbId);
+      try {
+        const insertForOther = await fixture.userB.client
+          .from(table)
+          .insert(getCrossUserInsertPayload(fixture));
 
-      expect(otherDelete.error).toBeNull();
+        expect(insertForOther.error).not.toBeNull();
+      } finally {
+        await teardownFixture(fixture);
+      }
+    },
+  );
 
-      const stillExists = await fixture.userA.client
-        .from("watchlists")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.watchlistTmdbId)
-        .single();
+  it.each(userContentTableCases)(
+    "prevents user from deleting another users $label",
+    async ({ table, idColumn, getOwnedId }) => {
+      const fixture = await createUserContentFixture();
+      const ownedId = getOwnedId(fixture);
 
-      expect(stillExists.error).toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
+      try {
+        const otherDelete = await fixture.userB.client
+          .from(table)
+          .delete()
+          .eq(idColumn, ownedId);
 
+        expect(otherDelete.error).toBeNull();
+
+        const stillExists = await fixture.userA.client
+          .from(table)
+          .select(idColumn)
+          .eq(idColumn, ownedId)
+          .single();
+
+        expect(stillExists.error).toBeNull();
+      } finally {
+        await teardownFixture(fixture);
+      }
+    },
+  );
+});
+
+describe.sequential("RLS: watchlists metadata constraint", () => {
   it("rejects inserts with no title or name (metadata constraint)", async () => {
     const fixture = await createUserContentFixture();
 
@@ -195,175 +253,6 @@ describe.sequential("RLS: watchlists policies", () => {
         .from("watchlists")
         .insert({ tmdb_id: tmdbIdShow, media_type: "tv", name: "Show" });
       expect(tvInsert.error).toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
-});
-
-describe.sequential("RLS: watched_movies policies", () => {
-  it("allows user to view and delete their own watched movies, blocks other users", async () => {
-    const fixture = await createUserContentFixture();
-
-    try {
-      const ownSelect = await fixture.userA.client
-        .from("watched_movies")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.movieTmdbId)
-        .single();
-
-      expect(ownSelect.error).toBeNull();
-      expect(ownSelect.data).not.toBeNull();
-
-      const otherSelect = await fixture.userB.client
-        .from("watched_movies")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.movieTmdbId)
-        .single();
-
-      expect(otherSelect.error).not.toBeNull();
-      expect(otherSelect.data).toBeNull();
-
-      const ownDelete = await fixture.userA.client
-        .from("watched_movies")
-        .delete()
-        .eq("tmdb_id", fixture.movieTmdbId);
-
-      expect(ownDelete.error).toBeNull();
-
-      const confirmDeleted = await fixture.userA.client
-        .from("watched_movies")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.movieTmdbId)
-        .single();
-
-      expect(confirmDeleted.error).not.toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
-
-  it("prevents user from inserting watched movie on behalf of another user", async () => {
-    const fixture = await createUserContentFixture();
-
-    try {
-      const insertForOther = await fixture.userB.client
-        .from("watched_movies")
-        .insert({
-          user_id: fixture.userA.id,
-          tmdb_id: Math.floor(Math.random() * 100000),
-        });
-
-      expect(insertForOther.error).not.toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
-
-  it("prevents user from deleting another users watched movie", async () => {
-    const fixture = await createUserContentFixture();
-
-    try {
-      const otherDelete = await fixture.userB.client
-        .from("watched_movies")
-        .delete()
-        .eq("tmdb_id", fixture.movieTmdbId);
-
-      expect(otherDelete.error).toBeNull();
-
-      const stillExists = await fixture.userA.client
-        .from("watched_movies")
-        .select("tmdb_id")
-        .eq("tmdb_id", fixture.movieTmdbId)
-        .single();
-
-      expect(stillExists.error).toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
-});
-
-describe.sequential("RLS: watched_episodes policies", () => {
-  it("allows user to view and delete their own watched episodes, blocks other users", async () => {
-    const fixture = await createUserContentFixture();
-
-    try {
-      const ownSelect = await fixture.userA.client
-        .from("watched_episodes")
-        .select("tmdb_episode_id")
-        .eq("tmdb_episode_id", fixture.episodeTmdbId)
-        .single();
-
-      expect(ownSelect.error).toBeNull();
-      expect(ownSelect.data).not.toBeNull();
-
-      const otherSelect = await fixture.userB.client
-        .from("watched_episodes")
-        .select("tmdb_episode_id")
-        .eq("tmdb_episode_id", fixture.episodeTmdbId)
-        .single();
-
-      expect(otherSelect.error).not.toBeNull();
-      expect(otherSelect.data).toBeNull();
-
-      const ownDelete = await fixture.userA.client
-        .from("watched_episodes")
-        .delete()
-        .eq("tmdb_episode_id", fixture.episodeTmdbId);
-
-      expect(ownDelete.error).toBeNull();
-
-      const confirmDeleted = await fixture.userA.client
-        .from("watched_episodes")
-        .select("tmdb_episode_id")
-        .eq("tmdb_episode_id", fixture.episodeTmdbId)
-        .single();
-
-      expect(confirmDeleted.error).not.toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
-
-  it("prevents user from inserting watched episode on behalf of another user", async () => {
-    const fixture = await createUserContentFixture();
-
-    try {
-      const insertForOther = await fixture.userB.client
-        .from("watched_episodes")
-        .insert({
-          user_id: fixture.userA.id,
-          tmdb_episode_id: Math.floor(Math.random() * 100000),
-          tmdb_show_id: Math.floor(Math.random() * 100000),
-          season_number: 1,
-          episode_number: 1,
-        });
-
-      expect(insertForOther.error).not.toBeNull();
-    } finally {
-      await teardownFixture(fixture);
-    }
-  });
-
-  it("prevents user from deleting another users watched episode", async () => {
-    const fixture = await createUserContentFixture();
-
-    try {
-      const otherDelete = await fixture.userB.client
-        .from("watched_episodes")
-        .delete()
-        .eq("tmdb_episode_id", fixture.episodeTmdbId);
-
-      expect(otherDelete.error).toBeNull();
-
-      const stillExists = await fixture.userA.client
-        .from("watched_episodes")
-        .select("tmdb_episode_id")
-        .eq("tmdb_episode_id", fixture.episodeTmdbId)
-        .single();
-
-      expect(stillExists.error).toBeNull();
     } finally {
       await teardownFixture(fixture);
     }
