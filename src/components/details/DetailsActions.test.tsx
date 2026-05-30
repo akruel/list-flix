@@ -41,6 +41,22 @@ describe("DetailsActions", () => {
     ).toHaveTextContent("Assistido");
   });
 
+  it("hides watched button when showWatched is false", () => {
+    render(
+      <DetailsActions
+        isSaved={false}
+        watched={false}
+        showWatched={false}
+        onToggleList={vi.fn()}
+        onToggleWatched={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByTestId("details-toggle-watched-button"),
+    ).not.toBeInTheDocument();
+  });
+
   it("calls toggle handlers on click", async () => {
     const user = userEvent.setup();
     const onToggleList = vi.fn();

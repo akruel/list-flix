@@ -49,6 +49,7 @@ function MovieCardInner({
     seriesMetadata && seriesMetadata.total_episodes > 0
       ? Math.round((watchedCount / seriesMetadata.total_episodes) * 100)
       : 0;
+  const isComplete = progressPercentage >= 100;
 
   const cardContent = (
     <Card className="group relative overflow-hidden border-0 bg-card shadow-lg transition-transform duration-200 hover:scale-105">
@@ -59,7 +60,7 @@ function MovieCardInner({
           className="h-full w-full object-cover"
           loading="lazy"
         />
-        {!!watched && (
+        {!!watched && item.media_type === "movie" && (
           <div
             className="absolute right-2 top-2 rounded-full bg-blue-600 p-2 text-white shadow-lg"
             data-testid="watched-badge"
@@ -89,7 +90,7 @@ function MovieCardInner({
         {!!shouldShowProgress && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-700">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-300"
+              className={`h-full transition-all duration-300 ${isComplete ? "bg-green-500" : "bg-amber-500"}`}
               data-testid="progress-fill"
               style={{ width: `${progressPercentage}%` }}
               title={`${watchedCount} de ${seriesMetadata?.total_episodes} episódios (${progressPercentage}%)`}
