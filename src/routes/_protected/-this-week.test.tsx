@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { sharedTvItemsSafeQuery } from "@/services/listService.queries";
 
-import { ThisWeekComponent, ThisWeekErrorComponent } from "./this-week";
+import { ThisWeekComponent, ThisWeekErrorComponent } from "./-this-week";
 
 type MockQueryResult<T = unknown> = {
   data: T | undefined;
