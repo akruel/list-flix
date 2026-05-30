@@ -118,6 +118,7 @@ function DetailsRouteComponent() {
           <DetailsActions
             isSaved={isSaved}
             watched={watched}
+            showWatched={contentType === "movie"}
             onToggleList={handleToggleList}
             onToggleWatched={handleToggleWatched}
           />

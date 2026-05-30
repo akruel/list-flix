@@ -136,8 +136,52 @@ describe("MovieCard", () => {
       />,
     );
 
-    expect(screen.getByTestId("watched-badge")).toBeInTheDocument();
+    expect(screen.queryByTestId("watched-badge")).not.toBeInTheDocument();
     expect(screen.getByTestId("progress-fill")).toHaveStyle({ width: "50%" });
+  });
+
+  it("shows amber progress bar for tv series with partial progress", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 43,
+          media_type: "tv",
+          name: "Ongoing Show",
+          first_air_date: "2022-01-01",
+        }}
+        seriesMetadata={{ total_episodes: 10, number_of_seasons: 1 }}
+        seriesWatchedCount={3}
+        showProgress
+      />,
+    );
+
+    expect(screen.queryByTestId("watched-badge")).not.toBeInTheDocument();
+    const fill = screen.getByTestId("progress-fill");
+    expect(fill).toHaveStyle({ width: "30%" });
+    expect(fill.className).toContain("bg-amber-500");
+    expect(fill.className).not.toContain("bg-green-500");
+  });
+
+  it("shows green progress bar and no badge when tv series is 100% complete", () => {
+    render(
+      <MovieCard
+        item={{
+          id: 42,
+          media_type: "tv",
+          name: "Finished Show",
+          first_air_date: "2021-01-01",
+        }}
+        watched={true}
+        seriesMetadata={{ total_episodes: 8, number_of_seasons: 1 }}
+        seriesWatchedCount={8}
+        showProgress
+      />,
+    );
+
+    expect(screen.queryByTestId("watched-badge")).not.toBeInTheDocument();
+    const fill = screen.getByTestId("progress-fill");
+    expect(fill).toHaveStyle({ width: "100%" });
+    expect(fill.className).toContain("bg-green-500");
   });
 
   it.each([
@@ -219,6 +263,15 @@ describe("MovieCard", () => {
       watchedCount: 0,
       shouldShow: false,
       expectedWidth: null,
+    },
+    {
+      caseName: "shows 0% when total_episodes is zero",
+      showProgress: true,
+      mediaType: "tv" as const,
+      metadata: { total_episodes: 0, number_of_seasons: 1 },
+      watchedCount: 1,
+      shouldShow: true,
+      expectedWidth: "0%",
     },
   ])(
     "handles progress for $caseName",
